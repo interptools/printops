@@ -93,6 +93,24 @@
 </head>
 <body>
 
+<!-- Password Gate -->
+<div id="gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--surface-0)">
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;padding:2rem;width:340px;text-align:center">
+    <div style="font-size:28px;margin-bottom:0.75rem"><i class="ti ti-lock" style="color:var(--accent)" aria-hidden="true"></i></div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px">PrintOps</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem">Owner access only</div>
+    <input id="gate-pw" type="password" placeholder="Enter password"
+      style="width:100%;padding:10px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none;margin-bottom:10px;text-align:center;letter-spacing:2px"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <button onclick="checkPassword()"
+      style="width:100%;padding:10px;border-radius:var(--radius);border:none;background:var(--accent);color:#fff;font-size:14px;font-family:inherit;font-weight:500;cursor:pointer">
+      Sign in
+    </button>
+    <div id="gate-err" style="display:none;font-size:12px;color:var(--danger);margin-top:8px">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<div id="app-content" style="display:none">
 <div class="app">
   <!-- Sidebar -->
   <div class="sidebar">
@@ -291,6 +309,7 @@
     </div>
   </div>
 </div>
+</div><!-- end app-content -->
 
 <div class="toast" id="toast"></div>
 
@@ -607,9 +626,22 @@ function updateReqBadge() {
   badge.style.display = count ? 'inline' : 'none';
 }
 
-// Init
-renderDash();
-updateReqBadge();
+// Password gate
+const OWNER_PASSWORD = 'print2026';
+
+function checkPassword() {
+  const val = document.getElementById('gate-pw').value;
+  if (val === OWNER_PASSWORD) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    renderDash();
+    updateReqBadge();
+  } else {
+    document.getElementById('gate-err').style.display = 'block';
+    document.getElementById('gate-pw').value = '';
+    document.getElementById('gate-pw').focus();
+  }
+}
 </script>
 </body>
 </html>
