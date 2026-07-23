@@ -89,6 +89,17 @@
   .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text-primary);color:var(--surface-2);padding:10px 18px;border-radius:var(--radius);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none}
   .toast.show{opacity:1;transform:translateY(0)}
   .section-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;padding:8px 1.25rem 4px;margin-top:4px}
+  .ft-row{display:grid;grid-template-columns:1fr 32px 1.4fr;align-items:center;padding:12px 1.25rem;border-bottom:0.5px solid var(--border);gap:10px;transition:background 0.12s}
+  .ft-row:hover{background:var(--surface-1)}
+  .ft-paid{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:7px}
+  .ft-paid i{font-size:15px;color:var(--text-muted)}
+  .ft-arrow{text-align:center;color:var(--text-muted);font-size:15px}
+  .ft-free{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .ft-free strong{font-size:13px;font-weight:600;color:var(--text-primary)}
+  .ft-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+  .ft-badge{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600;background:var(--success-bg);color:var(--success);margin-left:6px;vertical-align:middle}
+  .ft-link{font-size:11px;color:var(--accent);text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0}
+  .ft-link:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -130,6 +141,9 @@
     </button>
     <button class="nav-item" onclick="nav('requests')" id="nav-requests">
       <i class="ti ti-inbox" aria-hidden="true"></i><span>Requests <span id="req-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span>
+    </button>
+    <button class="nav-item" onclick="nav('freetools')" id="nav-freetools">
+      <i class="ti ti-tools" aria-hidden="true"></i><span>Free tools</span>
     </button>
     <div class="sidebar-bottom">Data saved in your browser.<br>No internet needed.</div>
   </div>
@@ -202,6 +216,58 @@
           <tbody id="req-table"></tbody>
         </table>
         <div class="empty" id="req-empty" style="display:none">No customer requests yet. Share the <a href="order-form.html" target="_blank" style="color:var(--accent)">order form link</a> with your customers.</div>
+      </div>
+    </div>
+
+    <!-- Free Tools -->
+    <div class="page" id="page-freetools">
+      <div class="page-header">
+        <div class="page-title">Free software alternatives</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.6">
+        The best free and open-source alternatives to paid software used by print shops.
+      </div>
+
+      <!-- Design & Editing -->
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-brush" aria-hidden="true"></i> Design & editing
+        <span style="flex:1;height:0.5px;background:var(--border);display:block"></span>
+      </div>
+      <div class="card" style="padding:0;margin-bottom:1.25rem">
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> Adobe Illustrator</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Inkscape</strong><span class="ft-badge">Free</span><div class="ft-desc">Vector graphics editor</div></div><a class="ft-link" href="https://inkscape.org" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> Adobe Photoshop</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>GIMP</strong><span class="ft-badge">Free</span><div class="ft-desc">Image editing & retouching</div></div><a class="ft-link" href="https://www.gimp.org" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> Adobe InDesign</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Scribus</strong><span class="ft-badge">Free</span><div class="ft-desc">Page layout & desktop publishing</div></div><a class="ft-link" href="https://www.scribus.net" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row" style="border-bottom:none"><div class="ft-paid"><i class="ti ti-circle-x"></i> CorelDRAW</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Inkscape + LibreOffice Draw</strong><span class="ft-badge">Free</span><div class="ft-desc">Covers most CorelDRAW use cases</div></div><a class="ft-link" href="https://www.libreoffice.org" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+      </div>
+
+      <!-- Business & Accounting -->
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-receipt" aria-hidden="true"></i> Business & accounting
+        <span style="flex:1;height:0.5px;background:var(--border);display:block"></span>
+      </div>
+      <div class="card" style="padding:0;margin-bottom:1.25rem">
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> QuickBooks</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Wave Accounting</strong><span class="ft-badge">Free</span><div class="ft-desc">Invoicing, receipts & bookkeeping</div></div><a class="ft-link" href="https://www.waveapps.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row" style="border-bottom:none"><div class="ft-paid"><i class="ti ti-circle-x"></i> Microsoft Excel</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Google Sheets</strong><span class="ft-badge">Free</span><div class="ft-desc">Spreadsheets, pricing, job tracking</div></div><a class="ft-link" href="https://sheets.google.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+      </div>
+
+      <!-- Communication -->
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-message" aria-hidden="true"></i> Communication & collaboration
+        <span style="flex:1;height:0.5px;background:var(--border);display:block"></span>
+      </div>
+      <div class="card" style="padding:0;margin-bottom:1.25rem">
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> Slack (paid)</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Discord / Teams free</strong><span class="ft-badge">Free</span><div class="ft-desc">Team messaging & file sharing</div></div><a class="ft-link" href="https://discord.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row" style="border-bottom:none"><div class="ft-paid"><i class="ti ti-circle-x"></i> Trello (paid)</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>Trello free / Notion free</strong><span class="ft-badge">Free</span><div class="ft-desc">Task boards & project tracking</div></div><a class="ft-link" href="https://trello.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+      </div>
+
+      <!-- Hosting -->
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-world" aria-hidden="true"></i> Website & hosting
+        <span style="flex:1;height:0.5px;background:var(--border);display:block"></span>
+      </div>
+      <div class="card" style="padding:0;margin-bottom:1.25rem">
+        <div class="ft-row"><div class="ft-paid"><i class="ti ti-circle-x"></i> Paid web hosting</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>GitHub Pages</strong><span class="ft-badge">Free</span><div class="ft-desc">Host your website for free</div></div><a class="ft-link" href="https://pages.github.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
+        <div class="ft-row" style="border-bottom:none"><div class="ft-paid"><i class="ti ti-circle-x"></i> Adobe Acrobat Pro</div><div class="ft-arrow"><i class="ti ti-arrow-right"></i></div><div class="ft-free"><div><strong>LibreOffice / PDF24</strong><span class="ft-badge">Free</span><div class="ft-desc">PDF creation, editing & merging</div></div><a class="ft-link" href="https://www.pdf24.org" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
       </div>
     </div>
 
@@ -337,7 +403,7 @@ function nav(p) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   document.getElementById('nav-' + p).classList.add('active');
-  const renders = { dashboard: renderDash, orders: renderOrders, customers: renderCustomers, invoices: renderInvoices, requests: renderRequests };
+  const renders = { dashboard: renderDash, orders: renderOrders, customers: renderCustomers, invoices: renderInvoices, requests: renderRequests, freetools: ()=>{} };
   if (renders[p]) renders[p]();
 }
 
