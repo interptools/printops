@@ -143,6 +143,32 @@ tbody tr:hover td{background:var(--surface-1)}
   .page{display:block!important}
   body{background:#fff}
 }
+  /* Job ticket print */
+  #job-ticket-area{display:none}
+  @media print {
+    body > *:not(#job-ticket-area){ display:none!important }
+    #job-ticket-area{ display:block!important; font-family:sans-serif; padding:10mm; }
+    .jt-header{ border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; }
+    .jt-shop{ font-size:18px; font-weight:700; }
+    .jt-ref{ font-size:13px; color:#555; }
+    .jt-row{ display:flex; gap:6px; font-size:13px; margin-bottom:6px; }
+    .jt-label{ font-weight:600; min-width:100px; color:#333; }
+    .jt-val{ flex:1; }
+    .jt-divider{ border-top:1px dashed #ccc; margin:10px 0; }
+    .jt-status-row{ display:flex; gap:16px; margin-top:12px; }
+    .jt-status-box{ border:1.5px solid #000; border-radius:6px; padding:8px 16px; text-align:center; font-size:11px; font-weight:600; text-transform:uppercase; min-width:70px; }
+    .jt-footer{ margin-top:16px; font-size:11px; color:#888; border-top:1px solid #eee; padding-top:8px; }
+  }
+  /* Templates */
+  .tpl-card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;transition:border-color 0.12s}
+  .tpl-card:hover{border-color:var(--accent)}
+  .tpl-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted)}
+  .tpl-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+  .tpl-body{font-size:12px;color:var(--text-secondary);line-height:1.6;background:var(--surface-1);border-radius:6px;padding:10px 12px;white-space:pre-wrap;border:0.5px solid var(--border);flex:1}
+  .tpl-copy-btn{align-self:flex-end;padding:5px 14px;border-radius:6px;border:0.5px solid var(--border-strong);background:var(--surface-1);font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-primary);transition:all 0.1s;display:flex;align-items:center;gap:5px}
+  .tpl-copy-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tpl-copy-btn.copied{background:var(--success);color:#fff;border-color:var(--success)}
+  @media(max-width:700px){#tpl-grid{grid-template-columns:1fr!important}}
 </style>
 </head>
 <body>
@@ -174,6 +200,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
+    <button class="nav-item" onclick="nav('templates')" id="nav-templates"><i class="ti ti-template" aria-hidden="true"></i><span>Templates</span></button>
     <button class="nav-item" onclick="nav('freetools')" id="nav-freetools"><i class="ti ti-tools" aria-hidden="true"></i><span>Free tools</span></button>
     <button class="nav-item" onclick="nav('sync')" id="nav-sync"><i class="ti ti-cloud" aria-hidden="true"></i><span>Sync setup</span></button>
     <div class="section-label">Data</div>
@@ -210,6 +237,13 @@ tbody tr:hover td{background:var(--surface-1)}
             <i class="ti ti-external-link" style="margin-left:auto;color:rgba(255,255,255,0.7);font-size:14px"></i>
           </div>
         </a>
+        <div onclick="nav('templates')" style="cursor:pointer;flex:1;min-width:200px">
+          <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;transition:background 0.12s" onmouseover="this.style.background='var(--surface-1)'" onmouseout="this.style.background='var(--surface-2)'">
+            <i class="ti ti-template" style="font-size:20px;color:var(--success)"></i>
+            <div><div style="font-size:13px;font-weight:600">Ready-made Templates</div><div style="font-size:11px;color:var(--text-muted)">SMS, social media, invoices & promos</div></div>
+            <i class="ti ti-arrow-right" style="margin-left:auto;color:var(--text-muted);font-size:14px"></i>
+          </div>
+        </div>
       </div>
       <!-- Deadline alerts -->
       <div id="deadline-alerts"></div>
@@ -246,7 +280,7 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
       <div class="card">
         <table>
-          <thead><tr><th></th><th>Order #</th><th>Customer</th><th>Job type</th><th>Size / Qty</th><th>Due date</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead>
+          <thead><tr><th></th><th>Order #</th><th>Customer</th><th>Job type</th><th>Size / Qty</th><th>Due date</th><th>Status</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead>
           <tbody id="orders-table"></tbody>
         </table>
         <div class="empty" id="orders-empty" style="display:none">No orders found.</div>
@@ -355,6 +389,24 @@ tbody tr:hover td{background:var(--surface-1)}
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="page" id="page-templates">
+      <div class="page-header"><div class="page-title">Ready-made Templates</div></div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.6">Copy-paste templates for customer messages, social media posts, invoices, and more. Click <strong>Copy</strong> to copy any template instantly.</div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem" id="tpl-filter-row">
+        <button class="chip sel" onclick="filterTpl('all',this)">All</button>
+        <button class="chip" onclick="filterTpl('sms',this)">📱 SMS / Chat</button>
+        <button class="chip" onclick="filterTpl('social',this)">📣 Social Media</button>
+        <button class="chip" onclick="filterTpl('invoice',this)">🧾 Invoice / Payment</button>
+        <button class="chip" onclick="filterTpl('followup',this)">🔄 Follow-up</button>
+        <button class="chip" onclick="filterTpl('promo',this)">🎉 Promotions</button>
+      </div>
+
+      <div id="tpl-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
     </div>
 
     <!-- FREE TOOLS -->
@@ -636,16 +688,34 @@ tbody tr:hover td{background:var(--surface-1)}
 
 <!-- Order Modal -->
 <div class="modal-overlay" id="order-modal" onclick="bgClose(event,'order-modal')">
-  <div class="modal">
+  <div class="modal" style="width:580px">
     <div class="modal-title"><span id="order-modal-title">New order</span><button class="modal-close" onclick="closeModal('order-modal')"><i class="ti ti-x"></i></button></div>
+
+    <!-- Rush badge -->
+    <div id="o-rush-badge" style="display:none;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:6px;padding:4px 10px">⚡ RUSH / Urgent Order</span>
+    </div>
+
     <div class="form-row">
       <div class="form-group"><label>Customer *</label><select id="o-customer"></select></div>
       <div class="form-group"><label>Job type</label>
-        <select id="o-jobtype"><option>Business cards</option><option>Flyers</option><option>Tarpaulin</option><option>T-shirt print</option><option>Sticker</option><option>Poster</option><option>Brochure</option><option>Banner</option><option>ID / Lanyard</option><option>Other</option></select>
+        <select id="o-jobtype">
+          <option>Print (file upload)</option>
+          <option>Rush ID Photo</option>
+          <option>Business cards</option>
+          <option>Flyers</option>
+          <option>Tarpaulin / Banner</option>
+          <option>T-shirt print</option>
+          <option>Sticker</option>
+          <option>Poster</option>
+          <option>Brochure</option>
+          <option>ID / Lanyard</option>
+          <option>Other</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Size / specs</label><input id="o-size" placeholder="e.g. A4, 2x3ft"></div>
+      <div class="form-group"><label>Size / specs</label><input id="o-size" placeholder="e.g. A4, 2×3ft, Package 1"></div>
       <div class="form-group"><label>Quantity</label><input id="o-qty" type="number" min="1" value="1"></div>
     </div>
     <div class="form-row">
@@ -653,16 +723,46 @@ tbody tr:hover td{background:var(--surface-1)}
       <div class="form-group"><label>Due date</label><input id="o-due" type="date"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Status</label><select id="o-status"><option>Pending</option><option>In progress</option><option>Done</option><option>Cancelled</option></select></div>
+      <div class="form-group"><label>Status</label>
+        <select id="o-status">
+          <option>Pending</option>
+          <option>In progress</option>
+          <option>Done</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Payment</label>
+        <select id="o-payment">
+          <option value="">Unpaid</option>
+          <option value="Downpayment">Downpayment received</option>
+          <option value="Paid">Fully paid</option>
+        </select>
+      </div>
     </div>
+
+    <!-- File indicator (shown when order has an attached file) -->
+    <div id="o-file-row" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--accent-bg);border-radius:8px;border:0.5px solid var(--accent);font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <i class="ti ti-file" style="color:var(--accent)"></i>
+      <span id="o-file-name" style="flex:1;color:var(--accent-text);font-weight:500"></span>
+      <button class="btn btn-sm" id="o-file-download-btn" style="width:auto;padding:4px 10px;font-size:11px" onclick="downloadOrderFile()">
+        <i class="ti ti-download"></i> Download
+      </button>
+    </div>
+
     <div class="form-row">
-      <div class="form-group form-full"><label>Notes</label><textarea id="o-notes" placeholder="Design notes, file format, color specs..."></textarea></div>
+      <div class="form-group form-full"><label>Notes / extras</label><textarea id="o-notes" placeholder="Design notes, color mode, finish, material, sizes..." style="min-height:70px"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('order-modal')">Cancel</button>
+      <button class="btn btn-success" id="o-ticket-btn" onclick="printJobTicket()" style="width:auto;padding:8px 14px"><i class="ti ti-printer"></i> Print ticket</button>
       <button class="btn btn-primary" onclick="saveOrder()">Save order</button>
     </div>
   </div>
+</div>
+
+<!-- Job Ticket Print area (hidden, shown on print) -->
+<div id="job-ticket-area" style="display:none">
+  <div id="job-ticket-content"></div>
 </div>
 
 <!-- Customer Modal -->
@@ -747,7 +847,8 @@ function nav(p) {
     dashboard: renderDash, orders: renderOrders, customers: renderCustomers,
     invoices: renderInvoices, requests: renderRequests,
     idphotos: renderPhotoOrders,
-    calculator: () => calcPrice(), freetools: () => {}, sync: renderSync
+    calculator: () => calcPrice(), freetools: () => {}, sync: renderSync,
+    templates: renderTemplates
   };
   if (renders[p]) renders[p]();
 }
@@ -848,6 +949,11 @@ function renderOrders() {
     const rowClass = (days !== null && o.status !== 'Done' && o.status !== 'Cancelled') ? (days <= 0 ? 'alert-today' : days === 1 ? 'alert-soon' : '') : '';
     const rushBadge = o.rush ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">⚡</span>' : '';
     const sizeQty = [o.size ? o.size : null, o.qty ? 'Qty '+o.qty : null].filter(Boolean).join(' · ') || '—';
+    const payBadge = o.payment === 'Paid'
+      ? `<span style="font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:2px 7px;border-radius:20px">✓ Paid</span>`
+      : o.payment === 'Downpayment'
+      ? `<span style="font-size:11px;font-weight:600;color:var(--warning);background:var(--warning-bg);padding:2px 7px;border-radius:20px">↓ DP</span>`
+      : `<span style="font-size:11px;color:var(--text-muted)">Unpaid</span>`;
     return `<tr class="row-expandable ${rowClass}" onclick="toggleNotes('notes-${o.id}')">
       <td style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
       <td>#${String(o.id).padStart(4,'0')}</td>
@@ -857,13 +963,15 @@ function renderOrders() {
       <td>${o.due || '—'}</td>
       <td>${statusBadge(o.status)}</td>
       <td>₱${Number(o.amount).toLocaleString()}</td>
+      <td>${payBadge}</td>
       <td onclick="event.stopPropagation()"><div class="actions">
-        <button class="btn btn-sm" onclick="editOrder(${o.id})"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm" onclick="editOrder(${o.id})" title="Edit"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-success" onclick="editThenTicket(${o.id})" title="Print job ticket"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm btn-danger" onclick="deleteOrder(${o.id})"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>
     <tr class="row-notes" id="notes-${o.id}">
-      <td colspan="9"><strong>Notes:</strong> ${o.notes || '(no notes)'}</td>
+      <td colspan="10"><strong>Notes:</strong> ${o.notes || '(no notes)'}</td>
     </tr>`;
   }).join('');
 }
@@ -885,12 +993,27 @@ function openOrderModal(id) {
   document.getElementById('o-due').value = o ? o.due : '';
   document.getElementById('o-notes').value = o ? o.notes : '';
   document.getElementById('o-status').value = o ? o.status : 'Pending';
+  document.getElementById('o-payment').value = o ? (o.payment||'') : '';
+  // Rush badge
+  const rushBadge = document.getElementById('o-rush-badge');
+  if (rushBadge) rushBadge.style.display = (o && o.rush) ? 'block' : 'none';
+  // File indicator
+  const fileRow = document.getElementById('o-file-row');
+  const fileName = document.getElementById('o-file-name');
+  if (fileRow && fileName) {
+    const f = o && (o.printFile || o.designFile);
+    fileRow.style.display = f ? 'flex' : 'none';
+    fileName.textContent = f ? (o.printFile || o.designFile) : '';
+    fileRow._fileData = o ? (o.printFileData || o.designFileData || null) : null;
+    fileRow._fileName = o ? (o.printFile || o.designFile || '') : '';
+  }
   document.getElementById('order-modal').classList.add('open');
 }
 
 function saveOrder() {
   const custId = Number(document.getElementById('o-customer').value);
   if (!custId) { alert('Please select a customer.'); return; }
+  const existing = editOrderId ? orders.find(o => o.id === editOrderId) : null;
   const data = {
     id: editOrderId || nextId(orders), customerId: custId,
     jobtype: document.getElementById('o-jobtype').value,
@@ -900,7 +1023,14 @@ function saveOrder() {
     due: document.getElementById('o-due').value,
     notes: document.getElementById('o-notes').value,
     status: document.getElementById('o-status').value,
-    createdAt: editOrderId ? (orders.find(o => o.id === editOrderId)||{}).createdAt : new Date().toISOString()
+    payment: document.getElementById('o-payment').value,
+    // preserve rush/file data from existing or carried-over
+    rush: existing ? existing.rush : false,
+    printFile: existing ? existing.printFile : null,
+    designFile: existing ? existing.designFile : null,
+    printFileData: existing ? existing.printFileData : null,
+    designFileData: existing ? existing.designFileData : null,
+    createdAt: existing ? existing.createdAt : new Date().toISOString()
   };
   orders = editOrderId ? orders.map(o => o.id === editOrderId ? data : o) : [...orders, data];
   persist(); closeModal('order-modal'); renderOrders();
@@ -908,6 +1038,7 @@ function saveOrder() {
 }
 
 function editOrder(id) { openOrderModal(id); }
+function editThenTicket(id) { openOrderModal(id); setTimeout(()=>{ printJobTicket(); }, 300); }
 function deleteOrder(id) { if (!confirm('Delete this order?')) return; orders = orders.filter(o => o.id !== id); persist(); renderOrders(); toast('Order deleted.'); }
 
 // Customers
@@ -1101,7 +1232,9 @@ function renderRequests() {
           <option${r.status==='Done'?' selected':''}>Done</option>
           <option${r.status==='Cancelled'?' selected':''}>Cancelled</option>
         </select>
-        <button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>
+        ${r.jobtype==='Rush ID Photo'
+          ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
+          : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
         <button class="btn btn-sm btn-danger" onclick="deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>
@@ -1116,6 +1249,71 @@ function renderRequests() {
   }).join('');
 }
 
+function printJobTicket() {
+  // Gather current modal values
+  const custId = Number(document.getElementById('o-customer').value);
+  const cust = customers.find(c => c.id === custId);
+  const custName = cust ? cust.name : '—';
+  const custPhone = cust ? cust.phone : '—';
+  const jobtype  = document.getElementById('o-jobtype').value;
+  const size     = document.getElementById('o-size').value || '—';
+  const qty      = document.getElementById('o-qty').value || '—';
+  const amount   = document.getElementById('o-amount').value || '0';
+  const due      = document.getElementById('o-due').value || '—';
+  const notes    = document.getElementById('o-notes').value || '';
+  const status   = document.getElementById('o-status').value;
+  const payment  = document.getElementById('o-payment').value || 'Unpaid';
+  const rush     = document.getElementById('o-rush-badge').style.display !== 'none';
+  const now      = new Date().toLocaleString('en-PH');
+  const fileNameEl = document.getElementById('o-file-name');
+  const fname    = fileNameEl ? fileNameEl.textContent : '';
+
+  const area = document.getElementById('job-ticket-area');
+  area.innerHTML = `
+    <div class="jt-header">
+      <div>
+        <div class="jt-shop">Arroyo Suite${rush ? ' &nbsp;⚡ RUSH' : ''}</div>
+        <div class="jt-ref">Job Ticket · Printed: ${now}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:#1a6ef5">#${editOrderId ? String(editOrderId).padStart(4,'0') : 'NEW'}</div>
+        <div style="font-size:12px;color:#555">Order #</div>
+      </div>
+    </div>
+    <div class="jt-row"><span class="jt-label">Customer</span><span class="jt-val">${custName}</span></div>
+    <div class="jt-row"><span class="jt-label">Contact</span><span class="jt-val">${custPhone}</span></div>
+    <div class="jt-divider"></div>
+    <div class="jt-row"><span class="jt-label">Job type</span><span class="jt-val">${jobtype}</span></div>
+    <div class="jt-row"><span class="jt-label">Size / specs</span><span class="jt-val">${size}</span></div>
+    <div class="jt-row"><span class="jt-label">Quantity</span><span class="jt-val">${qty} pcs</span></div>
+    <div class="jt-row"><span class="jt-label">Date needed</span><span class="jt-val">${due}</span></div>
+    ${fname ? `<div class="jt-row"><span class="jt-label">File</span><span class="jt-val">${fname}</span></div>` : ''}
+    ${notes ? `<div class="jt-divider"></div><div class="jt-row"><span class="jt-label">Notes</span><span class="jt-val" style="white-space:pre-wrap">${notes}</span></div>` : ''}
+    <div class="jt-divider"></div>
+    <div class="jt-row"><span class="jt-label">Amount</span><span class="jt-val" style="font-size:16px;font-weight:700">₱${Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></div>
+    <div class="jt-row"><span class="jt-label">Payment</span><span class="jt-val">${payment}</span></div>
+    <div class="jt-status-row">
+      ${['Pending','In progress','Done'].map(s=>`<div class="jt-status-box" style="${s===status?'background:#000;color:#fff':''}">${s}</div>`).join('')}
+    </div>
+    <div class="jt-footer">Arroyo Suite · Keep this ticket until order is claimed.</div>
+  `;
+  area.style.display = 'block';
+  window.print();
+  area.style.display = 'none';
+}
+
+function downloadOrderFile() {
+  const fileRow = document.getElementById('o-file-row');
+  if (!fileRow || !fileRow._fileData) {
+    toast('File data not available — it may not have been saved in this session.');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = fileRow._fileData;
+  a.download = fileRow._fileName || 'order-file';
+  a.click();
+}
+
 function convertReqToOrder(id) {
   const r = getRequests().find(x => x.id === id);
   if (!r) return;
@@ -1124,25 +1322,80 @@ function convertReqToOrder(id) {
   if (!cust) {
     cust = { id: nextId(customers), name: r.name, phone: r.phone, email: r.email||'', address: '', createdAt: new Date().toISOString() };
     customers = [...customers, cust];
+    persist();
   }
+  // Build extras string
+  const extraParts = [];
+  if (r.extras) {
+    const e = r.extras;
+    if (e.colorMode) extraParts.push('Color: ' + e.colorMode);
+    if (e.finish)    extraParts.push('Finish: ' + e.finish);
+    if (e.material)  extraParts.push('Material: ' + e.material);
+    if (e.fold)      extraParts.push('Fold: ' + e.fold);
+    if (e.printType) extraParts.push('Print type: ' + e.printType);
+    if (e.shape)     extraParts.push('Shape: ' + e.shape);
+    if (e.idType)    extraParts.push('ID type: ' + e.idType);
+    if (e.sizes)     extraParts.push('Sizes: ' + e.sizes);
+  }
+  const noteParts = [
+    r.notes,
+    extraParts.join(' · '),
+    r.printFile  ? '📄 Print file: ' + r.printFile  : '',
+    r.designFile ? '🎨 Design file: ' + r.designFile : '',
+    r.rush ? '⚡ RUSH ORDER' : ''
+  ].filter(Boolean).join('\n');
+
   nav('orders');
   setTimeout(() => {
     openOrderModal();
     populateCustSelect('o-customer', cust.id);
     document.getElementById('o-customer').value = cust.id;
-    document.getElementById('o-jobtype').value = r.jobtype || 'Business cards';
-    document.getElementById('o-size').value = r.size || r.pkgLabel || '';
+    document.getElementById('o-jobtype').value = r.jobtype || 'Other';
+    document.getElementById('o-size').value = r.pkgLabel || r.size || '';
     document.getElementById('o-qty').value = r.qty || 1;
     document.getElementById('o-due').value = r.due || '';
-    document.getElementById('o-notes').value = [
-      r.notes,
-      r.extras ? Object.entries(r.extras).map(([k,v])=>v?`${k}: ${v}`:'').filter(Boolean).join(', ') : '',
-      r.printFile ? 'Print file: '+r.printFile : '',
-      r.designFile ? 'Design file: '+r.designFile : '',
-      r.rush ? '⚡ RUSH ORDER' : ''
-    ].filter(Boolean).join('\n');
+    document.getElementById('o-notes').value = noteParts;
+    document.getElementById('o-status').value = 'Pending';
+    // Rush badge
+    const rushBadge = document.getElementById('o-rush-badge');
+    if (rushBadge) rushBadge.style.display = r.rush ? 'block' : 'none';
+    // File indicator
+    const fileRow = document.getElementById('o-file-row');
+    const fileNameEl = document.getElementById('o-file-name');
+    const fname = r.printFile || r.designFile;
+    if (fileRow && fileNameEl && fname) {
+      fileRow.style.display = 'flex';
+      fileNameEl.textContent = fname;
+    }
+    toast('Customer details loaded — set amount and save.');
   }, 150);
-  toast('Filled order form from request.');
+}
+
+function reqToIdPhoto(id) {
+  const r = getRequests().find(x => x.id === id);
+  if (!r) return;
+  // Map request pkgKey to PHOTO_PACKAGES key
+  const pkgKey = r.pkgKey || null;
+  // Navigate to ID Photos page and open the owner modal pre-filled
+  nav('idphotos');
+  setTimeout(() => {
+    openOwnerOrderModal();
+    // Pre-fill name, phone, email, notes
+    const nameEl = document.getElementById('ow-name');
+    const phoneEl = document.getElementById('ow-phone');
+    const emailEl = document.getElementById('ow-email');
+    const notesEl = document.getElementById('ow-notes');
+    if (nameEl) nameEl.value = r.name;
+    if (phoneEl) phoneEl.value = r.phone;
+    if (emailEl) emailEl.value = r.email || '';
+    if (notesEl) notesEl.value = [r.notes, r.due ? 'Date needed: '+r.due : ''].filter(Boolean).join('\n');
+    // Pre-select package if valid
+    if (pkgKey && PHOTO_PACKAGES[pkgKey]) {
+      const btn = document.querySelector(`.o-pkg-btn[onclick*="'${pkgKey}'"]`);
+      if (btn) { btn.click(); }
+    }
+    toast('Customer details loaded — upload the photo to print.');
+  }, 200);
 }
 
 function updateReqStatus(id, status) { saveRequests(getRequests().map(r => r.id===id?{...r,status}:r)); updateReqBadge(); toast('Status updated.'); }
@@ -1710,6 +1963,292 @@ function checkPassword() {
     document.getElementById('gate-pw').value = '';
     document.getElementById('gate-pw').focus();
   }
+}
+
+// ─── TEMPLATES ────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  // SMS / Chat
+  { tag:'sms', title:'Order received confirmation',
+    body:`Hi [Name]! 😊 Thank you for your order at Arroyo Suite!
+
+Order details:
+📋 Job: [Job type]
+📐 Size: [Size]
+🔢 Qty: [Quantity]
+📅 Pickup: [Date]
+
+We'll update you once it's ready. Thank you! 🙏` },
+
+  { tag:'sms', title:'Order ready for pickup',
+    body:`Hi [Name]! Your order is ready for pickup! 🎉
+
+📋 [Job type] — [Qty] pcs
+📍 Visit us anytime during business hours.
+
+Thank you for choosing Arroyo Suite! 😊` },
+
+  { tag:'sms', title:'Order is in progress',
+    body:`Hi [Name]! Just an update — your [Job type] order is now being processed. 🖨️
+
+Expected to be ready by [Date]. We'll message you once it's done!` },
+
+  { tag:'sms', title:'Payment reminder',
+    body:`Hi [Name]! 😊 This is a friendly reminder that your order balance of ₱[Amount] is due upon pickup.
+
+You may pay via cash or GCash [GCash number]. Thank you!` },
+
+  { tag:'sms', title:'Follow-up: design not yet sent',
+    body:`Hi [Name]! We noticed we haven't received your design file yet for your [Job type] order.
+
+Please send it to [FB/email/Messenger] so we can start printing. Thank you! 😊` },
+
+  { tag:'sms', title:'Cancelled order notice',
+    body:`Hi [Name], we regret to inform you that your order (Ref: [REF]) has been cancelled due to [reason].
+
+Please contact us to reschedule or if you have any questions. We apologize for the inconvenience. 🙏` },
+
+  // Follow-up
+  { tag:'followup', title:'After pickup — thank you message',
+    body:`Hi [Name]! 😊 We hope you're happy with your [Job type] order!
+
+If you have any concerns, don't hesitate to message us. We'd also appreciate it if you could leave us a review on Facebook. Thank you so much! 🙏❤️` },
+
+  { tag:'followup', title:'Repeat customer check-in',
+    body:`Hi [Name]! 😊 It's been a while! Are you in need of any printing services?
+
+We offer business cards, flyers, tarpaulins, IDs, and more. Message us anytime — we're happy to help! 🖨️` },
+
+  { tag:'followup', title:'Request for feedback',
+    body:`Hi [Name]! We hope you loved your recent order. 😊
+
+Could you spare a moment to share your experience? Your feedback helps us serve you better.
+
+Thank you so much! 🙏` },
+
+  { tag:'followup', title:'Rush order follow-up',
+    body:`Hi [Name]! ⚡ Your rush order is being prioritized. We'll make sure it's done on time!
+
+If you need any updates, feel free to message us anytime. Thank you for trusting Arroyo Suite! 🙏` },
+
+  // Invoice / Payment
+  { tag:'invoice', title:'Invoice message with GCash',
+    body:`Hi [Name]! 🧾 Here is your invoice summary:
+
+📋 Job: [Job type]
+🔢 Qty: [Quantity]
+💰 Total: ₱[Amount]
+
+Payment options:
+💵 Cash upon pickup
+📱 GCash: [GCash number] ([Name on GCash])
+
+Please send your proof of payment after paying. Thank you! 😊` },
+
+  { tag:'invoice', title:'Payment received confirmation',
+    body:`Hi [Name]! ✅ We confirmed your payment of ₱[Amount]. Thank you!
+
+Your order is now being processed and will be ready by [Date]. 😊` },
+
+  { tag:'invoice', title:'Invoice notes — standard terms',
+    body:`Terms & Conditions:
+• 50% downpayment required for orders above ₱500
+• Balance due upon pickup
+• No refunds once printing has started
+• Unclaimed orders after 30 days will be disposed
+• Arroyo Suite is not liable for errors in customer-provided files
+
+Thank you for your understanding!` },
+
+  { tag:'invoice', title:'Downpayment request',
+    body:`Hi [Name]! 😊 To proceed with your order, we require a downpayment of ₱[Amount] (50% of total ₱[Total]).
+
+GCash: [GCash number] ([Name])
+or Cash at our shop.
+
+Please send proof of payment and we'll start right away! 🙏` },
+
+  // Social Media
+  { tag:'social', title:'Facebook — general promo post',
+    body:`🖨️ Need printing services? We got you! 😊
+
+Arroyo Suite offers:
+✅ Business cards
+✅ Tarpaulins & banners
+✅ Flyers & posters
+✅ Rush ID photos
+✅ Stickers & more!
+
+📍 [Address]
+📱 Message us to order!
+
+#ArroyoSuite #PrintShop #Printing #BusinessCards #Tarpaulin #FlexPrinting` },
+
+  { tag:'social', title:'Facebook — Rush ID Photo promo',
+    body:`📸 RUSH ID PHOTO — Available now!
+
+Package 1: ₱30 — 1×1 (8 pcs)
+Package 2: ₱35 — 2×2 (4 pcs)
+Package 3: ₱45 — Passport size (3 pcs)
+Package 3 Combo: ₱60 — 1×1 + 2×2 + Passport
+Package 4: ₱65 — 1×1 (8 pcs) + 2×2 (4 pcs) ⭐ Best Value
+
+✅ Photo editing included
+✅ Background change included
+✅ Ready in minutes!
+
+Message us to book your slot! 📱
+
+#RushID #IDPhoto #ArroyoSuite #PrintShop` },
+
+  { tag:'social', title:'Facebook — tarpaulin promo',
+    body:`🎉 TARPAULIN PRINTING — Fast & Affordable!
+
+Available sizes:
+📐 2×3 ft | 3×4 ft | 4×6 ft | 4×8 ft | custom
+
+✅ Full color printing
+✅ Durable material
+✅ Same-day available for rush!
+
+Price starts at ₱[Price]/ft²
+📱 Message us for quotation!
+
+#Tarpaulin #TarpPrinting #ArroyoSuite #PrintShop #Flex` },
+
+  { tag:'social', title:'Facebook — business cards promo',
+    body:`💼 BUSINESS CARDS — Look professional!
+
+✅ Glossy or matte finish
+✅ Full color printing
+✅ 100 pcs minimum
+✅ Custom designs available!
+
+💰 Starting at ₱[Price] per 100 pcs
+📱 Message us or visit our order form to get started!
+
+#BusinessCards #PrintShop #ArroyoSuite #NameCard` },
+
+  { tag:'social', title:'Facebook — resume printing offer',
+    body:`📄 Need your RESUME printed? We can help!
+
+✅ Black & white or full color
+✅ A4 or short bond paper
+✅ Fast turnaround
+✅ Also try our FREE online Resume Builder 👇
+🔗 [CV Builder link]
+
+Build your resume online, then bring it to us for printing! 😊
+
+#Resume #CVPrinting #ArroyoSuite #PrintShop #JobHunting` },
+
+  // Promotions
+  { tag:'promo', title:'Opening announcement',
+    body:`🎉 WE ARE NOW OPEN!
+
+Arroyo Suite is now accepting print orders! 🖨️
+
+Services:
+🖨️ Tarpaulin / banners
+💼 Business cards
+📄 Flyers & posters
+📸 Rush ID photos
+🎨 Stickers & more!
+
+📍 [Address]
+⏰ Open: [Hours]
+📱 [Contact number]
+
+Visit us or order online at: [Order form link]
+
+#GrandOpening #ArroyoSuite #PrintShop` },
+
+  { tag:'promo', title:'Holiday promo post',
+    body:`🎄 [Holiday] SPECIAL OFFER!
+
+Get [X]% OFF on all [Job type] orders this [Holiday]!
+
+Valid: [Start date] – [End date]
+📱 Message us to avail!
+
+Don't miss out — slots are limited! 🙏
+
+#HolidayPromo #ArroyoSuite #PrintShop #Sale` },
+
+  { tag:'promo', title:'Referral promo',
+    body:`🤝 REFER A FRIEND, SAVE MORE!
+
+Refer a friend to Arroyo Suite and both of you get ₱[Amount] OFF your next order!
+
+How it works:
+1️⃣ Refer a friend
+2️⃣ Friend places an order
+3️⃣ Both of you get a discount!
+
+Message us for details. 😊
+
+#Referral #ArroyoSuite #PrintShop #Promo` },
+
+  { tag:'promo', title:'Loyalty customer discount',
+    body:`💛 THANK YOU FOR YOUR LOYALTY!
+
+Hi [Name]! As one of our valued customers, we'd like to offer you a special [X]% discount on your next order. 🎉
+
+Just mention this message when you order. Valid until [Date].
+
+Thank you for always choosing Arroyo Suite! 🙏` },
+];
+
+let activeTplTag = 'all';
+
+function renderTemplates(){
+  const grid = document.getElementById('tpl-grid');
+  if(!grid) return;
+  const filtered = activeTplTag === 'all' ? TEMPLATES : TEMPLATES.filter(t => t.tag === activeTplTag);
+  grid.innerHTML = filtered.map((t, i) => {
+    const tagLabels = {sms:'📱 SMS / Chat', social:'📣 Social Media', invoice:'🧾 Invoice / Payment', followup:'🔄 Follow-up', promo:'🎉 Promotions'};
+    return `<div class="tpl-card">
+      <div class="tpl-tag">${tagLabels[t.tag]||t.tag}</div>
+      <div class="tpl-title">${t.title}</div>
+      <div class="tpl-body">${t.body}</div>
+      <button class="tpl-copy-btn" onclick="copyTpl(this, ${TEMPLATES.indexOf(t)})">
+        <i class="ti ti-copy"></i> Copy
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function filterTpl(tag, el){
+  activeTplTag = tag;
+  document.querySelectorAll('#tpl-filter-row .chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  renderTemplates();
+}
+
+function copyTpl(btn, idx){
+  const tpl = TEMPLATES[idx];
+  if(!tpl) return;
+  navigator.clipboard.writeText(tpl.body).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="ti ti-copy"></i> Copy';
+    }, 2000);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = tpl.body;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="ti ti-copy"></i> Copy';
+    }, 2000);
+  });
 }
 </script>
 </body>
