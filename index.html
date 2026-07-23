@@ -171,6 +171,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('customers')" id="nav-customers"><i class="ti ti-users" aria-hidden="true"></i><span>Customers</span></button>
     <button class="nav-item" onclick="nav('invoices')" id="nav-invoices"><i class="ti ti-receipt" aria-hidden="true"></i><span>Invoices</span></button>
     <button class="nav-item" onclick="nav('requests')" id="nav-requests"><i class="ti ti-inbox" aria-hidden="true"></i><span>Requests <span id="req-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
+    <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
     <button class="nav-item" onclick="nav('freetools')" id="nav-freetools"><i class="ti ti-tools" aria-hidden="true"></i><span>Free tools</span></button>
@@ -441,6 +442,164 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
     </div>
 
+    <!-- ID PHOTOS PAGE -->
+    <div class="page" id="page-idphotos">
+      <div class="page-header">
+        <div class="page-title">ID Photo Orders</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm" onclick="openOwnerOrderModal()"><i class="ti ti-plus"></i> Add order</button>
+          <a href="id-photos.html" target="_blank" class="btn btn-primary btn-sm"><i class="ti ti-external-link"></i> Customer form</a>
+        </div>
+      </div>
+
+      <style>
+        @media print{
+          body *{visibility:hidden}
+          #print-preview-area,#print-preview-area *{visibility:visible}
+          #print-preview-area{position:fixed;inset:0;background:#fff;overflow:auto;padding:0;z-index:9999}
+          .no-print,.no-print-wrapper{display:none!important}
+          #print-sheets-wrap > div { display:block !important; }
+          #print-sheets-wrap > div > div {
+            box-shadow:none !important;
+            margin:0 !important;
+            page-break-after:always;
+          }
+          .no-print{display:none!important}
+        }
+        .owner-upload-area{border:2px dashed var(--border-strong);border-radius:8px;padding:1.25rem;text-align:center;cursor:pointer;transition:all 0.12s;position:relative;overflow:hidden;background:var(--surface-1)}
+        .owner-upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
+        .owner-upload-area.has-file{border-color:var(--success);background:var(--success-bg);border-style:solid}
+        .owner-upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+        .o-pkg-btn{padding:8px 12px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface-1);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.1s;text-align:left;line-height:1.4}
+        .o-pkg-btn:hover{border-color:var(--accent);background:var(--accent-bg)}
+        .o-pkg-btn.sel{border-color:var(--accent);background:var(--accent-bg);font-weight:600;color:var(--accent-text)}
+        .o-pkg-price{font-size:15px;font-weight:800;color:var(--text-primary)}
+      </style>
+
+      <!-- Orders table -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div class="card-title" style="margin:0">All photo orders</div>
+          <select id="ph-filter" onchange="renderPhotoOrders()" style="padding:5px 8px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface-1);color:var(--text-primary)">
+            <option value="">All statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In progress">In progress</option>
+            <option value="Done">Done</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div style="overflow:auto">
+          <table>
+            <thead><tr>
+              <th>Ref</th><th>Name</th><th>Package</th><th>Price</th><th>Date</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="photo-tbody"></tbody>
+          </table>
+          <div class="empty" id="photo-empty" style="display:none">No ID photo orders yet. <a href="id-photos.html" target="_blank" style="color:var(--accent)">Share the customer form →</a></div>
+        </div>
+      </div>
+
+      <!-- Print preview area -->
+      <div id="print-preview-area" style="display:none">
+
+        <!-- Paper size suggestion banner -->
+        <div class="no-print card" style="margin-bottom:12px" id="paper-suggest-banner">
+          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">
+                <i class="ti ti-photo" aria-hidden="true"></i> Recommended paper size
+              </div>
+              <div id="paper-suggest-name" style="font-size:20px;font-weight:600;color:var(--text-primary);letter-spacing:-0.3px"></div>
+              <div id="paper-suggest-dim" style="font-size:12px;color:var(--text-secondary);margin-top:2px"></div>
+              <div id="paper-suggest-reason" style="font-size:12px;color:var(--text-secondary);margin-top:6px;line-height:1.5"></div>
+            </div>
+            <!-- All paper options -->
+            <div style="flex:1;min-width:220px">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Or choose a different size</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px" id="paper-size-btns"></div>
+            </div>
+          </div>
+          <div style="border-top:0.5px solid var(--border);margin:12px 0 10px"></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" style="width:auto;padding:8px 18px" onclick="window.print()"><i class="ti ti-printer"></i> Print now</button>
+            <button class="btn" style="width:auto;padding:8px 14px" onclick="closePrintPreview()"><i class="ti ti-x"></i> Close</button>
+            <span id="print-info" style="font-size:12px;color:var(--text-secondary)"></span>
+          </div>
+        </div>
+
+        <div id="print-sheets-wrap"></div>
+      </div>
+    </div>
+
+    <!-- Owner Add Order Modal -->
+    <div class="modal-overlay" id="owner-photo-modal" onclick="bgClose(event,'owner-photo-modal')">
+      <div class="modal" style="width:560px">
+        <div class="modal-title">
+          <span><i class="ti ti-id" style="margin-right:6px;color:var(--accent)"></i>Add ID Photo Order</span>
+          <button class="modal-close" onclick="closeModal('owner-photo-modal')"><i class="ti ti-x"></i></button>
+        </div>
+
+        <!-- Customer info -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="form-group"><label>Customer name *</label><input id="ow-name" placeholder="Juan dela Cruz"></div>
+          <div class="form-group"><label>Contact number *</label><input id="ow-phone" placeholder="09XX XXX XXXX" type="tel"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px"><label>Email (optional)</label><input id="ow-email" type="email" placeholder="email@example.com"></div>
+
+        <!-- Package buttons -->
+        <div class="form-group">
+          <label style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px">Package *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px" id="ow-pkg-grid">
+            <button class="o-pkg-btn" onclick="owSelectPkg('P1',this)">
+              <div><span class="o-pkg-price">₱30</span> &nbsp;Package 1</div>
+              <div style="font-size:11px;color:var(--text-muted)">1×1 photo · 8 pcs</div>
+            </button>
+            <button class="o-pkg-btn" onclick="owSelectPkg('P2',this)">
+              <div><span class="o-pkg-price">₱35</span> &nbsp;Package 2</div>
+              <div style="font-size:11px;color:var(--text-muted)">2×2 photo · 4 pcs</div>
+            </button>
+            <button class="o-pkg-btn" onclick="owSelectPkg('P3',this)">
+              <div><span class="o-pkg-price">₱45</span> &nbsp;Package 3</div>
+              <div style="font-size:11px;color:var(--text-muted)">Passport size · 3 pcs</div>
+            </button>
+            <button class="o-pkg-btn" onclick="owSelectPkg('P3B',this)">
+              <div><span class="o-pkg-price">₱60</span> &nbsp;Package 3 Combo</div>
+              <div style="font-size:11px;color:var(--text-muted)">1×1 (2) + 2×2 (2) + Pass (3)</div>
+            </button>
+            <button class="o-pkg-btn" onclick="owSelectPkg('P4',this)" style="grid-column:1/-1">
+              <div><span class="o-pkg-price">₱65</span> &nbsp;Package 4 — Best Value</div>
+              <div style="font-size:11px;color:var(--text-muted)">1×1 (8pcs) + 2×2 (4pcs)</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Photo upload -->
+        <div class="form-group" style="margin-top:4px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px">Customer photo *</label>
+          <div class="owner-upload-area" id="ow-upload-area" style="margin-top:6px">
+            <input type="file" id="ow-photo" accept="image/*" onchange="owHandlePhoto(this)">
+            <i class="ti ti-camera-plus" style="font-size:26px;color:var(--text-muted);display:block;margin-bottom:4px" id="ow-upload-icon"></i>
+            <div style="font-size:13px;font-weight:500;color:var(--text-secondary)" id="ow-upload-label">Tap to upload photo</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">JPG, PNG, HEIC · up to 10 MB</div>
+          </div>
+          <div style="text-align:center;margin-top:8px;display:none" id="ow-preview-wrap">
+            <img id="ow-preview-img" src="" alt="Preview" style="max-height:110px;border-radius:6px;border:0.5px solid var(--border)">
+            <button onclick="owRemovePhoto()" style="display:block;margin:4px auto 0;background:none;border:none;font-size:12px;color:var(--danger);cursor:pointer">✕ Remove photo</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <textarea id="ow-notes" rows="2" placeholder="White background, retouching, special instructions…"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn" style="width:auto;padding:8px 16px" onclick="closeModal('owner-photo-modal')">Cancel</button>
+          <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="owSubmitOrder()"><i class="ti ti-send"></i> Save order</button>
+        </div>
+      </div>
+    </div>
+
   </div><!-- end .main -->
 </div><!-- end .app -->
 </div><!-- end #app-content -->
@@ -569,6 +728,7 @@ function nav(p) {
   const renders = {
     dashboard: renderDash, orders: renderOrders, customers: renderCustomers,
     invoices: renderInvoices, requests: renderRequests,
+    idphotos: renderPhotoOrders,
     calculator: () => calcPrice(), freetools: () => {}, sync: renderSync
   };
   if (renders[p]) renders[p]();
@@ -928,6 +1088,410 @@ function useCalcPrice() {
   }, 100);
 }
 
+// ─── ID PHOTO ORDERS ───────────────────────────────────────────────────────
+const PHOTO_PACKAGES = {
+  P1:  { name:'Package 1',        price:30,  label:'1×1 photo (8pcs)',                    slots:[{type:'1x1',count:8}] },
+  P2:  { name:'Package 2',        price:35,  label:'2×2 photo (4pcs)',                    slots:[{type:'2x2',count:4}] },
+  P3:  { name:'Package 3',        price:45,  label:'Passport size (3pcs)',                slots:[{type:'pass',count:3}] },
+  P3B: { name:'Package 3 Combo',  price:60,  label:'1×1 (2pcs) + 2×2 (2pcs) + Pass (3pcs)', slots:[{type:'1x1',count:2},{type:'2x2',count:2},{type:'pass',count:3}] },
+  P4:  { name:'Package 4',        price:65,  label:'1×1 (8pcs) + 2×2 (4pcs)',            slots:[{type:'1x1',count:8},{type:'2x2',count:4}] },
+};
+const SLOT_DIMS = {
+  '1x1':  { wMm:25.4, hMm:25.4 },
+  '2x2':  { wMm:50.8, hMm:50.8 },
+  'pass': { wMm:35,   hMm:45   },
+};
+
+function getPhotoOrders() { return JSON.parse(localStorage.getItem('po_photo_orders') || '[]'); }
+function savePhotoOrders(r) { localStorage.setItem('po_photo_orders', JSON.stringify(r)); }
+
+function updatePhotoBadge() {
+  const count = getPhotoOrders().filter(o => o.status === 'Pending').length;
+  const b = document.getElementById('photo-badge');
+  if (b) { b.textContent = count; b.style.display = count ? 'inline' : 'none'; }
+}
+
+function renderPhotoOrders() {
+  const filter = (document.getElementById('ph-filter') || {}).value || '';
+  let orders = getPhotoOrders();
+  if (filter) orders = orders.filter(o => o.status === filter);
+  orders = orders.slice().sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  const tbody = document.getElementById('photo-tbody');
+  const empty = document.getElementById('photo-empty');
+  if (!orders.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    updatePhotoBadge();
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  tbody.innerHTML = orders.map(o => {
+    const bc = o.status === 'In progress' ? 'badge-In' : 'badge-' + o.status;
+    const date = new Date(o.submittedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+    const thumb = o.photoDataUrl
+      ? `<img src="${o.photoDataUrl}" style="width:28px;height:36px;object-fit:cover;border-radius:3px;border:0.5px solid var(--border);margin-right:6px;vertical-align:middle">`
+      : `<span style="width:28px;height:36px;display:inline-block;background:var(--surface-1);border-radius:3px;border:0.5px dashed var(--border-strong);margin-right:6px;vertical-align:middle"></span>`;
+    return `<tr>
+      <td><strong>${o.ref}</strong></td>
+      <td style="display:flex;align-items:center">${thumb}<span>${o.name}<br><span style="font-size:11px;color:var(--text-muted)">${o.phone}</span></span></td>
+      <td>${o.pkgName || o.pkgLabel}<br><span style="font-size:11px;color:var(--text-muted)">₱${o.pkgPrice || '—'}</span></td>
+      <td style="font-size:11px">${o.pkgLabel}</td>
+      <td style="font-size:12px">${date}</td>
+      <td>
+        <select class="badge ${bc}" onchange="updatePhotoStatus(${o.id}, this.value)"
+          style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:500;padding:2px 4px;font-family:inherit;color:inherit">
+          <option ${o.status==='Pending'?'selected':''}>Pending</option>
+          <option ${o.status==='In progress'?'selected':''}>In progress</option>
+          <option ${o.status==='Done'?'selected':''}>Done</option>
+          <option ${o.status==='Cancelled'?'selected':''}>Cancelled</option>
+        </select>
+      </td>
+      <td>
+        <div class="actions">
+          ${o.photoDataUrl ? `<button class="btn btn-sm btn-success" onclick="openPrintPreview(${o.id})"><i class="ti ti-printer"></i> Print</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deletePhotoOrder(${o.id})"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  updatePhotoBadge();
+}
+
+function updatePhotoStatus(id, status) {
+  savePhotoOrders(getPhotoOrders().map(o => o.id === id ? {...o, status} : o));
+  renderPhotoOrders();
+  toast('Status updated.');
+}
+function deletePhotoOrder(id) {
+  if (!confirm('Delete this photo order?')) return;
+  savePhotoOrders(getPhotoOrders().filter(o => o.id !== id));
+  renderPhotoOrders();
+  toast('Order deleted.');
+}
+
+// ─── PRINT LAYOUT ENGINE ────────────────────────────────────────────────────
+// Generates one A4 sheet per slot type, filled with the correct count + size.
+// A4 usable: 190mm × 277mm (after 10mm padding each side)
+// ─── PAPER SIZE DEFINITIONS ──────────────────────────────────────────────────
+// All sizes in mm (width × height, portrait)
+const PAPER_SIZES = [
+  { id:'2R',    label:'2R',    wMm:63.5,  hMm:88.9,  disp:'2.5×3.5"  (6.35×8.89cm)' },
+  { id:'3R',    label:'3R',    wMm:88.9,  hMm:127,   disp:'3.5×5"    (8.89×12.7cm)' },
+  { id:'4R',    label:'4R',    wMm:101.6, hMm:152.4, disp:'4×6"      (10.2×15.2cm)' },
+  { id:'5R',    label:'5R',    wMm:127,   hMm:177.8, disp:'5×7"      (12.7×17.8cm)' },
+  { id:'6R',    label:'6R',    wMm:152.4, hMm:203.2, disp:'6×8"      (15.2×20.3cm)' },
+  { id:'8R',    label:'8R',    wMm:203.2, hMm:254,   disp:'8×10"     (20.3×25.4cm)' },
+  { id:'S8R',   label:'S8R/A4',wMm:203.2, hMm:304.8, disp:'8×12" / A4 (20.3×30.5cm)' },
+];
+
+// Margin inside paper (mm) — cut guide space
+const PAPER_PAD = 6;
+// Gap between photos (mm)
+const PHOTO_GAP = 2;
+// Extra top margin reserved for sheet label text
+const LABEL_H = 8;
+
+// ─── PAPER SIZE SUGGESTION LOGIC ─────────────────────────────────────────────
+// For a given set of grouped slots, find the smallest paper that fits
+// ALL slot types on ONE sheet (preferred), or ONE sheet per type.
+function suggestPaperSize(grouped) {
+  // Build a score: try to pack all slot-types onto a single paper
+  // Try smallest paper first
+  for (const paper of PAPER_SIZES) {
+    const usableW = paper.wMm - PAPER_PAD * 2;
+    const usableH = paper.hMm - PAPER_PAD * 2 - LABEL_H;
+    let allFit = true;
+    let reason = [];
+    for (const [type, count] of Object.entries(grouped)) {
+      const dim = SLOT_DIMS[type];
+      const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
+      const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
+      if (cols * rows < count) { allFit = false; break; }
+      const typeName = type === '1x1' ? '1×1' : type === '2x2' ? '2×2' : 'Passport';
+      reason.push(`${count} pcs ${typeName} (${cols}×${rows} grid)`);
+    }
+    if (allFit) return { paper, reason: reason.join(' + ') + ' on one sheet', singleSheet: true };
+  }
+  // Fallback: use largest paper (S8R)
+  const paper = PAPER_SIZES[PAPER_SIZES.length - 1];
+  return { paper, reason: 'Multiple sheets needed — using largest paper per sheet', singleSheet: false };
+}
+
+// ─── CURRENT PRINT STATE ─────────────────────────────────────────────────────
+let _printOrder = null;
+let _activePaper = null;
+
+function openPrintPreview(id) {
+  const order = getPhotoOrders().find(o => o.id === id);
+  if (!order || !order.photoDataUrl) { toast('No photo attached to this order.'); return; }
+
+  _printOrder = order;
+  const slots = order.pkgSlots || [];
+
+  // Group by type
+  const grouped = {};
+  slots.forEach(s => {
+    if (!grouped[s.type]) grouped[s.type] = 0;
+    grouped[s.type] += s.count;
+  });
+
+  // Suggest best paper
+  const { paper: suggested, reason, singleSheet } = suggestPaperSize(grouped);
+  _activePaper = suggested;
+
+  // Show area
+  const area = document.getElementById('print-preview-area');
+  area.style.display = 'block';
+
+  // Fill suggestion banner
+  document.getElementById('paper-suggest-name').textContent = suggested.label + ' paper';
+  document.getElementById('paper-suggest-dim').textContent = suggested.disp;
+  document.getElementById('paper-suggest-reason').textContent =
+    '✓ ' + reason;
+  document.getElementById('print-info').textContent =
+    `${order.ref} · ${order.name} · ${order.pkgName || order.pkgLabel} · ₱${order.pkgPrice || '—'}`;
+
+  // Build paper size buttons
+  const btnWrap = document.getElementById('paper-size-btns');
+  btnWrap.innerHTML = '';
+  PAPER_SIZES.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm';
+    btn.style.cssText = 'padding:4px 10px;font-size:12px;' +
+      (p.id === suggested.id ? 'border-color:var(--accent);color:var(--accent);font-weight:600' : '');
+    btn.textContent = p.label;
+    btn.title = p.disp;
+    btn.id = 'ps-btn-' + p.id;
+    btn.onclick = () => switchPaper(p, grouped);
+    btnWrap.appendChild(btn);
+  });
+
+  // Render sheets with suggested paper
+  renderSheets(grouped, suggested);
+  area.scrollIntoView({behavior:'smooth'});
+}
+
+function switchPaper(paper, grouped) {
+  _activePaper = paper;
+  // Update button styles
+  PAPER_SIZES.forEach(p => {
+    const b = document.getElementById('ps-btn-' + p.id);
+    if (!b) return;
+    b.style.borderColor = p.id === paper.id ? 'var(--accent)' : '';
+    b.style.color       = p.id === paper.id ? 'var(--accent)' : '';
+    b.style.fontWeight  = p.id === paper.id ? '600' : '';
+  });
+  document.getElementById('paper-suggest-name').textContent = paper.label + ' paper';
+  document.getElementById('paper-suggest-dim').textContent  = paper.disp;
+  renderSheets(grouped, paper);
+}
+
+function renderSheets(grouped, paper) {
+  const wrap = document.getElementById('print-sheets-wrap');
+  const order = _printOrder;
+  wrap.innerHTML = '';
+
+  // Paper dimensions in mm
+  const pw = paper.wMm;
+  const ph = paper.hMm;
+  const usableW = pw - PAPER_PAD * 2;
+  const usableH = ph - PAPER_PAD * 2 - LABEL_H;
+
+  // Convert mm to px for CSS (96dpi screen: 1mm ≈ 3.7795px)
+  // We'll use mm units in CSS so it maps to real paper at print time,
+  // but shrink visually for on-screen preview with a scale wrapper
+  const MM = 1; // use mm directly in CSS
+
+  let sheetIdx = 0;
+  Object.keys(grouped).forEach(type => {
+    const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
+    const totalCopies = grouped[type];
+    const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
+    const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
+    const perPage = cols * rows;
+    const pages   = Math.ceil(totalCopies / perPage);
+    const typeName = type === '1x1' ? '1×1 in' : type === '2x2' ? '2×2 in' : 'Passport size';
+
+    for (let pg = 0; pg < pages; pg++) {
+      const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
+
+      // Outer preview wrapper (scales paper to screen)
+      const preview = document.createElement('div');
+      preview.style.cssText = `
+        margin:0 auto 20px;
+        display:flex;justify-content:center;
+      `;
+
+      // The actual print sheet — sized to real paper mm
+      const sheet = document.createElement('div');
+      sheet.className = 'o-print-sheet no-print-wrapper';
+
+      // Override sheet width/height to match chosen paper size
+      sheet.style.cssText = `
+        background:#fff;
+        width:${pw}mm;
+        height:${ph}mm;
+        box-shadow:0 2px 12px rgba(0,0,0,0.15);
+        position:relative;
+        overflow:hidden;
+        border-radius:2px;
+      `;
+
+      // Sheet label (top-right, inside paper)
+      const lbl = document.createElement('div');
+      lbl.style.cssText = `
+        position:absolute;top:${PAPER_PAD/2}mm;right:${PAPER_PAD}mm;
+        font-size:7px;color:#aaa;font-family:sans-serif;line-height:1.3;text-align:right;
+      `;
+      lbl.innerHTML =
+        `${order.ref} &nbsp;·&nbsp; ${paper.label} (${pw}×${ph}mm)&nbsp;·&nbsp; ` +
+        `${typeName} &nbsp;·&nbsp; ${dim.wMm}×${dim.hMm}mm &nbsp;·&nbsp; ` +
+        `Sheet ${sheetIdx+1}, page ${pg+1}/${pages}`;
+      sheet.appendChild(lbl);
+
+      // Photo grid container — positioned inside the paper with padding
+      const grid = document.createElement('div');
+      grid.style.cssText = `
+        position:absolute;
+        top:${PAPER_PAD + LABEL_H}mm;
+        left:${PAPER_PAD}mm;
+        display:flex;
+        flex-wrap:wrap;
+        gap:${PHOTO_GAP}mm;
+        align-content:flex-start;
+      `;
+
+      for (let i = 0; i < countThisPage; i++) {
+        const cell = document.createElement('div');
+        cell.style.cssText = `
+          width:${dim.wMm}mm;
+          height:${dim.hMm}mm;
+          border:0.5px dashed #bbb;
+          overflow:hidden;
+          background:#f0f0f0;
+          flex-shrink:0;
+        `;
+        const img = document.createElement('img');
+        img.src = order.photoDataUrl;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+        cell.appendChild(img);
+        grid.appendChild(cell);
+      }
+      sheet.appendChild(grid);
+
+      // Cut guide note (bottom-left)
+      const cut = document.createElement('div');
+      cut.style.cssText = `
+        position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;
+        font-size:7px;color:#bbb;font-family:sans-serif;
+      `;
+      cut.textContent = `Cut along dashed lines · ${order.name} · ${new Date(order.submittedAt).toLocaleDateString('en-PH')}`;
+      sheet.appendChild(cut);
+
+      // Paper border (faint, shows paper edge)
+      const border = document.createElement('div');
+      border.style.cssText = `
+        position:absolute;inset:0;
+        border:0.5px solid #ddd;
+        pointer-events:none;
+        border-radius:2px;
+      `;
+      sheet.appendChild(border);
+
+      preview.appendChild(sheet);
+      wrap.appendChild(preview);
+      sheetIdx++;
+    }
+  });
+}
+
+function closePrintPreview() {
+  document.getElementById('print-preview-area').style.display = 'none';
+  document.getElementById('print-sheets-wrap').innerHTML = '';
+  _printOrder = null;
+  _activePaper = null;
+}
+
+// ─── OWNER ADD ORDER MODAL ──────────────────────────────────────────────────
+let owSelectedPkg = null;
+let owPhotoDataUrl = null;
+
+function openOwnerOrderModal() {
+  owSelectedPkg = null;
+  owPhotoDataUrl = null;
+  ['ow-name','ow-phone','ow-email','ow-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.querySelectorAll('.o-pkg-btn').forEach(b => b.classList.remove('sel'));
+  owRemovePhoto();
+  document.getElementById('owner-photo-modal').classList.add('open');
+}
+
+function owSelectPkg(key, btn) {
+  document.querySelectorAll('.o-pkg-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  owSelectedPkg = key;
+}
+
+function owHandlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10*1024*1024) { alert('Photo too large (max 10 MB).'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    owPhotoDataUrl = e.target.result;
+    document.getElementById('ow-preview-img').src = owPhotoDataUrl;
+    document.getElementById('ow-preview-wrap').style.display = 'block';
+    document.getElementById('ow-upload-area').classList.add('has-file');
+    document.getElementById('ow-upload-icon').className = 'ti ti-circle-check';
+    document.getElementById('ow-upload-label').textContent = '✓ Photo ready';
+  };
+  reader.readAsDataURL(file);
+}
+
+function owRemovePhoto() {
+  owPhotoDataUrl = null;
+  const pi = document.getElementById('ow-preview-img'); if(pi) pi.src='';
+  const pw = document.getElementById('ow-preview-wrap'); if(pw) pw.style.display='none';
+  const ua = document.getElementById('ow-upload-area'); if(ua) ua.classList.remove('has-file');
+  const ic = document.getElementById('ow-upload-icon'); if(ic) ic.className='ti ti-camera-plus';
+  const ul = document.getElementById('ow-upload-label'); if(ul) ul.textContent='Tap to upload photo';
+  const fi = document.getElementById('ow-photo'); if(fi) fi.value='';
+}
+
+function owSubmitOrder() {
+  const name = document.getElementById('ow-name').value.trim();
+  const phone = document.getElementById('ow-phone').value.trim();
+  if (!name) { alert('Enter customer name.'); return; }
+  if (!phone) { alert('Enter contact number.'); return; }
+  if (!owSelectedPkg) { alert('Select a package.'); return; }
+  if (!owPhotoDataUrl) { alert('Upload the customer photo.'); return; }
+
+  const pkg = PHOTO_PACKAGES[owSelectedPkg];
+  const orders = getPhotoOrders();
+  const id = orders.length ? Math.max(...orders.map(o => o.id)) + 1 : 1;
+  const ref = 'PH-' + String(id).padStart(4, '0');
+
+  orders.push({
+    id, ref, name, phone,
+    email: document.getElementById('ow-email').value.trim(),
+    pkgKey: owSelectedPkg,
+    pkgName: pkg.name,
+    pkgLabel: pkg.label,
+    pkgPrice: pkg.price,
+    pkgSlots: pkg.slots,
+    notes: document.getElementById('ow-notes').value.trim(),
+    photoDataUrl: owPhotoDataUrl,
+    status: 'Pending',
+    addedBy: 'owner',
+    submittedAt: new Date().toISOString(),
+  });
+  savePhotoOrders(orders);
+  closeModal('owner-photo-modal');
+  renderPhotoOrders();
+  toast(`Order ${ref} saved · ${pkg.name} · ₱${pkg.price}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Export / Import
 function exportData() {
   const data = { orders, customers, invoices, requests: getRequests(), exportedAt: new Date().toISOString() };
@@ -951,7 +1515,7 @@ function importData(e) {
       if (data.customers) { customers = data.customers; localStorage.setItem('po_customers', JSON.stringify(customers)); }
       if (data.invoices) { invoices = data.invoices; localStorage.setItem('po_invoices', JSON.stringify(invoices)); }
       if (data.requests) { saveRequests(data.requests); }
-      renderDash(); updateReqBadge();
+      renderDash(); updateReqBadge(); updatePhotoBadge();
       toast('Backup imported successfully.');
         } catch { alert('Invalid backup file.'); }
   };
@@ -1047,7 +1611,7 @@ function checkPassword() {
   if (val === OWNER_PASSWORD) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app-content').style.display = 'block';
-    renderDash(); updateReqBadge();
+    renderDash(); updateReqBadge(); updatePhotoBadge();
   } else {
     document.getElementById('gate-err').style.display = 'block';
     document.getElementById('gate-pw').value = '';
