@@ -1291,117 +1291,150 @@ function renderSheets(grouped, paper) {
   const order = _printOrder;
   wrap.innerHTML = '';
 
-  // Paper dimensions in mm
   const pw = paper.wMm;
   const ph = paper.hMm;
   const usableW = pw - PAPER_PAD * 2;
   const usableH = ph - PAPER_PAD * 2 - LABEL_H;
 
-  // Convert mm to px for CSS (96dpi screen: 1mm ≈ 3.7795px)
-  // We'll use mm units in CSS so it maps to real paper at print time,
-  // but shrink visually for on-screen preview with a scale wrapper
-  const MM = 1; // use mm directly in CSS
+  // ── Build all photo blocks (one block per slot type) ──────────────────────
+  // Each block = a row of photos of the same size, labeled above
+  // We stack blocks top-to-bottom, fitting as many as possible on each sheet.
 
-  let sheetIdx = 0;
-  Object.keys(grouped).forEach(type => {
-    const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
-    const totalCopies = grouped[type];
+  const typeOrder = ['1x1','2x2','pass'];
+  const typeNames = { '1x1':'1×1', '2x2':'2×2', 'pass':'Passport' };
+
+  // Build block definitions
+  const blocks = [];
+  typeOrder.forEach(type => {
+    if (!grouped[type]) return;
+    const dim = SLOT_DIMS[type];
+    const count = grouped[type];
+    // How many fit in one row (full paper width)
     const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
-    const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
-    const perPage = cols * rows;
-    const pages   = Math.ceil(totalCopies / perPage);
-    const typeName = type === '1x1' ? '1×1 in' : type === '2x2' ? '2×2 in' : 'Passport size';
+    // How many rows needed
+    const rows = Math.ceil(count / cols);
+    // Height of this block: label (5mm) + rows of photos
+    const blockH = 5 + rows * dim.hMm + (rows - 1) * PHOTO_GAP;
+    blocks.push({ type, dim, count, cols, rows, blockH });
+  });
 
-    for (let pg = 0; pg < pages; pg++) {
-      const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
+  // ── Pack blocks onto sheets ───────────────────────────────────────────────
+  // Simple greedy: fill a sheet top-to-bottom until next block doesn't fit.
+  const sheets = [];
+  let current = [];
+  let usedH = 0;
+  const BLOCK_GAP = 4; // mm between block groups
 
-      // Outer preview wrapper (scales paper to screen)
-      const preview = document.createElement('div');
-      preview.style.cssText = `
-        margin:0 auto 20px;
-        display:flex;justify-content:center;
-      `;
-
-      // The actual print sheet — sized to real paper mm
-      const sheet = document.createElement('div');
-      sheet.className = 'o-print-sheet no-print-wrapper';
-
-      // Override sheet width/height to match chosen paper size
-      sheet.style.cssText = `
-        background:#fff;
-        width:${pw}mm;
-        height:${ph}mm;
-        box-shadow:0 2px 12px rgba(0,0,0,0.15);
-        position:relative;
-        overflow:hidden;
-        border-radius:2px;
-      `;
-
-      // Sheet label (top-right, inside paper)
-      const lbl = document.createElement('div');
-      lbl.style.cssText = `
-        position:absolute;top:${PAPER_PAD/2}mm;right:${PAPER_PAD}mm;
-        font-size:7px;color:#aaa;font-family:sans-serif;line-height:1.3;text-align:right;
-      `;
-      lbl.innerHTML =
-        `${order.ref} &nbsp;·&nbsp; ${paper.label} (${pw}×${ph}mm)&nbsp;·&nbsp; ` +
-        `${typeName} &nbsp;·&nbsp; ${dim.wMm}×${dim.hMm}mm &nbsp;·&nbsp; ` +
-        `Sheet ${sheetIdx+1}, page ${pg+1}/${pages}`;
-      sheet.appendChild(lbl);
-
-      // Photo grid container — positioned inside the paper with padding
-      const grid = document.createElement('div');
-      grid.style.cssText = `
-        position:absolute;
-        top:${PAPER_PAD + LABEL_H}mm;
-        left:${PAPER_PAD}mm;
-        display:flex;
-        flex-wrap:wrap;
-        gap:${PHOTO_GAP}mm;
-        align-content:flex-start;
-      `;
-
-      for (let i = 0; i < countThisPage; i++) {
-        const cell = document.createElement('div');
-        cell.style.cssText = `
-          width:${dim.wMm}mm;
-          height:${dim.hMm}mm;
-          border:0.5px dashed #bbb;
-          overflow:hidden;
-          background:#f0f0f0;
-          flex-shrink:0;
-        `;
-        const img = document.createElement('img');
-        img.src = order.photoDataUrl;
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-        cell.appendChild(img);
-        grid.appendChild(cell);
-      }
-      sheet.appendChild(grid);
-
-      // Cut guide note (bottom-left)
-      const cut = document.createElement('div');
-      cut.style.cssText = `
-        position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;
-        font-size:7px;color:#bbb;font-family:sans-serif;
-      `;
-      cut.textContent = `Cut along dashed lines · ${order.name} · ${new Date(order.submittedAt).toLocaleDateString('en-PH')}`;
-      sheet.appendChild(cut);
-
-      // Paper border (faint, shows paper edge)
-      const border = document.createElement('div');
-      border.style.cssText = `
-        position:absolute;inset:0;
-        border:0.5px solid #ddd;
-        pointer-events:none;
-        border-radius:2px;
-      `;
-      sheet.appendChild(border);
-
-      preview.appendChild(sheet);
-      wrap.appendChild(preview);
-      sheetIdx++;
+  blocks.forEach((block, bi) => {
+    const needed = usedH === 0 ? block.blockH : block.blockH + BLOCK_GAP;
+    if (usedH + needed <= usableH || current.length === 0) {
+      current.push(block);
+      usedH += needed;
+    } else {
+      sheets.push(current);
+      current = [block];
+      usedH = block.blockH;
     }
+  });
+  if (current.length) sheets.push(current);
+
+  // ── Render each sheet ─────────────────────────────────────────────────────
+  sheets.forEach((sheetBlocks, si) => {
+    const preview = document.createElement('div');
+    preview.style.cssText = 'margin:0 auto 20px;display:flex;justify-content:center;';
+
+    const sheet = document.createElement('div');
+    sheet.className = 'o-print-sheet no-print-wrapper';
+    sheet.style.cssText = `
+      background:#fff;
+      width:${pw}mm;
+      height:${ph}mm;
+      box-shadow:0 2px 12px rgba(0,0,0,0.15);
+      position:relative;
+      overflow:hidden;
+      border-radius:2px;
+      font-family:sans-serif;
+    `;
+
+    // Top info label
+    const lbl = document.createElement('div');
+    lbl.style.cssText = `
+      position:absolute;top:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;right:${PAPER_PAD}mm;
+      font-size:7px;color:#aaa;line-height:1.3;display:flex;justify-content:space-between;
+    `;
+    lbl.innerHTML = `
+      <span>${order.ref} &nbsp;·&nbsp; ${order.name} &nbsp;·&nbsp; ${order.pkgName || order.pkgLabel}</span>
+      <span>${paper.label} (${pw}×${ph}mm) &nbsp;·&nbsp; Sheet ${si+1}/${sheets.length}</span>
+    `;
+    sheet.appendChild(lbl);
+
+    // Content area starts below label
+    let cursorY = PAPER_PAD + LABEL_H;
+
+    sheetBlocks.forEach((block, bi) => {
+      if (bi > 0) cursorY += BLOCK_GAP;
+
+      // Block label row (e.g. "1×1  ·  8 pcs  ·  25.4×25.4mm")
+      const bLabel = document.createElement('div');
+      bLabel.style.cssText = `
+        position:absolute;
+        top:${cursorY}mm;
+        left:${PAPER_PAD}mm;
+        font-size:6.5px;
+        color:#999;
+        line-height:1;
+        letter-spacing:0.3px;
+        text-transform:uppercase;
+        font-weight:600;
+      `;
+      bLabel.textContent = `${typeNames[block.type]}  ·  ${block.count} pcs  ·  ${block.dim.wMm}×${block.dim.hMm}mm`;
+      sheet.appendChild(bLabel);
+      cursorY += 5; // label height
+
+      // Photo rows
+      let photoIdx = 0;
+      for (let r = 0; r < block.rows; r++) {
+        for (let c = 0; c < block.cols && photoIdx < block.count; c++) {
+          const cell = document.createElement('div');
+          const cellLeft = PAPER_PAD + c * (block.dim.wMm + PHOTO_GAP);
+          const cellTop  = cursorY + r * (block.dim.hMm + PHOTO_GAP);
+          cell.style.cssText = `
+            position:absolute;
+            left:${cellLeft}mm;
+            top:${cellTop}mm;
+            width:${block.dim.wMm}mm;
+            height:${block.dim.hMm}mm;
+            border:0.5px dashed #bbb;
+            overflow:hidden;
+            background:#f0f0f0;
+          `;
+          const img = document.createElement('img');
+          img.src = order.photoDataUrl;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+          cell.appendChild(img);
+          sheet.appendChild(cell);
+          photoIdx++;
+        }
+      }
+      cursorY += block.rows * (block.dim.hMm + PHOTO_GAP) - PHOTO_GAP;
+    });
+
+    // Cut guide note (bottom)
+    const cut = document.createElement('div');
+    cut.style.cssText = `
+      position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;right:${PAPER_PAD}mm;
+      font-size:6.5px;color:#ccc;display:flex;justify-content:space-between;
+    `;
+    cut.innerHTML = `<span>✂ Cut along dashed lines</span><span>${new Date(order.submittedAt).toLocaleDateString('en-PH')}</span>`;
+    sheet.appendChild(cut);
+
+    // Border
+    const border = document.createElement('div');
+    border.style.cssText = 'position:absolute;inset:0;border:0.5px solid #ddd;pointer-events:none;border-radius:2px;';
+    sheet.appendChild(border);
+
+    preview.appendChild(sheet);
+    wrap.appendChild(preview);
   });
 }
 
