@@ -194,6 +194,23 @@ tbody tr:hover td{background:var(--surface-1)}
         <div class="metric"><div class="metric-label">Completed</div><div class="metric-value success" id="m-done">0</div></div>
         <div class="metric"><div class="metric-label">Unpaid invoices</div><div class="metric-value danger" id="m-unpaid">₱0</div></div>
       </div>
+      <!-- Services quick links -->
+      <div style="margin-bottom:1.25rem;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="order-form.html" target="_blank" style="text-decoration:none;flex:1;min-width:200px">
+          <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;transition:background 0.12s" onmouseover="this.style.background='var(--surface-1)'" onmouseout="this.style.background='var(--surface-2)'">
+            <i class="ti ti-shopping-cart" style="font-size:20px;color:var(--accent)"></i>
+            <div><div style="font-size:13px;font-weight:600">Customer Order Form</div><div style="font-size:11px;color:var(--text-muted)">Share with customers to receive orders</div></div>
+            <i class="ti ti-external-link" style="margin-left:auto;color:var(--text-muted);font-size:14px"></i>
+          </div>
+        </a>
+        <a href="https://interptools.github.io/arroyo-cv-builder/" target="_blank" style="text-decoration:none;flex:1;min-width:200px">
+          <div style="background:linear-gradient(135deg,#1a6ef5 0%,#0d4fc0 100%);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(26,110,245,0.2);transition:opacity 0.12s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+            <i class="ti ti-file-cv" style="font-size:20px;color:#fff"></i>
+            <div><div style="font-size:13px;font-weight:600;color:#fff">Resume / CV Builder</div><div style="font-size:11px;color:rgba(255,255,255,0.75)">Help customers build their resume — then print it!</div></div>
+            <i class="ti ti-external-link" style="margin-left:auto;color:rgba(255,255,255,0.7);font-size:14px"></i>
+          </div>
+        </a>
+      </div>
       <!-- Deadline alerts -->
       <div id="deadline-alerts"></div>
       <div class="grid-2">
@@ -283,7 +300,7 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
       <div class="card">
         <table>
-          <thead><tr><th>Ref #</th><th>Name</th><th>Contact</th><th>Job type</th><th>Qty</th><th>Date needed</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th></th><th>Ref #</th><th>Name</th><th>Job type</th><th>Details</th><th>Files</th><th>Date needed</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="req-table"></tbody>
         </table>
         <div class="empty" id="req-empty" style="display:none">No customer requests yet. Share the <a href="order-form.html" target="_blank" style="color:var(--accent)">order form</a> with your customers.</div>
@@ -377,6 +394,7 @@ tbody tr:hover td{background:var(--surface-1)}
 
       <div class="ft-section-head"><i class="ti ti-star" aria-hidden="true"></i> Recommended extras for print shops<span></span></div>
       <div class="card" style="padding:0;margin-bottom:1.25rem">
+        <div class="ft-row" style="background:var(--accent-bg);border-bottom:0.5px solid var(--border)"><div class="ft-paid" style="color:var(--accent-text)"><i class="ti ti-file-cv" style="color:var(--accent)"></i> Resume / CV Builder</div><div class="ft-arrow"></div><div class="ft-free"><div><strong>Arroyo CV Builder</strong><span class="ft-badge" style="background:var(--success-bg);color:var(--success)">Our service</span><div class="ft-desc">Help customers create a professional resume — they can print it here too!</div></div><a class="ft-link" href="https://interptools.github.io/arroyo-cv-builder/" target="_blank" style="color:var(--accent);font-weight:600">Open <i class="ti ti-external-link"></i></a></div></div>
         <div class="ft-row"><div class="ft-paid" style="color:var(--text-primary)"><i class="ti ti-plus" style="color:var(--accent)"></i> Color picker tool</div><div class="ft-arrow"></div><div class="ft-free"><div><strong>Coolors.co</strong><span class="ft-badge">Free</span><div class="ft-desc">Generate and share color palettes with clients</div></div><a class="ft-link" href="https://coolors.co" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
         <div class="ft-row"><div class="ft-paid" style="color:var(--text-primary)"><i class="ti ti-plus" style="color:var(--accent)"></i> Font finder</div><div class="ft-arrow"></div><div class="ft-free"><div><strong>Google Fonts</strong><span class="ft-badge">Free</span><div class="ft-desc">Free commercial-use fonts for print designs</div></div><a class="ft-link" href="https://fonts.google.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
         <div class="ft-row"><div class="ft-paid" style="color:var(--text-primary)"><i class="ti ti-plus" style="color:var(--accent)"></i> Free stock images</div><div class="ft-arrow"></div><div class="ft-free"><div><strong>Unsplash / Pexels</strong><span class="ft-badge">Free</span><div class="ft-desc">High-quality photos for client designs</div></div><a class="ft-link" href="https://unsplash.com" target="_blank">Visit <i class="ti ti-external-link"></i></a></div></div>
@@ -828,12 +846,14 @@ function renderOrders() {
   tbody.innerHTML = filtered.map(o => {
     const days = daysUntil(o.due);
     const rowClass = (days !== null && o.status !== 'Done' && o.status !== 'Cancelled') ? (days <= 0 ? 'alert-today' : days === 1 ? 'alert-soon' : '') : '';
+    const rushBadge = o.rush ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">⚡</span>' : '';
+    const sizeQty = [o.size ? o.size : null, o.qty ? 'Qty '+o.qty : null].filter(Boolean).join(' · ') || '—';
     return `<tr class="row-expandable ${rowClass}" onclick="toggleNotes('notes-${o.id}')">
       <td style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
       <td>#${String(o.id).padStart(4,'0')}</td>
       <td>${custName(o.customerId)}</td>
-      <td>${o.jobtype}</td>
-      <td>${o.size || '—'} × ${o.qty}</td>
+      <td>${o.jobtype}${rushBadge}</td>
+      <td style="font-size:12px;max-width:160px">${sizeQty}</td>
       <td>${o.due || '—'}</td>
       <td>${statusBadge(o.status)}</td>
       <td>₱${Number(o.amount).toLocaleString()}</td>
@@ -1035,21 +1055,94 @@ function renderRequests() {
   const empty = document.getElementById('req-empty');
   if (!reqs.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = [...reqs].reverse().map(r => `<tr>
-    <td>${r.ref}</td>
-    <td>${r.name}<br><span style="font-size:11px;color:var(--text-muted)">${r.phone}</span></td>
-    <td>${r.email||'—'}</td><td>${r.jobtype}</td><td>${r.qty}</td><td>${r.due||'—'}</td>
-    <td>${statusBadge(r.status)}</td>
-    <td><div class="actions">
-      <select class="btn btn-sm" style="padding:4px 6px" onchange="updateReqStatus(${r.id},this.value)">
-        <option${r.status==='Pending'?' selected':''}>Pending</option>
-        <option${r.status==='In progress'?' selected':''}>In progress</option>
-        <option${r.status==='Done'?' selected':''}>Done</option>
-        <option${r.status==='Cancelled'?' selected':''}>Cancelled</option>
-      </select>
-      <button class="btn btn-sm btn-danger" onclick="deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
-    </div></td>
-  </tr>`).join('');
+  tbody.innerHTML = [...reqs].reverse().map(r => {
+    // Build details cell
+    let details = '';
+    if (r.pkgLabel) {
+      details = r.pkgLabel;
+    } else {
+      const parts = [];
+      if (r.size) parts.push(r.size);
+      if (r.qty && r.qty > 1) parts.push('Qty: ' + r.qty);
+      if (r.extras) {
+        const e = r.extras;
+        if (e.colorMode) parts.push(e.colorMode);
+        if (e.finish) parts.push(e.finish);
+        if (e.material) parts.push(e.material);
+        if (e.fold) parts.push(e.fold);
+        if (e.printType) parts.push(e.printType);
+        if (e.shape) parts.push(e.shape);
+        if (e.idType) parts.push(e.idType);
+        if (e.sizes) parts.push('Sizes: ' + e.sizes);
+      }
+      details = parts.join(' · ') || '—';
+    }
+    // Files
+    const fileHtml = [
+      r.printFile ? `<div style="font-size:11px"><i class="ti ti-file" style="color:var(--accent)"></i> ${r.printFile}</div>` : '',
+      r.designFile ? `<div style="font-size:11px"><i class="ti ti-palette" style="color:var(--success)"></i> ${r.designFile}</div>` : '',
+    ].join('') || '<span style="color:var(--text-muted);font-size:11px">—</span>';
+    // Rush badge
+    const rushBadge = r.rush ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">⚡ RUSH</span>' : '';
+    const submitted = new Date(r.submittedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+    return `<tr class="row-expandable" onclick="toggleNotes('rownotes-${r.id}')">
+      <td style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.ref}</td>
+      <td>${r.name}${rushBadge}<br><span style="font-size:11px;color:var(--text-muted)">${r.phone}</span></td>
+      <td>${r.jobtype}</td>
+      <td style="font-size:12px;max-width:180px">${details}</td>
+      <td>${fileHtml}</td>
+      <td style="font-size:12px">${r.due || '—'}<br><span style="font-size:11px;color:var(--text-muted)">sub: ${submitted}</span></td>
+      <td>${statusBadge(r.status)}</td>
+      <td onclick="event.stopPropagation()"><div class="actions">
+        <select class="btn btn-sm" style="padding:4px 6px" onchange="updateReqStatus(${r.id},this.value)">
+          <option${r.status==='Pending'?' selected':''}>Pending</option>
+          <option${r.status==='In progress'?' selected':''}>In progress</option>
+          <option${r.status==='Done'?' selected':''}>Done</option>
+          <option${r.status==='Cancelled'?' selected':''}>Cancelled</option>
+        </select>
+        <button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
+      </div></td>
+    </tr>
+    <tr class="row-notes" id="rownotes-${r.id}">
+      <td colspan="9">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+          ${r.email ? `<span><strong>Email:</strong> ${r.email}</span>` : ''}
+          ${r.notes ? `<span><strong>Notes:</strong> ${r.notes}</span>` : '<span style="color:var(--text-muted)">No notes</span>'}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function convertReqToOrder(id) {
+  const r = getRequests().find(x => x.id === id);
+  if (!r) return;
+  // Find or create customer
+  let cust = customers.find(c => c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone);
+  if (!cust) {
+    cust = { id: nextId(customers), name: r.name, phone: r.phone, email: r.email||'', address: '', createdAt: new Date().toISOString() };
+    customers = [...customers, cust];
+  }
+  nav('orders');
+  setTimeout(() => {
+    openOrderModal();
+    populateCustSelect('o-customer', cust.id);
+    document.getElementById('o-customer').value = cust.id;
+    document.getElementById('o-jobtype').value = r.jobtype || 'Business cards';
+    document.getElementById('o-size').value = r.size || r.pkgLabel || '';
+    document.getElementById('o-qty').value = r.qty || 1;
+    document.getElementById('o-due').value = r.due || '';
+    document.getElementById('o-notes').value = [
+      r.notes,
+      r.extras ? Object.entries(r.extras).map(([k,v])=>v?`${k}: ${v}`:'').filter(Boolean).join(', ') : '',
+      r.printFile ? 'Print file: '+r.printFile : '',
+      r.designFile ? 'Design file: '+r.designFile : '',
+      r.rush ? '⚡ RUSH ORDER' : ''
+    ].filter(Boolean).join('\n');
+  }, 150);
+  toast('Filled order form from request.');
 }
 
 function updateReqStatus(id, status) { saveRequests(getRequests().map(r => r.id===id?{...r,status}:r)); updateReqBadge(); toast('Status updated.'); }
@@ -1291,150 +1384,117 @@ function renderSheets(grouped, paper) {
   const order = _printOrder;
   wrap.innerHTML = '';
 
+  // Paper dimensions in mm
   const pw = paper.wMm;
   const ph = paper.hMm;
   const usableW = pw - PAPER_PAD * 2;
   const usableH = ph - PAPER_PAD * 2 - LABEL_H;
 
-  // ── Build all photo blocks (one block per slot type) ──────────────────────
-  // Each block = a row of photos of the same size, labeled above
-  // We stack blocks top-to-bottom, fitting as many as possible on each sheet.
+  // Convert mm to px for CSS (96dpi screen: 1mm ≈ 3.7795px)
+  // We'll use mm units in CSS so it maps to real paper at print time,
+  // but shrink visually for on-screen preview with a scale wrapper
+  const MM = 1; // use mm directly in CSS
 
-  const typeOrder = ['1x1','2x2','pass'];
-  const typeNames = { '1x1':'1×1', '2x2':'2×2', 'pass':'Passport' };
-
-  // Build block definitions
-  const blocks = [];
-  typeOrder.forEach(type => {
-    if (!grouped[type]) return;
-    const dim = SLOT_DIMS[type];
-    const count = grouped[type];
-    // How many fit in one row (full paper width)
+  let sheetIdx = 0;
+  Object.keys(grouped).forEach(type => {
+    const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
+    const totalCopies = grouped[type];
     const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
-    // How many rows needed
-    const rows = Math.ceil(count / cols);
-    // Height of this block: label (5mm) + rows of photos
-    const blockH = 5 + rows * dim.hMm + (rows - 1) * PHOTO_GAP;
-    blocks.push({ type, dim, count, cols, rows, blockH });
-  });
+    const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
+    const perPage = cols * rows;
+    const pages   = Math.ceil(totalCopies / perPage);
+    const typeName = type === '1x1' ? '1×1 in' : type === '2x2' ? '2×2 in' : 'Passport size';
 
-  // ── Pack blocks onto sheets ───────────────────────────────────────────────
-  // Simple greedy: fill a sheet top-to-bottom until next block doesn't fit.
-  const sheets = [];
-  let current = [];
-  let usedH = 0;
-  const BLOCK_GAP = 4; // mm between block groups
+    for (let pg = 0; pg < pages; pg++) {
+      const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
 
-  blocks.forEach((block, bi) => {
-    const needed = usedH === 0 ? block.blockH : block.blockH + BLOCK_GAP;
-    if (usedH + needed <= usableH || current.length === 0) {
-      current.push(block);
-      usedH += needed;
-    } else {
-      sheets.push(current);
-      current = [block];
-      usedH = block.blockH;
-    }
-  });
-  if (current.length) sheets.push(current);
-
-  // ── Render each sheet ─────────────────────────────────────────────────────
-  sheets.forEach((sheetBlocks, si) => {
-    const preview = document.createElement('div');
-    preview.style.cssText = 'margin:0 auto 20px;display:flex;justify-content:center;';
-
-    const sheet = document.createElement('div');
-    sheet.className = 'o-print-sheet no-print-wrapper';
-    sheet.style.cssText = `
-      background:#fff;
-      width:${pw}mm;
-      height:${ph}mm;
-      box-shadow:0 2px 12px rgba(0,0,0,0.15);
-      position:relative;
-      overflow:hidden;
-      border-radius:2px;
-      font-family:sans-serif;
-    `;
-
-    // Top info label
-    const lbl = document.createElement('div');
-    lbl.style.cssText = `
-      position:absolute;top:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;right:${PAPER_PAD}mm;
-      font-size:7px;color:#aaa;line-height:1.3;display:flex;justify-content:space-between;
-    `;
-    lbl.innerHTML = `
-      <span>${order.ref} &nbsp;·&nbsp; ${order.name} &nbsp;·&nbsp; ${order.pkgName || order.pkgLabel}</span>
-      <span>${paper.label} (${pw}×${ph}mm) &nbsp;·&nbsp; Sheet ${si+1}/${sheets.length}</span>
-    `;
-    sheet.appendChild(lbl);
-
-    // Content area starts below label
-    let cursorY = PAPER_PAD + LABEL_H;
-
-    sheetBlocks.forEach((block, bi) => {
-      if (bi > 0) cursorY += BLOCK_GAP;
-
-      // Block label row (e.g. "1×1  ·  8 pcs  ·  25.4×25.4mm")
-      const bLabel = document.createElement('div');
-      bLabel.style.cssText = `
-        position:absolute;
-        top:${cursorY}mm;
-        left:${PAPER_PAD}mm;
-        font-size:6.5px;
-        color:#999;
-        line-height:1;
-        letter-spacing:0.3px;
-        text-transform:uppercase;
-        font-weight:600;
+      // Outer preview wrapper (scales paper to screen)
+      const preview = document.createElement('div');
+      preview.style.cssText = `
+        margin:0 auto 20px;
+        display:flex;justify-content:center;
       `;
-      bLabel.textContent = `${typeNames[block.type]}  ·  ${block.count} pcs  ·  ${block.dim.wMm}×${block.dim.hMm}mm`;
-      sheet.appendChild(bLabel);
-      cursorY += 5; // label height
 
-      // Photo rows
-      let photoIdx = 0;
-      for (let r = 0; r < block.rows; r++) {
-        for (let c = 0; c < block.cols && photoIdx < block.count; c++) {
-          const cell = document.createElement('div');
-          const cellLeft = PAPER_PAD + c * (block.dim.wMm + PHOTO_GAP);
-          const cellTop  = cursorY + r * (block.dim.hMm + PHOTO_GAP);
-          cell.style.cssText = `
-            position:absolute;
-            left:${cellLeft}mm;
-            top:${cellTop}mm;
-            width:${block.dim.wMm}mm;
-            height:${block.dim.hMm}mm;
-            border:0.5px dashed #bbb;
-            overflow:hidden;
-            background:#f0f0f0;
-          `;
-          const img = document.createElement('img');
-          img.src = order.photoDataUrl;
-          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-          cell.appendChild(img);
-          sheet.appendChild(cell);
-          photoIdx++;
-        }
+      // The actual print sheet — sized to real paper mm
+      const sheet = document.createElement('div');
+      sheet.className = 'o-print-sheet no-print-wrapper';
+
+      // Override sheet width/height to match chosen paper size
+      sheet.style.cssText = `
+        background:#fff;
+        width:${pw}mm;
+        height:${ph}mm;
+        box-shadow:0 2px 12px rgba(0,0,0,0.15);
+        position:relative;
+        overflow:hidden;
+        border-radius:2px;
+      `;
+
+      // Sheet label (top-right, inside paper)
+      const lbl = document.createElement('div');
+      lbl.style.cssText = `
+        position:absolute;top:${PAPER_PAD/2}mm;right:${PAPER_PAD}mm;
+        font-size:7px;color:#aaa;font-family:sans-serif;line-height:1.3;text-align:right;
+      `;
+      lbl.innerHTML =
+        `${order.ref} &nbsp;·&nbsp; ${paper.label} (${pw}×${ph}mm)&nbsp;·&nbsp; ` +
+        `${typeName} &nbsp;·&nbsp; ${dim.wMm}×${dim.hMm}mm &nbsp;·&nbsp; ` +
+        `Sheet ${sheetIdx+1}, page ${pg+1}/${pages}`;
+      sheet.appendChild(lbl);
+
+      // Photo grid container — positioned inside the paper with padding
+      const grid = document.createElement('div');
+      grid.style.cssText = `
+        position:absolute;
+        top:${PAPER_PAD + LABEL_H}mm;
+        left:${PAPER_PAD}mm;
+        display:flex;
+        flex-wrap:wrap;
+        gap:${PHOTO_GAP}mm;
+        align-content:flex-start;
+      `;
+
+      for (let i = 0; i < countThisPage; i++) {
+        const cell = document.createElement('div');
+        cell.style.cssText = `
+          width:${dim.wMm}mm;
+          height:${dim.hMm}mm;
+          border:0.5px dashed #bbb;
+          overflow:hidden;
+          background:#f0f0f0;
+          flex-shrink:0;
+        `;
+        const img = document.createElement('img');
+        img.src = order.photoDataUrl;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+        cell.appendChild(img);
+        grid.appendChild(cell);
       }
-      cursorY += block.rows * (block.dim.hMm + PHOTO_GAP) - PHOTO_GAP;
-    });
+      sheet.appendChild(grid);
 
-    // Cut guide note (bottom)
-    const cut = document.createElement('div');
-    cut.style.cssText = `
-      position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;right:${PAPER_PAD}mm;
-      font-size:6.5px;color:#ccc;display:flex;justify-content:space-between;
-    `;
-    cut.innerHTML = `<span>✂ Cut along dashed lines</span><span>${new Date(order.submittedAt).toLocaleDateString('en-PH')}</span>`;
-    sheet.appendChild(cut);
+      // Cut guide note (bottom-left)
+      const cut = document.createElement('div');
+      cut.style.cssText = `
+        position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;
+        font-size:7px;color:#bbb;font-family:sans-serif;
+      `;
+      cut.textContent = `Cut along dashed lines · ${order.name} · ${new Date(order.submittedAt).toLocaleDateString('en-PH')}`;
+      sheet.appendChild(cut);
 
-    // Border
-    const border = document.createElement('div');
-    border.style.cssText = 'position:absolute;inset:0;border:0.5px solid #ddd;pointer-events:none;border-radius:2px;';
-    sheet.appendChild(border);
+      // Paper border (faint, shows paper edge)
+      const border = document.createElement('div');
+      border.style.cssText = `
+        position:absolute;inset:0;
+        border:0.5px solid #ddd;
+        pointer-events:none;
+        border-radius:2px;
+      `;
+      sheet.appendChild(border);
 
-    preview.appendChild(sheet);
-    wrap.appendChild(preview);
+      preview.appendChild(sheet);
+      wrap.appendChild(preview);
+      sheetIdx++;
+    }
   });
 }
 
