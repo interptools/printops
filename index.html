@@ -953,4 +953,107 @@ function importData(e) {
       if (data.requests) { saveRequests(data.requests); }
       renderDash(); updateReqBadge();
       toast('Backup imported successfully.');
-    
+        } catch { alert('Invalid backup file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// Supabase sync
+function saveSbConfig() {
+  localStorage.setItem('sb_url', document.getElementById('sb-url').value);
+  localStorage.setItem('sb_key', document.getElementById('sb-key').value);
+}
+
+function renderSync() {
+  document.getElementById('sb-url').value = localStorage.getItem('sb_url') || '';
+  document.getElementById('sb-key').value = localStorage.getItem('sb_key') || '';
+}
+
+async function sbFetch(path, method='GET', body=null) {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (!url || !key) throw new Error('Missing Supabase URL or key.');
+  const opts = { method, headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url + '/rest/v1' + path, opts);
+}
+
+async function testSupabase() {
+  const res = document.getElementById('sb-result');
+  res.textContent = 'Testing...';
+  try {
+    const r = await sbFetch('/po_orders?limit=1');
+    if (r.ok) {
+      res.style.color = 'var(--success)';
+      res.textContent = 'Connected successfully.';
+      document.getElementById('sync-status-bar').className = 'sync-status ok';
+      document.getElementById('sync-status-bar').innerHTML = '<i class="ti ti-cloud-check"></i> Connected to Supabase';
+    } else { throw new Error('HTTP ' + r.status); }
+  } catch(e) {
+    res.style.color = 'var(--danger)';
+    res.textContent = 'Connection failed: ' + e.message;
+  }
+}
+
+async function pushToSupabase() {
+  const res = document.getElementById('sb-result');
+  res.style.color = 'var(--text-secondary)';
+  res.textContent = 'Pushing data...';
+  try {
+    for (const [table, arr] of [['po_orders', orders], ['po_customers', customers], ['po_invoices', invoices]]) {
+      await sbFetch('/' + table, 'DELETE');
+      if (arr.length) await sbFetch('/' + table, 'POST', arr.map(item => ({id: item.id, data: item})));
+    }
+    res.style.color = 'var(--success)';
+    res.textContent = 'Data pushed to cloud successfully.';
+    toast('Pushed to Supabase.');
+  } catch(e) {
+    res.style.color = 'var(--danger)';
+    res.textContent = 'Push failed: ' + e.message;
+  }
+}
+
+async function pullFromSupabase() {
+  const res = document.getElementById('sb-result');
+  res.style.color = 'var(--text-secondary)';
+  res.textContent = 'Pulling data...';
+  try {
+    for (const [table, setter] of [
+      ['po_orders', d => { orders = d; localStorage.setItem('po_orders', JSON.stringify(orders)); }],
+      ['po_customers', d => { customers = d; localStorage.setItem('po_customers', JSON.stringify(customers)); }],
+      ['po_invoices', d => { invoices = d; localStorage.setItem('po_invoices', JSON.stringify(invoices)); }]
+    ]) {
+      const r = await sbFetch('/' + table + '?select=data');
+      const rows = await r.json();
+      setter(rows.map(row => row.data));
+    }
+    res.style.color = 'var(--success)';
+    res.textContent = 'Data pulled from cloud successfully.';
+    renderDash(); toast('Pulled from Supabase.');
+  } catch(e) {
+    res.style.color = 'var(--danger)';
+    res.textContent = 'Pull failed: ' + e.message;
+  }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function bgClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+// Password gate
+const OWNER_PASSWORD = 'print2026';
+function checkPassword() {
+  const val = document.getElementById('gate-pw').value;
+  if (val === OWNER_PASSWORD) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    renderDash(); updateReqBadge();
+  } else {
+    document.getElementById('gate-err').style.display = 'block';
+    document.getElementById('gate-pw').value = '';
+    document.getElementById('gate-pw').focus();
+  }
+}
+</script>
+</body>
+</html>
