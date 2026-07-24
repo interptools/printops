@@ -675,9 +675,29 @@
 </div>
 
 <script>
-// ── Storage ──────────────────────────────────────────────────────────────
-function getRequests(){ return JSON.parse(localStorage.getItem('po_requests')||'[]'); }
-function saveRequests(r){ localStorage.setItem('po_requests',JSON.stringify(r)); }
+// ── Supabase config ────────────────────────────────────────────────────────
+// STEP 1: Replace these two values with your own Supabase project details.
+// Get them from: https://supabase.com → your project → Settings → API
+const SUPABASE_URL     = 'YOUR_SUPABASE_URL';        // e.g. https://xyzabc.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // starts with eyJ...
+
+async function sbFetch(path, options = {}) {
+  const headers = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    ...(options.prefer ? {'Prefer': options.prefer} : {}),
+    ...(options.extraHeaders || {})
+  };
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body || undefined
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error('Supabase: ' + text);
+  return text ? JSON.parse(text) : null;
+}
 
 // ── Rush ID package labels ────────────────────────────────────────────────
 const RUSH_PKG_LABELS = {
@@ -884,7 +904,7 @@ function collectExtras(jt){
 }
 
 // ── submitOrder ───────────────────────────────────────────────────────────
-function submitOrder(){
+async function submitOrder(){
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const jobtype = document.getElementById('f-jobtype').value;
@@ -913,7 +933,6 @@ function submitOrder(){
     size = document.getElementById('f-print-size').value.trim() || 'Not specified';
     qty = document.getElementById('f-qty').value || 1;
   } else {
-    // try to get f-qty and f-size from whichever section is visible
     const qEl = document.getElementById('f-qty');
     const sEl = document.getElementById('f-size');
     qty = qEl ? qEl.value : 1;
@@ -924,31 +943,58 @@ function submitOrder(){
   const extras = collectExtras(jobtype);
   const rush = document.getElementById('f-rush').value === '1';
 
-  const reqs = getRequests();
-  const id = reqs.length ? Math.max(...reqs.map(r=>r.id))+1 : 1;
-  const ref = 'REQ-' + String(id).padStart(4,'0');
+  // Disable submit button to prevent double-submit
+  const submitBtn = document.querySelector('button[onclick="submitOrder()"]');
+  if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
 
-  const req = {
-    id, ref, name, phone,
-    email: document.getElementById('f-email').value,
-    jobtype, pkgKey, pkgLabel, size, qty,
-    extras,
-    rush,
-    // store file info (not base64 — too large for localStorage; store name+flag)
-    printFile: uploadedFileName || null,
-    designFile: uploadedFileName2 || null,
-    due: document.getElementById('f-due').value,
-    notes: document.getElementById('f-notes').value,
-    status: 'Pending',
-    submittedAt: new Date().toISOString()
-  };
+  try {
+    // Insert WITHOUT a ref first — let Supabase assign the auto-increment id
+    const row = {
+      name,
+      phone,
+      email: document.getElementById('f-email').value || null,
+      jobtype,
+      pkg_key: pkgKey || null,
+      pkg_label: pkgLabel || null,
+      size: size || null,
+      qty: Number(qty) || 1,
+      extras: JSON.stringify(extras),
+      rush,
+      print_file: uploadedFileName || null,
+      design_file: uploadedFileName2 || null,
+      due: document.getElementById('f-due').value || null,
+      notes: document.getElementById('f-notes').value || null,
+      status: 'Pending',
+      submitted_at: new Date().toISOString()
+    };
 
-  reqs.push(req);
-  saveRequests(reqs);
+    // Ask Supabase to return the new row so we get its real id
+    const inserted = await sbFetch('requests', {
+      method: 'POST',
+      prefer: 'return=representation',
+      body: JSON.stringify(row)
+    });
 
-  document.getElementById('ref-number').textContent = ref;
-  document.getElementById('order-form-card').style.display = 'none';
-  document.getElementById('success-screen').style.display = 'block';
+    // Build REF from the guaranteed-unique id Supabase assigned
+    const newId = inserted && inserted[0] ? inserted[0].id : Date.now();
+    const ref = 'REQ-' + String(newId).padStart(4,'0');
+
+    // Write the ref back to the row
+    await sbFetch('requests?id=eq.' + newId, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ ref })
+    });
+
+    document.getElementById('ref-number').textContent = ref;
+    document.getElementById('order-form-card').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+
+  } catch(e) {
+    console.error(e);
+    alert('⚠️ Could not submit your order. Please check your internet connection and try again.\n\n' + e.message);
+    if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Submit order'; }
+  }
 }
 
 // ── resetForm ─────────────────────────────────────────────────────────────
@@ -985,57 +1031,60 @@ function switchTab(t){
 }
 
 // ── trackOrder ────────────────────────────────────────────────────────────
-function trackOrder(){
-  const ref = document.getElementById('t-ref').value.trim().toUpperCase();
+async function trackOrder(){
+  const ref  = document.getElementById('t-ref').value.trim().toUpperCase();
   const name = document.getElementById('t-name').value.trim().toLowerCase();
   const result = document.getElementById('track-result');
   if(!ref||!name){ alert('Please enter both your reference number and name.'); return; }
 
-  const req = getRequests().find(r=>r.ref===ref && r.name.toLowerCase()===name);
-  if(!req){
-    result.className='status-card not-found';
-    result.style.display='block';
-    result.innerHTML=`<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--danger)">
-      <i class="ti ti-alert-circle" style="font-size:20px"></i>
-      <div><strong>Order not found.</strong><br>Check your reference number and name, then try again.</div>
-    </div>`;
-    return;
-  }
-
-  const bc = req.status==='In progress'?'badge-In':'badge-'+req.status;
-  const sub = new Date(req.submittedAt).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
-
-  // build extras summary
-  let extrasHtml='';
-  if(req.extras){
-    const e=req.extras;
-    if(e.colorMode) extrasHtml+=`<div class="status-row"><span class="label">Color mode</span><span class="value">${e.colorMode}</span></div>`;
-    if(e.finish)    extrasHtml+=`<div class="status-row"><span class="label">Finish</span><span class="value">${e.finish}</span></div>`;
-    if(e.material)  extrasHtml+=`<div class="status-row"><span class="label">Material</span><span class="value">${e.material}</span></div>`;
-    if(e.fold)      extrasHtml+=`<div class="status-row"><span class="label">Fold type</span><span class="value">${e.fold}</span></div>`;
-    if(e.printType) extrasHtml+=`<div class="status-row"><span class="label">Print type</span><span class="value">${e.printType}</span></div>`;
-    if(e.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${e.shape}</span></div>`;
-    if(e.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${e.idType}</span></div>`;
-    if(e.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${e.sizes}</span></div>`;
-  }
-
-  result.className='status-card found';
+  result.className='status-card';
   result.style.display='block';
-  result.innerHTML=`
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Order — ${req.ref}</div>
-    <div class="status-row"><span class="label">Name</span><span class="value">${req.name}</span></div>
-    <div class="status-row"><span class="label">Job type</span><span class="value">${req.jobtype}${req.rush?'&nbsp;<span style="color:#d97706;font-size:11px">⚡ Urgent</span>':''}</span></div>
-    ${req.pkgLabel?`<div class="status-row"><span class="label">Package</span><span class="value">${req.pkgLabel}</span></div>`
-    :`<div class="status-row"><span class="label">Size / specs</span><span class="value">${req.size||'—'}</span></div>
-      <div class="status-row"><span class="label">Quantity</span><span class="value">${req.qty}</span></div>`}
-    ${extrasHtml}
-    ${req.printFile?`<div class="status-row"><span class="label">Print file</span><span class="value">📄 ${req.printFile}</span></div>`:''}
-    ${req.designFile?`<div class="status-row"><span class="label">Design file</span><span class="value">🎨 ${req.designFile}</span></div>`:''}
-    <div class="status-row"><span class="label">Date needed</span><span class="value">${req.due||'—'}</span></div>
-    <div class="status-row"><span class="label">Submitted</span><span class="value">${sub}</span></div>
-    <div class="status-row"><span class="label">Status</span><span class="value"><span class="badge ${bc}">${req.status}</span></span></div>
-    ${req.notes?`<div style="margin-top:10px;padding:10px;background:var(--surface-0);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)"><strong>Notes:</strong> ${req.notes}</div>`:''}
-  `;
+  result.innerHTML='<div style="font-size:13px;color:var(--text-secondary);text-align:center;padding:1rem">Looking up your order…</div>';
+
+  try {
+    const rows = await sbFetch('requests?ref=eq.' + encodeURIComponent(ref));
+    const req = (rows||[]).find(r => r.name.toLowerCase() === name);
+    if(!req){
+      result.className='status-card not-found';
+      result.innerHTML=`<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--danger)">
+        <i class="ti ti-alert-circle" style="font-size:20px"></i>
+        <div><strong>Order not found.</strong><br>Check your reference number and name, then try again.</div>
+      </div>`;
+      return;
+    }
+    let extras={};
+    try{ extras=JSON.parse(req.extras||'{}'); }catch(e){}
+    const bc = req.status==='In progress'?'badge-In':'badge-'+req.status;
+    const sub = new Date(req.submitted_at||req.submittedAt).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+    let extrasHtml='';
+    if(extras.colorMode) extrasHtml+=`<div class="status-row"><span class="label">Color mode</span><span class="value">${extras.colorMode}</span></div>`;
+    if(extras.finish)    extrasHtml+=`<div class="status-row"><span class="label">Finish</span><span class="value">${extras.finish}</span></div>`;
+    if(extras.material)  extrasHtml+=`<div class="status-row"><span class="label">Material</span><span class="value">${extras.material}</span></div>`;
+    if(extras.fold)      extrasHtml+=`<div class="status-row"><span class="label">Fold type</span><span class="value">${extras.fold}</span></div>`;
+    if(extras.printType) extrasHtml+=`<div class="status-row"><span class="label">Print type</span><span class="value">${extras.printType}</span></div>`;
+    if(extras.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${extras.shape}</span></div>`;
+    if(extras.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${extras.idType}</span></div>`;
+    if(extras.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${extras.sizes}</span></div>`;
+    result.className='status-card found';
+    result.innerHTML=`
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Order — ${req.ref}</div>
+      <div class="status-row"><span class="label">Name</span><span class="value">${req.name}</span></div>
+      <div class="status-row"><span class="label">Job type</span><span class="value">${req.jobtype}${req.rush?'&nbsp;<span style="color:#d97706;font-size:11px">⚡ Urgent</span>':''}</span></div>
+      ${req.pkg_label?`<div class="status-row"><span class="label">Package</span><span class="value">${req.pkg_label}</span></div>`
+      :`<div class="status-row"><span class="label">Size / specs</span><span class="value">${req.size||'—'}</span></div>
+        <div class="status-row"><span class="label">Quantity</span><span class="value">${req.qty}</span></div>`}
+      ${extrasHtml}
+      ${req.print_file?`<div class="status-row"><span class="label">Print file</span><span class="value">📄 ${req.print_file}</span></div>`:''}
+      ${req.design_file?`<div class="status-row"><span class="label">Design file</span><span class="value">🎨 ${req.design_file}</span></div>`:''}
+      <div class="status-row"><span class="label">Date needed</span><span class="value">${req.due||'—'}</span></div>
+      <div class="status-row"><span class="label">Submitted</span><span class="value">${sub}</span></div>
+      <div class="status-row"><span class="label">Status</span><span class="value"><span class="badge ${bc}">${req.status}</span></span></div>
+      ${req.notes?`<div style="margin-top:10px;padding:10px;background:var(--surface-0);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)"><strong>Notes:</strong> ${req.notes}</div>`:''}
+    `;
+  } catch(e){
+    result.className='status-card not-found';
+    result.innerHTML=`<div style="font-size:13px;color:var(--danger)">⚠️ Could not reach the server. Please try again.</div>`;
+  }
 }
 </script>
 </body>

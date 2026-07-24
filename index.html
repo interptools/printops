@@ -1172,14 +1172,74 @@ function saveInvoice() {
 function markPaid(id) { invoices = invoices.map(i => i.id === id ? {...i, status:'Paid'} : i); persist(); renderInvoices(); toast('Marked as paid.'); }
 function deleteInv(id) { if (!confirm('Delete this invoice?')) return; invoices = invoices.filter(i => i.id !== id); persist(); renderInvoices(); toast('Invoice deleted.'); }
 
-// Requests
-function getRequests() { return JSON.parse(localStorage.getItem('po_requests') || '[]'); }
-function saveRequests(reqs) { localStorage.setItem('po_requests', JSON.stringify(reqs)); }
+// ── Supabase config ────────────────────────────────────────────────────────
+// Use the SAME values you put in order-form.html
+const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
-function renderRequests() {
-  const reqs = getRequests();
+async function sbFetch(path, options = {}) {
+  const headers = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    ...(options.prefer ? {'Prefer': options.prefer} : {}),
+    ...(options.extraHeaders || {})
+  };
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body || undefined
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error('Supabase: ' + text);
+  return text ? JSON.parse(text) : null;
+}
+
+// Requests — read/write from Supabase
+async function getRequestsFromDB() {
+  try {
+    const rows = await sbFetch('requests?order=id.desc');
+    return (rows || []).map(r => {
+      let extras = {};
+      try { extras = JSON.parse(r.extras || '{}'); } catch(e) {}
+      return {
+        ...r,
+        pkgKey: r.pkg_key,
+        pkgLabel: r.pkg_label,
+        printFile: r.print_file,
+        designFile: r.design_file,
+        submittedAt: r.submitted_at,
+        extras
+      };
+    });
+  } catch(e) {
+    console.error('Supabase getRequests failed:', e);
+    return [];
+  }
+}
+
+async function updateReqStatusDB(id, status) {
+  await sbFetch('requests?id=eq.' + id, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: JSON.stringify({ status })
+  });
+}
+
+async function deleteReqDB(id) {
+  await sbFetch('requests?id=eq.' + id, { method: 'DELETE' });
+}
+
+// Legacy shims — keep for any remaining local references
+function getRequests() { return []; }
+function saveRequests(reqs) { /* no-op: now using Supabase */ }
+
+async function renderRequests() {
   const tbody = document.getElementById('req-table');
   const empty = document.getElementById('req-empty');
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1.5rem">Loading…</td></tr>';
+  empty.style.display = 'none';
+  const reqs = await getRequestsFromDB();
   if (!reqs.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   tbody.innerHTML = [...reqs].reverse().map(r => {
@@ -1310,8 +1370,9 @@ function downloadOrderFile() {
   a.click();
 }
 
-function convertReqToOrder(id) {
-  const r = getRequests().find(x => x.id === id);
+async function convertReqToOrder(id) {
+  const allReqs = await getRequestsFromDB();
+  const r = allReqs.find(x => x.id === id);
   if (!r) return;
   // Find or create customer
   let cust = customers.find(c => c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone);
@@ -1367,8 +1428,9 @@ function convertReqToOrder(id) {
   }, 150);
 }
 
-function reqToIdPhoto(id) {
-  const r = getRequests().find(x => x.id === id);
+async function reqToIdPhoto(id) {
+  const allReqs = await getRequestsFromDB();
+  const r = allReqs.find(x => x.id === id);
   if (!r) return;
   // Map request pkgKey to PHOTO_PACKAGES key
   const pkgKey = r.pkgKey || null;
@@ -1394,12 +1456,35 @@ function reqToIdPhoto(id) {
   }, 200);
 }
 
-function updateReqStatus(id, status) { saveRequests(getRequests().map(r => r.id===id?{...r,status}:r)); updateReqBadge(); toast('Status updated.'); }
-function deleteReq(id) { if (!confirm('Delete this request?')) return; saveRequests(getRequests().filter(r=>r.id!==id)); renderRequests(); updateReqBadge(); toast('Request deleted.'); }
-function updateReqBadge() {
-  const count = getRequests().filter(r => r.status === 'Pending').length;
-  const b = document.getElementById('req-badge');
-  b.textContent = count; b.style.display = count ? 'inline' : 'none';
+async function updateReqStatus(id, status) {
+  try {
+    await updateReqStatusDB(id, status);
+    updateReqBadge();
+    toast('Status updated.');
+  } catch(e) {
+    toast('⚠️ Could not update status.');
+    console.error(e);
+  }
+}
+async function deleteReq(id) {
+  if (!confirm('Delete this request?')) return;
+  try {
+    await deleteReqDB(id);
+    renderRequests();
+    updateReqBadge();
+    toast('Request deleted.');
+  } catch(e) {
+    toast('⚠️ Could not delete.');
+    console.error(e);
+  }
+}
+async function updateReqBadge() {
+  try {
+    const rows = await sbFetch('requests?status=eq.Pending&select=id');
+    const count = (rows || []).length;
+    const b = document.getElementById('req-badge');
+    if(b) { b.textContent = count; b.style.display = count ? 'inline' : 'none'; }
+  } catch(e) { /* silent fail */ }
 }
 
 // Price calculator
@@ -1864,24 +1949,29 @@ function importData(e) {
   e.target.value = '';
 }
 
-// Supabase sync
+// Supabase sync page — shows connection status
 function saveSbConfig() {
-  localStorage.setItem('sb_url', document.getElementById('sb-url').value);
-  localStorage.setItem('sb_key', document.getElementById('sb-key').value);
+  // Config is now hardcoded at the top of the script. This function is kept for compatibility.
+  toast('Config is now hardcoded in the file. Edit SUPABASE_URL and SUPABASE_ANON_KEY directly.');
 }
 
-function renderSync() {
-  document.getElementById('sb-url').value = localStorage.getItem('sb_url') || '';
-  document.getElementById('sb-key').value = localStorage.getItem('sb_key') || '';
-}
-
-async function sbFetch(path, method='GET', body=null) {
-  const url = localStorage.getItem('sb_url');
-  const key = localStorage.getItem('sb_key');
-  if (!url || !key) throw new Error('Missing Supabase URL or key.');
-  const opts = { method, headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' } };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url + '/rest/v1' + path, opts);
+async function renderSync() {
+  const statusBar = document.getElementById('sync-status-bar');
+  if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    statusBar.className = 'sync-status off';
+    statusBar.innerHTML = '<i class="ti ti-cloud-off"></i> Not configured — edit SUPABASE_URL and SUPABASE_ANON_KEY in the file';
+    return;
+  }
+  statusBar.className = 'sync-status off';
+  statusBar.innerHTML = '<i class="ti ti-loader"></i> Testing connection…';
+  try {
+    await sbFetch('requests?limit=1');
+    statusBar.className = 'sync-status ok';
+    statusBar.innerHTML = '<i class="ti ti-cloud-check"></i> Connected to Supabase — all devices share the same data';
+  } catch(e) {
+    statusBar.className = 'sync-status err';
+    statusBar.innerHTML = '<i class="ti ti-alert-triangle"></i> Connection failed: ' + e.message;
+  }
 }
 
 async function testSupabase() {
