@@ -620,25 +620,21 @@ tbody tr:hover td{background:var(--surface-1)}
         <div class="form-group">
           <label style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px">Package *</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px" id="ow-pkg-grid">
-            <button class="o-pkg-btn" onclick="owSelectPkg('P1',this)">
-              <div><span class="o-pkg-price">₱30</span> &nbsp;Package 1</div>
-              <div style="font-size:11px;color:var(--text-muted)">1×1 photo · 8 pcs</div>
+            <button class="o-pkg-btn" onclick="owSelectPkg('PA',this)">
+              <div><span class="o-pkg-price">₱50</span> &nbsp;Package A</div>
+              <div style="font-size:11px;color:var(--text-muted)">1×1 (7pcs) + 2×2 (2pcs) · 9 pcs</div>
             </button>
-            <button class="o-pkg-btn" onclick="owSelectPkg('P2',this)">
-              <div><span class="o-pkg-price">₱35</span> &nbsp;Package 2</div>
-              <div style="font-size:11px;color:var(--text-muted)">2×2 photo · 4 pcs</div>
+            <button class="o-pkg-btn" onclick="owSelectPkg('PB',this)">
+              <div><span class="o-pkg-price">₱50</span> &nbsp;Package B</div>
+              <div style="font-size:11px;color:var(--text-muted)">2×2 (4pcs) + 1×1 (8pcs) · 12 pcs</div>
             </button>
-            <button class="o-pkg-btn" onclick="owSelectPkg('P3',this)">
-              <div><span class="o-pkg-price">₱45</span> &nbsp;Package 3</div>
-              <div style="font-size:11px;color:var(--text-muted)">Passport size · 3 pcs</div>
+            <button class="o-pkg-btn" onclick="owSelectPkg('PC',this)">
+              <div><span class="o-pkg-price">₱50</span> &nbsp;Package C</div>
+              <div style="font-size:11px;color:var(--text-muted)">1×1 (4) + 2×2 (2) + Pass (5) · 11 pcs</div>
             </button>
-            <button class="o-pkg-btn" onclick="owSelectPkg('P3B',this)">
-              <div><span class="o-pkg-price">₱60</span> &nbsp;Package 3 Combo</div>
-              <div style="font-size:11px;color:var(--text-muted)">1×1 (2) + 2×2 (2) + Pass (3)</div>
-            </button>
-            <button class="o-pkg-btn" onclick="owSelectPkg('P4',this)" style="grid-column:1/-1">
-              <div><span class="o-pkg-price">₱65</span> &nbsp;Package 4 — Best Value</div>
-              <div style="font-size:11px;color:var(--text-muted)">1×1 (8pcs) + 2×2 (4pcs)</div>
+            <button class="o-pkg-btn" onclick="owSelectPkg('PD',this)">
+              <div><span class="o-pkg-price">from ₱60</span> &nbsp;Package D — Best Value</div>
+              <div style="font-size:11px;color:var(--text-muted)">Passport ID · 8 pcs</div>
             </button>
           </div>
         </div>
@@ -1436,11 +1432,10 @@ function useCalcPrice() {
 
 // ─── ID PHOTO ORDERS ───────────────────────────────────────────────────────
 const PHOTO_PACKAGES = {
-  P1:  { name:'Package 1',        price:30,  label:'1×1 photo (8pcs)',                    slots:[{type:'1x1',count:8}] },
-  P2:  { name:'Package 2',        price:35,  label:'2×2 photo (4pcs)',                    slots:[{type:'2x2',count:4}] },
-  P3:  { name:'Package 3',        price:45,  label:'Passport size (3pcs)',                slots:[{type:'pass',count:3}] },
-  P3B: { name:'Package 3 Combo',  price:60,  label:'1×1 (2pcs) + 2×2 (2pcs) + Pass (3pcs)', slots:[{type:'1x1',count:2},{type:'2x2',count:2},{type:'pass',count:3}] },
-  P4:  { name:'Package 4',        price:65,  label:'1×1 (8pcs) + 2×2 (4pcs)',            slots:[{type:'1x1',count:8},{type:'2x2',count:4}] },
+  PA: { name:'Package A', price:50, label:'1×1 (7pcs) + 2×2 (2pcs) · 9 pcs',          slots:[{type:'1x1',count:7},{type:'2x2',count:2}] },
+  PB: { name:'Package B', price:50, label:'2×2 (4pcs) + 1×1 (8pcs) · 12 pcs',         slots:[{type:'2x2',count:4},{type:'1x1',count:8}] },
+  PC: { name:'Package C', price:50, label:'1×1 (4pcs) + 2×2 (2pcs) + Pass (5pcs) · 11 pcs', slots:[{type:'1x1',count:4},{type:'2x2',count:2},{type:'pass',count:5}] },
+  PD: { name:'Package D', price:60, label:'Passport ID (8pcs)',                          slots:[{type:'pass',count:8}] },
 };
 const SLOT_DIMS = {
   '1x1':  { wMm:25.4, hMm:25.4 },

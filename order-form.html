@@ -270,33 +270,28 @@
       <div id="section-rush" style="display:none;margin-bottom:1rem">
         <label style="display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:8px">Select package *</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="pkg-grid">
-          <div class="pkg-card" onclick="selectPkg(this,'P1')">
-            <div class="pkg-price">₱30.00</div>
-            <div class="pkg-name">Package 1</div>
-            <ul class="pkg-list"><li>1×1 photo (8 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
+          <div class="pkg-card" onclick="selectPkg(this,'PA')">
+            <div class="pkg-price">₱50.00</div>
+            <div class="pkg-name">Package A</div>
+            <ul class="pkg-list"><li>1×1 photo (7 pcs)</li><li>2×2 photo (2 pcs)</li><li>9 pcs total</li><li>Photo editing</li><li>Change background</li></ul>
           </div>
-          <div class="pkg-card" onclick="selectPkg(this,'P2')">
-            <div class="pkg-price">₱35.00</div>
-            <div class="pkg-name">Package 2</div>
-            <ul class="pkg-list"><li>2×2 photo (4 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
+          <div class="pkg-card" onclick="selectPkg(this,'PB')">
+            <div class="pkg-price">₱50.00</div>
+            <div class="pkg-name">Package B</div>
+            <ul class="pkg-list"><li>2×2 photo (4 pcs)</li><li>1×1 photo (8 pcs)</li><li>12 pcs total</li><li>Photo editing</li><li>Change background</li></ul>
           </div>
-          <div class="pkg-card" onclick="selectPkg(this,'P3')">
-            <div class="pkg-price">₱45.00</div>
-            <div class="pkg-name">Package 3</div>
-            <ul class="pkg-list"><li>Passport size (3 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
+          <div class="pkg-card" onclick="selectPkg(this,'PC')">
+            <div class="pkg-price">₱50.00</div>
+            <div class="pkg-name">Package C</div>
+            <ul class="pkg-list"><li>1×1 photo (4 pcs)</li><li>2×2 photo (2 pcs)</li><li>Passport size (5 pcs)</li><li>11 pcs total</li><li>Photo editing</li><li>Change background</li></ul>
           </div>
-          <div class="pkg-card" onclick="selectPkg(this,'P3B')">
-            <div class="pkg-price">₱60.00</div>
-            <div class="pkg-name">Package 3 Combo</div>
-            <ul class="pkg-list"><li>1×1 (2 pcs)</li><li>2×2 (2 pcs)</li><li>Passport (3 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
-          </div>
-          <div class="pkg-card pkg-best" onclick="selectPkg(this,'P4')" style="grid-column:1/-1">
+          <div class="pkg-card pkg-best" onclick="selectPkg(this,'PD')">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
               <div>
-                <div class="pkg-price">₱65.00</div>
-                <div class="pkg-name">Package 4 <span style="font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:2px 7px;border-radius:20px;margin-left:6px">Best Value</span></div>
+                <div class="pkg-price">from ₱60.00</div>
+                <div class="pkg-name">Package D <span style="font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:2px 7px;border-radius:20px;margin-left:6px">Best Value</span></div>
               </div>
-              <ul class="pkg-list" style="margin:0"><li>1×1 (8 pcs)</li><li>2×2 (4 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
+              <ul class="pkg-list" style="margin:0"><li>Passport ID (8 pcs)</li><li>Photo editing</li><li>Change background</li></ul>
             </div>
           </div>
         </div>
