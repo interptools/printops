@@ -330,7 +330,34 @@ tbody tr:hover td{background:var(--surface-1)}
     <div class="page" id="page-requests">
       <div class="page-header">
         <div class="page-title">Customer Requests</div>
-        <a href="order-form.html" target="_blank" class="btn"><i class="ti ti-external-link"></i> Open customer form</a>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="req-live-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse-dot 1.5s infinite"></span>
+          <a href="order-form.html" target="_blank" class="btn"><i class="ti ti-external-link"></i> Open customer form</a>
+        </div>
+      </div>
+      <style>
+        @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+      </style>
+      <div class="search-bar">
+        <input id="req-search" placeholder="Search by name, job type, ref..." oninput="renderRequests()">
+        <select id="req-filter-status" onchange="renderRequests()">
+          <option value="">All statuses</option>
+          <option>Pending</option><option>In progress</option><option>Done</option><option>Cancelled</option>
+        </select>
+        <select id="req-filter-job" onchange="renderRequests()">
+          <option value="">All job types</option>
+          <option>Print (file upload)</option>
+          <option>Rush ID Photo</option>
+          <option>Business cards</option>
+          <option>Flyers</option>
+          <option>Tarpaulin</option>
+          <option>T-shirt print</option>
+          <option>Sticker</option>
+          <option>Poster</option>
+          <option>Brochure</option>
+          <option>ID / Lanyard</option>
+          <option>Other</option>
+        </select>
       </div>
       <div class="card">
         <table>
@@ -1239,7 +1266,21 @@ async function renderRequests() {
   const empty = document.getElementById('req-empty');
   tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1.5rem">Loading…</td></tr>';
   empty.style.display = 'none';
-  const reqs = await getRequestsFromDB();
+  let reqs = await getRequestsFromDB();
+
+  // Search
+  const search = (document.getElementById('req-search')?.value || '').toLowerCase();
+  const filterStatus = document.getElementById('req-filter-status')?.value || '';
+  const filterJob = document.getElementById('req-filter-job')?.value || '';
+  if (search) reqs = reqs.filter(r =>
+    r.name.toLowerCase().includes(search) ||
+    (r.ref || '').toLowerCase().includes(search) ||
+    (r.jobtype || '').toLowerCase().includes(search) ||
+    (r.phone || '').includes(search)
+  );
+  if (filterStatus) reqs = reqs.filter(r => r.status === filterStatus);
+  if (filterJob) reqs = reqs.filter(r => r.jobtype === filterJob);
+
   if (!reqs.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   tbody.innerHTML = [...reqs].reverse().map(r => {
@@ -1264,10 +1305,16 @@ async function renderRequests() {
       }
       details = parts.join(' · ') || '—';
     }
-    // Files
+    // Files — link to Supabase Storage if available
+    const printUrl = r.print_file_url || null;
+    const designUrl = r.design_file_url || null;
     const fileHtml = [
-      r.printFile ? `<div style="font-size:11px"><i class="ti ti-file" style="color:var(--accent)"></i> ${r.printFile}</div>` : '',
-      r.designFile ? `<div style="font-size:11px"><i class="ti ti-palette" style="color:var(--success)"></i> ${r.designFile}</div>` : '',
+      r.printFile ? `<div style="font-size:11px">${printUrl
+        ? `<a href="${printUrl}" target="_blank" style="color:var(--accent);text-decoration:none"><i class="ti ti-download"></i> ${r.printFile}</a>`
+        : `<i class="ti ti-file" style="color:var(--accent)"></i> ${r.printFile}`}</div>` : '',
+      r.designFile ? `<div style="font-size:11px">${designUrl
+        ? `<a href="${designUrl}" target="_blank" style="color:var(--success);text-decoration:none"><i class="ti ti-download"></i> ${r.designFile}</a>`
+        : `<i class="ti ti-palette" style="color:var(--success)"></i> ${r.designFile}`}</div>` : '',
     ].join('') || '<span style="color:var(--text-muted);font-size:11px">—</span>';
     // Rush badge
     const rushBadge = r.rush ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">⚡ RUSH</span>' : '';
@@ -1425,6 +1472,8 @@ async function convertReqToOrder(id) {
       fileNameEl.textContent = fname;
     }
     toast('Customer details loaded — set amount and save.');
+    // Auto-mark request as In Progress
+    updateReqStatusDB(id, 'In progress').catch(() => {});
   }, 150);
 }
 
@@ -1624,14 +1673,14 @@ function suggestPaperSize(grouped) {
   // Build a score: try to pack all slot-types onto a single paper
   // Try smallest paper first
   for (const paper of PAPER_SIZES) {
-    const usableW = paper.wMm - PAPER_PAD * 2;
-    const usableH = paper.hMm - PAPER_PAD * 2;
+    const usableW = paper.wMm;
+    const usableH = paper.hMm;
     let allFit = true;
     let reason = [];
     for (const [type, count] of Object.entries(grouped)) {
       const dim = SLOT_DIMS[type];
-      const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
-      const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
+      const cols = Math.max(1, Math.floor(usableW / dim.wMm));
+      const rows = Math.max(1, Math.floor(usableH / dim.hMm));
       if (cols * rows < count) { allFit = false; break; }
       const typeName = type === '1x1' ? '1×1' : type === '2x2' ? '2×2' : 'Passport';
       reason.push(`${count} pcs ${typeName} (${cols}×${rows} grid)`);
@@ -1717,86 +1766,68 @@ function renderSheets(grouped, paper) {
   const order = _printOrder;
   wrap.innerHTML = '';
 
-  // Paper dimensions in mm — no padding, no label, photos fill edge to edge
   const pw = paper.wMm;
   const ph = paper.hMm;
-  const usableW = pw - PAPER_PAD * 2;
-  const usableH = ph - PAPER_PAD * 2;
 
   let sheetIdx = 0;
   Object.keys(grouped).forEach(type => {
     const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
     const totalCopies = grouped[type];
 
-    // Calculate cols/rows to fill paper as tightly as possible
-    const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
-    const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
+    // How many fit at natural size
+    const cols = Math.max(1, Math.floor(pw / dim.wMm));
+    const rows = Math.max(1, Math.floor(ph / dim.hMm));
     const perPage = cols * rows;
-    const pages   = Math.ceil(totalCopies / perPage);
+    const pages = Math.ceil(totalCopies / perPage);
 
-    // Center the grid on the paper
-    const gridW = cols * dim.wMm + (cols - 1) * PHOTO_GAP;
-    const gridH = rows * dim.hMm + (rows - 1) * PHOTO_GAP;
-    const offsetX = (pw - gridW) / 2;
-    const offsetY = (ph - gridH) / 2;
+    // Scale each photo to fill the full paper edge-to-edge — no gaps, no margins
+    const photoW = pw / cols;
+    const photoH = ph / rows;
 
     for (let pg = 0; pg < pages; pg++) {
       const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
 
       const preview = document.createElement('div');
-      preview.style.cssText = `margin:0 auto 20px;display:flex;justify-content:center;`;
+      preview.style.cssText = 'margin:0 auto 20px;display:flex;justify-content:center;';
 
-      // Print sheet sized exactly to paper
       const sheet = document.createElement('div');
       sheet.className = 'o-print-sheet no-print-wrapper';
-      sheet.style.cssText = `
-        background:#fff;
-        width:${pw}mm;
-        height:${ph}mm;
-        box-shadow:0 2px 12px rgba(0,0,0,0.15);
-        position:relative;
-        overflow:hidden;
-        border-radius:2px;
-      `;
+      sheet.style.cssText = [
+        'background:#fff;',
+        `width:${pw}mm;`,
+        `height:${ph}mm;`,
+        'box-shadow:0 2px 12px rgba(0,0,0,0.15);',
+        'overflow:hidden;',
+        'border-radius:2px;',
+        'display:grid;',
+        `grid-template-columns:repeat(${cols},${photoW}mm);`,
+        `grid-template-rows:repeat(${rows},${photoH}mm);`,
+        'gap:0;',
+        'position:relative;'
+      ].join('');
 
-      // Photo grid — centered on paper, no label text
-      const grid = document.createElement('div');
-      grid.style.cssText = `
-        position:absolute;
-        top:${offsetY}mm;
-        left:${offsetX}mm;
-        display:flex;
-        flex-wrap:wrap;
-        gap:${PHOTO_GAP}mm;
-        width:${gridW}mm;
-        align-content:flex-start;
-      `;
-
-      for (let i = 0; i < countThisPage; i++) {
+      // Fill all grid cells — photos first, then empty placeholders
+      for (let i = 0; i < perPage; i++) {
         const cell = document.createElement('div');
-        cell.style.cssText = `
-          width:${dim.wMm}mm;
-          height:${dim.hMm}mm;
-          border:0.3px dashed #ccc;
-          overflow:hidden;
-          flex-shrink:0;
-        `;
-        const img = document.createElement('img');
-        img.src = order.photoDataUrl;
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-        cell.appendChild(img);
-        grid.appendChild(cell);
+        cell.style.cssText = [
+          `width:${photoW}mm;`,
+          `height:${photoH}mm;`,
+          'overflow:hidden;',
+          'box-sizing:border-box;',
+          i < countThisPage ? 'border:0.3px dashed #ccc;' : 'background:#f5f5f5;border:0.3px dashed #eee;'
+        ].join('');
+        if (i < countThisPage) {
+          const img = document.createElement('img');
+          img.src = order.photoDataUrl;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+          cell.appendChild(img);
+        }
+        sheet.appendChild(cell);
       }
-      sheet.appendChild(grid);
 
-      // Faint paper border only
+      // Faint paper border on top
       const border = document.createElement('div');
-      border.style.cssText = `
-        position:absolute;inset:0;
-        border:0.5px solid #ddd;
-        pointer-events:none;
-        border-radius:2px;
-      `;
+      border.style.cssText = 'position:absolute;inset:0;border:0.5px solid #ccc;pointer-events:none;';
       sheet.appendChild(border);
 
       preview.appendChild(sheet);
@@ -2017,12 +2048,63 @@ function checkPassword() {
   if (val === OWNER_PASSWORD) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app-content').style.display = 'block';
-    renderDash(); updateReqBadge(); updatePhotoBadge();
+    renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
   } else {
     document.getElementById('gate-err').style.display = 'block';
     document.getElementById('gate-pw').value = '';
     document.getElementById('gate-pw').focus();
   }
+}
+
+// ─── REAL-TIME POLLING & NOTIFICATIONS ───────────────────────────────────
+let _lastKnownReqId = 0;
+let _pollingInterval = null;
+
+async function startPolling() {
+  // Request browser notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Get current highest ID so we only alert on NEW ones
+  try {
+    const rows = await sbFetch('requests?select=id&order=id.desc&limit=1');
+    _lastKnownReqId = (rows && rows.length) ? rows[0].id : 0;
+  } catch(e) {}
+
+  // Show live dot
+  const dot = document.getElementById('req-live-dot');
+  if (dot) dot.style.display = 'inline-block';
+
+  // Poll every 30 seconds
+  _pollingInterval = setInterval(async () => {
+    try {
+      const rows = await sbFetch('requests?select=id,name,jobtype,ref&order=id.desc&limit=5');
+      if (!rows || !rows.length) return;
+      const newRows = rows.filter(r => r.id > _lastKnownReqId);
+      if (newRows.length) {
+        _lastKnownReqId = rows[0].id;
+
+        // Update badge
+        updateReqBadge();
+
+        // If Requests page is open, refresh it
+        const reqPage = document.getElementById('page-requests');
+        if (reqPage && reqPage.classList.contains('active')) renderRequests();
+
+        // Browser notification for each new order
+        newRows.forEach(r => {
+          toast(`🔔 New request: ${r.name} — ${r.jobtype}`);
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('New order — Arroyo Suite', {
+              body: `${r.ref} · ${r.name} · ${r.jobtype}`,
+              icon: ''
+            });
+          }
+        });
+      }
+    } catch(e) { /* silent — don't interrupt user */ }
+  }, 30000); // every 30 seconds
 }
 
 // ─── TEMPLATES ────────────────────────────────────────────────────────────
