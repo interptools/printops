@@ -1769,72 +1769,162 @@ function renderSheets(grouped, paper) {
   const pw = paper.wMm;
   const ph = paper.hMm;
 
-  let sheetIdx = 0;
-  Object.keys(grouped).forEach(type => {
-    const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
-    const totalCopies = grouped[type];
-
-    // How many fit at natural size
-    const cols = Math.max(1, Math.floor(pw / dim.wMm));
-    const rows = Math.max(1, Math.floor(ph / dim.hMm));
-    const perPage = cols * rows;
-    const pages = Math.ceil(totalCopies / perPage);
-
-    // Scale each photo to fill the full paper edge-to-edge — no gaps, no margins
-    const photoW = pw / cols;
-    const photoH = ph / rows;
-
-    for (let pg = 0; pg < pages; pg++) {
-      const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
-
-      const preview = document.createElement('div');
-      preview.style.cssText = 'margin:0 auto 20px;display:flex;justify-content:center;';
-
-      const sheet = document.createElement('div');
-      sheet.className = 'o-print-sheet no-print-wrapper';
-      sheet.style.cssText = [
-        'background:#fff;',
-        `width:${pw}mm;`,
-        `height:${ph}mm;`,
-        'box-shadow:0 2px 12px rgba(0,0,0,0.15);',
-        'overflow:hidden;',
-        'border-radius:2px;',
-        'display:grid;',
-        `grid-template-columns:repeat(${cols},${photoW}mm);`,
-        `grid-template-rows:repeat(${rows},${photoH}mm);`,
-        'gap:0;',
-        'position:relative;'
-      ].join('');
-
-      // Fill all grid cells — photos first, then empty placeholders
-      for (let i = 0; i < perPage; i++) {
-        const cell = document.createElement('div');
-        cell.style.cssText = [
-          `width:${photoW}mm;`,
-          `height:${photoH}mm;`,
-          'overflow:hidden;',
-          'box-sizing:border-box;',
-          i < countThisPage ? 'border:0.3px dashed #ccc;' : 'background:#f5f5f5;border:0.3px dashed #eee;'
-        ].join('');
-        if (i < countThisPage) {
-          const img = document.createElement('img');
-          img.src = order.photoDataUrl;
-          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-          cell.appendChild(img);
-        }
-        sheet.appendChild(cell);
-      }
-
-      // Faint paper border on top
-      const border = document.createElement('div');
-      border.style.cssText = 'position:absolute;inset:0;border:0.5px solid #ccc;pointer-events:none;';
-      sheet.appendChild(border);
-
-      preview.appendChild(sheet);
-      wrap.appendChild(preview);
-      sheetIdx++;
+  // Build flat list of all slots in order: largest first for better packing
+  const typeOrder = ['2x2','pass','1x1'];
+  const allSlots = [];
+  typeOrder.forEach(type => {
+    if (grouped[type]) {
+      const dim = SLOT_DIMS[type];
+      for (let i = 0; i < grouped[type]; i++) allSlots.push({ type, dim });
     }
   });
+  // also add any types not in typeOrder
+  Object.keys(grouped).forEach(type => {
+    if (!typeOrder.includes(type)) {
+      const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
+      for (let i = 0; i < grouped[type]; i++) allSlots.push({ type, dim });
+    }
+  });
+
+  if (!allSlots.length) return;
+
+  // Simple row-based packing: place slots left-to-right, wrap to next row
+  // Each sheet = pw x ph mm. Slots placed at real mm sizes, no scaling.
+  const MM_TO_PX = 3.7795; // for on-screen preview (96dpi)
+
+  let remaining = [...allSlots];
+
+  while (remaining.length > 0) {
+    // Pack one sheet
+    const placed = []; // {slot, x, y}
+    let curX = 0, curY = 0, rowH = 0;
+
+    const tryPlace = () => {
+      const nextRemaining = [];
+      remaining.forEach(slot => {
+        const w = slot.dim.wMm;
+        const h = slot.dim.hMm;
+        // Try current row
+        if (curX + w <= pw + 0.1 && curY + h <= ph + 0.1) {
+          placed.push({ slot, x: curX, y: curY });
+          rowH = Math.max(rowH, h);
+          curX += w;
+        } else if (curX > 0 && curY + rowH + h <= ph + 0.1) {
+          // wrap to next row
+          curY += rowH; curX = 0; rowH = 0;
+          if (curX + w <= pw + 0.1) {
+            placed.push({ slot, x: curX, y: curY });
+            rowH = Math.max(rowH, h);
+            curX += w;
+          } else {
+            nextRemaining.push(slot);
+          }
+        } else {
+          nextRemaining.push(slot);
+        }
+      });
+      remaining = nextRemaining;
+    };
+    tryPlace();
+
+    // If nothing was placed (slot too big for paper), force-place first slot anyway
+    if (placed.length === 0 && remaining.length > 0) {
+      placed.push({ slot: remaining[0], x: 0, y: 0 });
+      remaining = remaining.slice(1);
+    }
+
+    // Build sheet DOM
+    const preview = document.createElement('div');
+    preview.style.cssText = 'margin:0 auto 20px;display:flex;flex-direction:column;align-items:center;';
+
+    // Label above sheet
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:11px;color:#888;margin-bottom:4px;font-family:sans-serif;';
+    lbl.textContent = `${paper.label} (${pw}×${ph}mm) · Drag an image file onto any slot to replace`;
+    preview.appendChild(lbl);
+
+    const sheet = document.createElement('div');
+    sheet.className = 'o-print-sheet no-print-wrapper';
+    sheet.style.cssText = [
+      'background:#fff;',
+      `width:${pw}mm;`,
+      `height:${ph}mm;`,
+      'box-shadow:0 2px 12px rgba(0,0,0,0.15);',
+      'border-radius:2px;',
+      'position:relative;',
+      'overflow:hidden;',
+    ].join('');
+
+    placed.forEach(({ slot, x, y }) => {
+      const w = slot.dim.wMm;
+      const h = slot.dim.hMm;
+      const hasPhoto = !!order.photoDataUrl;
+
+      const cell = document.createElement('div');
+      cell.style.cssText = [
+        'position:absolute;',
+        `left:${x}mm;`,
+        `top:${y}mm;`,
+        `width:${w}mm;`,
+        `height:${h}mm;`,
+        'box-sizing:border-box;',
+        'overflow:hidden;',
+        hasPhoto ? 'border:0.3px dashed #bbb;' : 'border:1px dashed #aaa;background:#f0f0f0;',
+      ].join('');
+
+      if (hasPhoto) {
+        const img = document.createElement('img');
+        img.src = order.photoDataUrl;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
+        img.draggable = false;
+        cell.appendChild(img);
+      } else {
+        // Empty placeholder label
+        const ph_lbl = document.createElement('div');
+        ph_lbl.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;font-family:sans-serif;text-align:center;pointer-events:none;';
+        ph_lbl.textContent = slot.type === '1x1' ? '1×1' : slot.type === '2x2' ? '2×2' : 'Pass';
+        cell.appendChild(ph_lbl);
+      }
+
+      // Drag-and-drop: drop an image file onto any cell to replace its photo
+      cell.addEventListener('dragover', e => {
+        e.preventDefault();
+        cell.style.outline = '2px solid #1a6ef5';
+      });
+      cell.addEventListener('dragleave', () => {
+        cell.style.outline = '';
+      });
+      cell.addEventListener('drop', e => {
+        e.preventDefault();
+        cell.style.outline = '';
+        const file = e.dataTransfer.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          // Clear cell and set new image
+          cell.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
+          img.draggable = false;
+          cell.style.background = '';
+          cell.style.border = '0.3px dashed #bbb';
+          cell.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      sheet.appendChild(cell);
+    });
+
+    // Paper border overlay
+    const border = document.createElement('div');
+    border.style.cssText = 'position:absolute;inset:0;border:0.5px solid #ddd;pointer-events:none;';
+    sheet.appendChild(border);
+
+    preview.appendChild(sheet);
+    wrap.appendChild(preview);
+  }
 }
 
 function closePrintPreview() {
