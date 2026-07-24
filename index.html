@@ -1625,7 +1625,7 @@ function suggestPaperSize(grouped) {
   // Try smallest paper first
   for (const paper of PAPER_SIZES) {
     const usableW = paper.wMm - PAPER_PAD * 2;
-    const usableH = paper.hMm - PAPER_PAD * 2 - LABEL_H;
+    const usableH = paper.hMm - PAPER_PAD * 2;
     let allFit = true;
     let reason = [];
     for (const [type, count] of Object.entries(grouped)) {
@@ -1717,42 +1717,38 @@ function renderSheets(grouped, paper) {
   const order = _printOrder;
   wrap.innerHTML = '';
 
-  // Paper dimensions in mm
+  // Paper dimensions in mm — no padding, no label, photos fill edge to edge
   const pw = paper.wMm;
   const ph = paper.hMm;
   const usableW = pw - PAPER_PAD * 2;
-  const usableH = ph - PAPER_PAD * 2 - LABEL_H;
-
-  // Convert mm to px for CSS (96dpi screen: 1mm ≈ 3.7795px)
-  // We'll use mm units in CSS so it maps to real paper at print time,
-  // but shrink visually for on-screen preview with a scale wrapper
-  const MM = 1; // use mm directly in CSS
+  const usableH = ph - PAPER_PAD * 2;
 
   let sheetIdx = 0;
   Object.keys(grouped).forEach(type => {
     const dim = SLOT_DIMS[type] || SLOT_DIMS['1x1'];
     const totalCopies = grouped[type];
+
+    // Calculate cols/rows to fill paper as tightly as possible
     const cols = Math.max(1, Math.floor((usableW + PHOTO_GAP) / (dim.wMm + PHOTO_GAP)));
     const rows = Math.max(1, Math.floor((usableH + PHOTO_GAP) / (dim.hMm + PHOTO_GAP)));
     const perPage = cols * rows;
     const pages   = Math.ceil(totalCopies / perPage);
-    const typeName = type === '1x1' ? '1×1 in' : type === '2x2' ? '2×2 in' : 'Passport size';
+
+    // Center the grid on the paper
+    const gridW = cols * dim.wMm + (cols - 1) * PHOTO_GAP;
+    const gridH = rows * dim.hMm + (rows - 1) * PHOTO_GAP;
+    const offsetX = (pw - gridW) / 2;
+    const offsetY = (ph - gridH) / 2;
 
     for (let pg = 0; pg < pages; pg++) {
       const countThisPage = Math.min(perPage, totalCopies - pg * perPage);
 
-      // Outer preview wrapper (scales paper to screen)
       const preview = document.createElement('div');
-      preview.style.cssText = `
-        margin:0 auto 20px;
-        display:flex;justify-content:center;
-      `;
+      preview.style.cssText = `margin:0 auto 20px;display:flex;justify-content:center;`;
 
-      // The actual print sheet — sized to real paper mm
+      // Print sheet sized exactly to paper
       const sheet = document.createElement('div');
       sheet.className = 'o-print-sheet no-print-wrapper';
-
-      // Override sheet width/height to match chosen paper size
       sheet.style.cssText = `
         background:#fff;
         width:${pw}mm;
@@ -1763,27 +1759,16 @@ function renderSheets(grouped, paper) {
         border-radius:2px;
       `;
 
-      // Sheet label (top-right, inside paper)
-      const lbl = document.createElement('div');
-      lbl.style.cssText = `
-        position:absolute;top:${PAPER_PAD/2}mm;right:${PAPER_PAD}mm;
-        font-size:7px;color:#aaa;font-family:sans-serif;line-height:1.3;text-align:right;
-      `;
-      lbl.innerHTML =
-        `${order.ref} &nbsp;·&nbsp; ${paper.label} (${pw}×${ph}mm)&nbsp;·&nbsp; ` +
-        `${typeName} &nbsp;·&nbsp; ${dim.wMm}×${dim.hMm}mm &nbsp;·&nbsp; ` +
-        `Sheet ${sheetIdx+1}, page ${pg+1}/${pages}`;
-      sheet.appendChild(lbl);
-
-      // Photo grid container — positioned inside the paper with padding
+      // Photo grid — centered on paper, no label text
       const grid = document.createElement('div');
       grid.style.cssText = `
         position:absolute;
-        top:${PAPER_PAD + LABEL_H}mm;
-        left:${PAPER_PAD}mm;
+        top:${offsetY}mm;
+        left:${offsetX}mm;
         display:flex;
         flex-wrap:wrap;
         gap:${PHOTO_GAP}mm;
+        width:${gridW}mm;
         align-content:flex-start;
       `;
 
@@ -1792,9 +1777,8 @@ function renderSheets(grouped, paper) {
         cell.style.cssText = `
           width:${dim.wMm}mm;
           height:${dim.hMm}mm;
-          border:0.5px dashed #bbb;
+          border:0.3px dashed #ccc;
           overflow:hidden;
-          background:#f0f0f0;
           flex-shrink:0;
         `;
         const img = document.createElement('img');
@@ -1805,16 +1789,7 @@ function renderSheets(grouped, paper) {
       }
       sheet.appendChild(grid);
 
-      // Cut guide note (bottom-left)
-      const cut = document.createElement('div');
-      cut.style.cssText = `
-        position:absolute;bottom:${PAPER_PAD/2}mm;left:${PAPER_PAD}mm;
-        font-size:7px;color:#bbb;font-family:sans-serif;
-      `;
-      cut.textContent = `Cut along dashed lines · ${order.name} · ${new Date(order.submittedAt).toLocaleDateString('en-PH')}`;
-      sheet.appendChild(cut);
-
-      // Paper border (faint, shows paper edge)
+      // Faint paper border only
       const border = document.createElement('div');
       border.style.cssText = `
         position:absolute;inset:0;
