@@ -254,20 +254,11 @@
         </div>
 
         <div class="form-group">
-          <label>Upload file to print *</label>
-          <div class="upload-area" id="upload-area">
-            <input type="file" id="f-file" accept=".pdf,.jpg,.jpeg,.png,.docx,.doc,.xlsx,.pptx" onchange="handleFileUpload(this)">
-            <button class="upload-clear" id="upload-clear-btn" style="display:none" onclick="clearFile(event)">✕ Remove</button>
-            <div class="upload-icon"><i class="ti ti-upload" id="upload-icon-i"></i></div>
-            <div class="upload-label" id="upload-label-txt">Tap to upload your file</div>
-            <div class="upload-sub" id="upload-sub-txt">PDF, JPG, PNG, DOCX, XLSX, PPTX · max 10MB</div>
+          <label>File to print</label>
+          <div style="background:var(--surface-1);border:1.5px dashed var(--border-strong);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--text-secondary);line-height:1.5;display:flex;align-items:center;gap:9px">
+            <i class="ti ti-mail-forward" style="font-size:18px;color:#1a6ef5;flex-shrink:0"></i>
+            <span>You'll send your file in the <strong>next step</strong> — after clicking <strong>Next</strong>.</span>
           </div>
-          <div class="form-err" id="file-err">Please upload the file you want to print.</div>
-        </div>
-        <div style="margin-top:7px;font-size:12px;color:#666;line-height:1.5">
-          📎 After submitting, please also send your file directly to
-          <a href="mailto:areymar36@gmail.com?subject=Print Order File" style="color:#1a6ef5;font-weight:500;text-decoration:none">areymar36@gmail.com</a>
-          — tap the email to open Gmail or your mail app.
         </div>
       </div>
 
@@ -601,21 +592,12 @@
         </div>
       </div>
 
-      <!-- ── File upload for non-print jobs ── -->
+      <!-- ── File / design note for non-print jobs ── -->
       <div id="section-design-upload" style="display:none;margin-bottom:1rem">
-        <label style="display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:8px">Upload design file (optional)</label>
-        <div class="upload-area" id="upload-area2">
-          <input type="file" id="f-file2" accept=".pdf,.jpg,.jpeg,.png,.ai,.psd,.docx,.svg,.zip" onchange="handleFileUpload2(this)">
-          <button class="upload-clear" id="upload-clear-btn2" style="display:none" onclick="clearFile2(event)">✕ Remove</button>
-          <div class="upload-icon"><i class="ti ti-file-upload" id="upload-icon-i2"></i></div>
-          <div class="upload-label" id="upload-label-txt2">Tap to upload your design</div>
-          <div class="upload-sub" id="upload-sub-txt2">PDF, AI, PSD, JPG, PNG, SVG, ZIP · max 10MB</div>
-        </div>
-        <div class="form-hint">No design yet? We can help — add a note below.</div>
-        <div style="margin-top:7px;font-size:12px;color:#666;line-height:1.5">
-          📎 After submitting, please also send your design file to
-          <a href="mailto:areymar36@gmail.com?subject=Design File for Order" style="color:#1a6ef5;font-weight:500;text-decoration:none">areymar36@gmail.com</a>
-          — tap the email to open Gmail or your mail app.
+        <label style="display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:8px">Design file (optional)</label>
+        <div style="background:var(--surface-1);border:1.5px dashed var(--border-strong);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--text-secondary);line-height:1.5;display:flex;align-items:center;gap:9px">
+          <i class="ti ti-mail-forward" style="font-size:18px;color:#1a6ef5;flex-shrink:0"></i>
+          <span>You can attach your design file in the <strong>next step</strong>. No design yet? Add a note below — we can help.</span>
         </div>
       </div>
 
@@ -640,34 +622,49 @@
           <textarea id="f-notes" placeholder="Color preferences, special instructions, quantity per size, etc."></textarea>
         </div>
 
-        <button class="btn btn-primary" onclick="submitOrder()">
-          <i class="ti ti-send" aria-hidden="true"></i> Submit order request
+        <button class="btn btn-primary" onclick="submitOrder()" id="submit-btn" style="font-size:15px;padding:14px;">
+          Next &nbsp;<i class="ti ti-arrow-right" aria-hidden="true"></i>
         </button>
-        <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:10px">We'll confirm your order and provide pricing shortly.</p>
       </div>
 
     </div><!-- end card -->
 
-    <!-- Success screen -->
-    <div class="success-screen" id="success-screen">
-      <div class="success-icon"><i class="ti ti-check"></i></div>
-      <h2>Order request sent!</h2>
-      <p>Thank you! We received your order request and will get back to you soon to confirm details and pricing.</p>
-      <div class="ref-box">
+    <!-- Send file screen (shown after Next is clicked & order saved) -->
+    <div class="success-screen" id="success-screen" style="display:none;padding:1.5rem 0">
+
+      <!-- ✅ Ref confirmed -->
+      <div class="success-icon"><i class="ti ti-circle-check"></i></div>
+      <h2 style="margin-bottom:4px">Order saved!</h2>
+      <div class="ref-box" style="margin-bottom:6px">
         <span>Your reference number</span>
         <strong id="ref-number">—</strong>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem">Save this number to track your order status.</p>
-
-      <!-- Email to shop button -->
-      <a id="mailto-shop-btn" href="#" target="_blank"
-        style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:320px;margin:0 auto 10px;padding:12px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:14px;font-weight:600;text-decoration:none;box-sizing:border-box;">
-        <i class="ti ti-mail"></i> Send order details to shop
-      </a>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:1rem;line-height:1.5">
-        Tap the button above to open your email app with all your order details pre-filled — including any file names. This also notifies the shop owner.
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1.25rem">
+        Screenshot or copy this number to track your order anytime.
       </p>
-      <button class="btn btn-secondary" style="max-width:220px;margin:0 auto" onclick="resetForm()">Place another order</button>
+
+      <!-- ── Send email step ─────────────────────────── -->
+      <div style="background:#f0f6ff;border:1.5px solid #c5d9fb;border-radius:14px;padding:18px 16px;text-align:left;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:#1a3c7a;margin-bottom:6px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-mail-forward" style="font-size:17px"></i>
+          Last step — send your file to the shop
+        </div>
+        <p style="font-size:13px;color:#334;line-height:1.65;margin:0 0 12px">
+          Tap the button below. It will open Gmail with <strong>all your order details already filled in</strong>.
+          Just <strong>attach your file</strong> (JPG, PNG, PDF, etc.) then hit <strong>Send</strong>.
+        </p>
+        <a id="mailto-shop-btn" href="#" target="_blank"
+          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:14px;font-weight:600;text-decoration:none;box-sizing:border-box;margin-bottom:10px">
+          <i class="ti ti-mail"></i> Send order details &amp; file to shop
+        </a>
+        <p style="font-size:11px;color:#667;margin:0;line-height:1.5;text-align:center">
+          No file to send? You can skip this — we'll follow up with you via phone or email.
+        </p>
+      </div>
+
+      <button class="btn btn-secondary" style="max-width:220px;margin:0 auto" onclick="resetForm()">
+        <i class="ti ti-plus"></i> Place another order
+      </button>
     </div>
   </div><!-- end tab-order -->
 
@@ -750,10 +747,7 @@ const ALL_SECTIONS = ['section-print','section-rush','section-bizcard','section-
   'section-id','section-other','section-design-upload','rush-toggle-wrap','section-shared'];
 
 // ── File storage ──────────────────────────────────────────────────────────
-let uploadedFileData = null;  // base64 for print upload
-let uploadedFileName = null;
-let uploadedFileData2 = null; // base64 for design upload
-let uploadedFileName2 = null;
+
 
 // ── handleJobTypeChange ───────────────────────────────────────────────────
 function handleJobTypeChange(){
@@ -781,7 +775,6 @@ function handleJobTypeChange(){
   document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('f-pkg-key').value = '';
   document.getElementById('pkg-err').style.display = 'none';
-  document.getElementById('file-err').style.display = 'none';
 }
 
 // ── Chip helpers ──────────────────────────────────────────────────────────
@@ -833,66 +826,7 @@ function selectPkg(el, key){
   document.getElementById('pkg-err').style.display = 'none';
 }
 
-// ── File upload (print) ───────────────────────────────────────────────────
-function handleFileUpload(input){
-  const file = input.files[0];
-  if(!file) return;
-  if(file.size > 10*1024*1024){ alert('File too large. Max 10MB.'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    uploadedFileData = e.target.result;
-    uploadedFileName = file.name;
-    const area = document.getElementById('upload-area');
-    area.classList.add('has-file');
-    document.getElementById('upload-icon-i').className = 'ti ti-circle-check';
-    document.getElementById('upload-label-txt').textContent = '✓ ' + file.name;
-    document.getElementById('upload-sub-txt').textContent = (file.size/1024).toFixed(1)+' KB — ready to print';
-    document.getElementById('upload-clear-btn').style.display = 'block';
-    document.getElementById('file-err').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-function clearFile(e){
-  e.stopPropagation();
-  uploadedFileData = null; uploadedFileName = null;
-  document.getElementById('f-file').value = '';
-  const area = document.getElementById('upload-area');
-  area.classList.remove('has-file');
-  document.getElementById('upload-icon-i').className = 'ti ti-upload';
-  document.getElementById('upload-label-txt').textContent = 'Tap to upload your file';
-  document.getElementById('upload-sub-txt').textContent = 'PDF, JPG, PNG, DOCX, XLSX, PPTX · max 10MB';
-  document.getElementById('upload-clear-btn').style.display = 'none';
-}
 
-// ── File upload (design) ──────────────────────────────────────────────────
-function handleFileUpload2(input){
-  const file = input.files[0];
-  if(!file) return;
-  if(file.size > 10*1024*1024){ alert('File too large. Max 10MB.'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    uploadedFileData2 = e.target.result;
-    uploadedFileName2 = file.name;
-    const area = document.getElementById('upload-area2');
-    area.classList.add('has-file');
-    document.getElementById('upload-icon-i2').className = 'ti ti-circle-check';
-    document.getElementById('upload-label-txt2').textContent = '✓ ' + file.name;
-    document.getElementById('upload-sub-txt2').textContent = (file.size/1024).toFixed(1)+' KB — uploaded';
-    document.getElementById('upload-clear-btn2').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
-function clearFile2(e){
-  e.stopPropagation();
-  uploadedFileData2 = null; uploadedFileName2 = null;
-  document.getElementById('f-file2').value = '';
-  const area = document.getElementById('upload-area2');
-  area.classList.remove('has-file');
-  document.getElementById('upload-icon-i2').className = 'ti ti-file-upload';
-  document.getElementById('upload-label-txt2').textContent = 'Tap to upload your design';
-  document.getElementById('upload-sub-txt2').textContent = 'PDF, AI, PSD, JPG, PNG, SVG, ZIP · max 10MB';
-  document.getElementById('upload-clear-btn2').style.display = 'none';
-}
 
 // ── Collect extras per job type ───────────────────────────────────────────
 function collectExtras(jt){
@@ -946,11 +880,6 @@ async function submitOrder(){
     pkgLabel = RUSH_PKG_LABELS[pkgKey]||pkgKey;
     size = pkgLabel; qty = 1;
   } else if(jobtype==='Print (file upload)'){
-    if(!uploadedFileData){
-      document.getElementById('file-err').style.display='block';
-      document.getElementById('upload-area').scrollIntoView({behavior:'smooth',block:'nearest'});
-      return;
-    }
     size = document.getElementById('f-print-size').value.trim() || 'Not specified';
     qty = document.getElementById('f-qty').value || 1;
   } else {
@@ -982,8 +911,7 @@ async function submitOrder(){
       qty: Number(qty) || 1,
       extras: JSON.stringify(extras),
       rush,
-      print_file: uploadedFileName || null,
-      design_file: uploadedFileName2 || null,
+
       due: document.getElementById('f-due').value || null,
       notes: document.getElementById('f-notes').value || null,
       status: 'Pending',
@@ -1061,8 +989,7 @@ async function submitOrder(){
       (_extrasText ? 'Extras  :' + _extrasText : ''),
       '',
       '─── FILES ───────────────────',
-      'Print file  : ' + _file,
-      'Design file : ' + _design,
+      'Please attach your file(s) to this email.',
       '',
       '─── SCHEDULE ────────────────',
       'Needed by: ' + _due,
@@ -1108,11 +1035,7 @@ function resetForm(){
   document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('f-pkg-key').value='';
   document.getElementById('pkg-err').style.display='none';
-  document.getElementById('file-err').style.display='none';
-  clearFile({stopPropagation:()=>{}});
-  clearFile2({stopPropagation:()=>{}});
-  uploadedFileData=null; uploadedFileName=null;
-  uploadedFileData2=null; uploadedFileName2=null;
+
   document.getElementById('f-rush').value='0';
   document.getElementById('rush-toggle-wrap').classList.remove('on');
   document.getElementById('order-form-card').style.display='block';
