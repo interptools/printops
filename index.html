@@ -2349,17 +2349,17 @@ async function startPolling() {
 // ─── SERVICES MANAGEMENT ─────────────────────────────────────────────────────
 // Default built-in services (used as seed if Supabase table is empty)
 const DEFAULT_SERVICES = [
-  { name:'Print (file upload)', desc:'Document/image printing', status:'on', builtin:true },
-  { name:'Rush ID Photo',       desc:'1x1, 2x2, passport sizes', status:'on', builtin:true },
-  { name:'Business cards',      desc:'Glossy or matte finish',   status:'on', builtin:true },
-  { name:'Flyers',              desc:'A5/A4 full-color flyers',  status:'on', builtin:true },
-  { name:'Tarpaulin / Banner',  desc:'Flex/tarp banner printing',status:'on', builtin:true },
-  { name:'T-shirt print',       desc:'Heat transfer / sublimation', status:'on', builtin:true },
-  { name:'Sticker',             desc:'Vinyl, clear, paper',      status:'on', builtin:true },
-  { name:'Poster',              desc:'A3/A2/A1 poster printing', status:'on', builtin:true },
-  { name:'Brochure',            desc:'Tri-fold / bi-fold',       status:'on', builtin:true },
-  { name:'ID / Lanyard',        desc:'ID card and lanyards',     status:'on', builtin:true },
-  { name:'Other',               desc:'Custom / other requests',  status:'on', builtin:true },
+  { name:'Print (file upload)', description:'Document/image printing',       status:'on', builtin:true },
+  { name:'Rush ID Photo',       description:'1x1, 2x2, passport sizes',      status:'on', builtin:true },
+  { name:'Business cards',      description:'Glossy or matte finish',        status:'on', builtin:true },
+  { name:'Flyers',              description:'A5/A4 full-color flyers',       status:'on', builtin:true },
+  { name:'Tarpaulin / Banner',  description:'Flex/tarp banner printing',     status:'on', builtin:true },
+  { name:'T-shirt print',       description:'Heat transfer / sublimation',   status:'on', builtin:true },
+  { name:'Sticker',             description:'Vinyl, clear, paper',           status:'on', builtin:true },
+  { name:'Poster',              description:'A3/A2/A1 poster printing',     status:'on', builtin:true },
+  { name:'Brochure',            description:'Tri-fold / bi-fold',            status:'on', builtin:true },
+  { name:'ID / Lanyard',        description:'ID card and lanyards',          status:'on', builtin:true },
+  { name:'Other',               description:'Custom / other requests',       status:'on', builtin:true },
 ];
 
 let _editSvcId = null;
@@ -2391,7 +2391,7 @@ async function renderServices() {
       </label>
       <div style="flex:1;min-width:0">
         <div class="svc-name">${r.name}</div>
-        ${r.desc ? `<div class="svc-desc">${r.desc}</div>` : ''}
+        ${r.description ? `<div class="svc-desc">${r.description}</div>` : ''}
       </div>
       <span class="${r.status==='on'?'svc-badge-on':'svc-badge-off'}" id="svcbadge-${r.id}">${r.status==='on'?'On':'Off'}</span>
       <div class="actions">
@@ -2407,7 +2407,7 @@ async function seedDefaultServices() {
     try {
       await sbFetch('services', {
         method:'POST', prefer:'return=minimal',
-        body: JSON.stringify({ name:s.name, desc:s.desc, status:s.status, sort_order:i, builtin:true })
+        body: JSON.stringify({ name:s.name, description:s.description, status:s.status, sort_order:i, builtin:true })
       });
     } catch(e) {}
   }
@@ -2444,7 +2444,7 @@ async function openEditSvc(id) {
   _editSvcId = id;
   document.getElementById('svc-modal-title').textContent = 'Edit service';
   document.getElementById('svc-name').value = r.name;
-  document.getElementById('svc-desc').value = r.desc || '';
+  document.getElementById('svc-desc').value = r.description || '';
   setSvcStatus(r.status || 'on');
   document.getElementById('svc-modal').classList.add('open');
 }
@@ -2471,13 +2471,13 @@ async function saveService() {
     if (_editSvcId) {
       await sbFetch('services?id=eq.' + _editSvcId, {
         method:'PATCH', prefer:'return=minimal',
-        body: JSON.stringify({ name, desc, status })
+        body: JSON.stringify({ name, description: desc, status })
       });
       toast('Service updated.');
     } else {
       await sbFetch('services', {
         method:'POST', prefer:'return=minimal',
-        body: JSON.stringify({ name, desc, status, sort_order: 999 })
+        body: JSON.stringify({ name, description: desc, status, sort_order: 999 })
       });
       toast('Service added — now visible on the customer form.');
     }
