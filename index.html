@@ -100,7 +100,21 @@ tbody tr:hover td{background:var(--surface-1)}
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text-primary);color:var(--surface-2);padding:10px 18px;border-radius:var(--radius);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 .section-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;padding:8px 1.25rem 4px;margin-top:4px}
-/* Search bar */
+/* Service list rows */
+.svc-row{display:flex;align-items:center;gap:12px;padding:13px 1.25rem;border-bottom:0.5px solid var(--border);transition:background 0.1s}
+.svc-row:last-child{border-bottom:none}
+.svc-row:hover{background:var(--surface-1)}
+.svc-name{font-size:13px;font-weight:500;flex:1}
+.svc-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+.svc-badge-on{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--success-bg);color:var(--success)}
+.svc-badge-off{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--danger-bg);color:var(--danger)}
+/* Toggle switch */
+.svc-toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.svc-toggle input{opacity:0;width:0;height:0;position:absolute}
+.svc-toggle-slider{position:absolute;inset:0;background:var(--danger);border-radius:24px;cursor:pointer;transition:background 0.2s}
+.svc-toggle-slider::before{content:'';position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.2s}
+.svc-toggle input:checked + .svc-toggle-slider{background:var(--success)}
+.svc-toggle input:checked + .svc-toggle-slider::before{transform:translateX(20px)}
 .search-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
 .search-bar input{flex:1;min-width:160px;padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none}
 .search-bar input:focus{border-color:var(--accent)}
@@ -169,6 +183,13 @@ tbody tr:hover td{background:var(--surface-1)}
   .tpl-copy-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   .tpl-copy-btn.copied{background:var(--success);color:#fff;border-color:var(--success)}
   @media(max-width:700px){#tpl-grid{grid-template-columns:1fr!important}}
+  /* Template auto-fill panel */
+  .tpl-fill-bar{background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:1.25rem;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .tpl-fill-bar label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px}
+  .tpl-fill-bar select,.tpl-fill-bar input{padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none;min-width:160px}
+  .tpl-fill-bar select:focus,.tpl-fill-bar input:focus{border-color:var(--accent)}
+  .tpl-fill-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:var(--accent-bg);color:var(--accent-text);margin-left:6px;vertical-align:middle}
+  .tpl-preview-body{white-space:pre-wrap;background:var(--surface-1);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--text-primary);border:0.5px solid var(--accent);line-height:1.6;flex:1;max-height:180px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -198,6 +219,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('invoices')" id="nav-invoices"><i class="ti ti-receipt" aria-hidden="true"></i><span>Invoices</span></button>
     <button class="nav-item" onclick="nav('requests')" id="nav-requests"><i class="ti ti-inbox" aria-hidden="true"></i><span>Requests <span id="req-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
+    <button class="nav-item" onclick="nav('services')" id="nav-services"><i class="ti ti-settings-2" aria-hidden="true"></i><span>Services</span></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
     <button class="nav-item" onclick="nav('templates')" id="nav-templates"><i class="ti ti-template" aria-hidden="true"></i><span>Templates</span></button>
@@ -270,7 +292,10 @@ tbody tr:hover td{background:var(--surface-1)}
     <div class="page" id="page-orders">
       <div class="page-header">
         <div class="page-title">Orders & Job Tickets</div>
-        <button class="btn btn-primary" onclick="openOrderModal()"><i class="ti ti-plus"></i> New order</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="exportOrdersCSV()" title="Download orders as CSV spreadsheet"><i class="ti ti-table-export"></i> Export CSV</button>
+          <button class="btn btn-primary" onclick="openOrderModal()"><i class="ti ti-plus"></i> New order</button>
+        </div>
       </div>
       <div class="search-bar">
         <input id="order-search" placeholder="Search by customer, job type, notes..." oninput="renderOrders()">
@@ -292,7 +317,10 @@ tbody tr:hover td{background:var(--surface-1)}
     <div class="page" id="page-customers">
       <div class="page-header">
         <div class="page-title">Customers</div>
-        <button class="btn btn-primary" onclick="openCustModal()"><i class="ti ti-plus"></i> Add customer</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="exportCustomersCSV()" title="Download customers as CSV spreadsheet"><i class="ti ti-table-export"></i> Export CSV</button>
+          <button class="btn btn-primary" onclick="openCustModal()"><i class="ti ti-plus"></i> Add customer</button>
+        </div>
       </div>
       <div class="search-bar">
         <input id="cust-search" placeholder="Search customers..." oninput="renderCustomers()">
@@ -369,6 +397,55 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
     </div>
 
+    <!-- SERVICES -->
+    <div class="page" id="page-services">
+      <div class="page-header">
+        <div class="page-title">Services</div>
+        <button class="btn btn-primary" onclick="openAddServiceModal()"><i class="ti ti-plus"></i> Add service</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.6">
+        Toggle services <b>On</b> or <b>Off</b> — disabled services are hidden from the customer order form in real time. Add new services and they appear immediately on the customer form.
+      </div>
+      <div class="card" style="padding:0" id="services-list-card">
+        <div id="services-list"></div>
+        <div class="empty" id="services-empty" style="display:none;padding:2rem">No services configured yet. Click <strong>Add service</strong> to start.</div>
+      </div>
+      <div style="margin-top:1rem;font-size:12px;color:var(--text-muted)">
+        <i class="ti ti-info-circle"></i> Changes are saved to Supabase and reflect on the customer form within seconds.
+      </div>
+    </div>
+
+    <!-- Add/Edit Service Modal -->
+    <div class="modal-overlay" id="svc-modal" onclick="bgClose(event,'svc-modal')">
+      <div class="modal" style="width:460px">
+        <div class="modal-title">
+          <span id="svc-modal-title">Add service</span>
+          <button class="modal-close" onclick="closeModal('svc-modal')"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="form-group">
+          <label>Service name *</label>
+          <input id="svc-name" placeholder="e.g. Mug printing, Sublimation, Vinyl cut…">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">This is what customers see in the dropdown.</div>
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input id="svc-desc" placeholder="Short description for your reference">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button id="svc-status-on"  class="btn btn-success"  onclick="setSvcStatus('on')"  style="width:auto;padding:6px 18px">✓ On (available)</button>
+            <button id="svc-status-off" class="btn"              onclick="setSvcStatus('off')" style="width:auto;padding:6px 18px">✕ Off (hidden)</button>
+          </div>
+          <input type="hidden" id="svc-status-val" value="on">
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('svc-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveService()">Save service</button>
+        </div>
+      </div>
+    </div>
+
     <!-- PRICE CALCULATOR -->
     <div class="page" id="page-calculator">
       <div class="page-header"><div class="page-title">Price calculator</div></div>
@@ -422,7 +499,30 @@ tbody tr:hover td{background:var(--surface-1)}
     <!-- TEMPLATES -->
     <div class="page" id="page-templates">
       <div class="page-header"><div class="page-title">Ready-made Templates</div></div>
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.6">Copy-paste templates for customer messages, social media posts, invoices, and more. Click <strong>Copy</strong> to copy any template instantly.</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.6">Pick a customer and order below — all <code style="background:var(--surface-1);padding:1px 5px;border-radius:4px;font-size:11px;border:0.5px solid var(--border)">[placeholders]</code> will be auto-filled when you copy. Or leave blank to copy the raw template.</div>
+
+      <!-- Auto-fill bar -->
+      <div class="tpl-fill-bar">
+        <div>
+          <label>Customer</label>
+          <select id="tpl-cust" onchange="tplFillUpdate()">
+            <option value="">— none —</option>
+          </select>
+        </div>
+        <div>
+          <label>Order (optional)</label>
+          <select id="tpl-order" onchange="tplFillUpdate()">
+            <option value="">— none —</option>
+          </select>
+        </div>
+        <div>
+          <label>Custom amount (₱)</label>
+          <input id="tpl-amount" type="number" min="0" placeholder="e.g. 350" oninput="tplFillUpdate()" style="width:130px">
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);align-self:center;padding-bottom:2px">
+          <i class="ti ti-info-circle"></i> Fills [Name], [Job type], [Amount], [Date] & more
+        </div>
+      </div>
 
       <!-- Filter tabs -->
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem" id="tpl-filter-row">
@@ -870,7 +970,7 @@ function nav(p) {
   const renders = {
     dashboard: renderDash, orders: renderOrders, customers: renderCustomers,
     invoices: renderInvoices, requests: renderRequests,
-    idphotos: renderPhotoOrders,
+    idphotos: renderPhotoOrders, services: renderServices,
     calculator: () => calcPrice(), freetools: () => {}, sync: renderSync,
     templates: renderTemplates
   };
@@ -2246,6 +2346,159 @@ async function startPolling() {
   }, 30000); // every 30 seconds
 }
 
+// ─── SERVICES MANAGEMENT ─────────────────────────────────────────────────────
+// Default built-in services (used as seed if Supabase table is empty)
+const DEFAULT_SERVICES = [
+  { name:'Print (file upload)', desc:'Document/image printing', status:'on', builtin:true },
+  { name:'Rush ID Photo',       desc:'1x1, 2x2, passport sizes', status:'on', builtin:true },
+  { name:'Business cards',      desc:'Glossy or matte finish',   status:'on', builtin:true },
+  { name:'Flyers',              desc:'A5/A4 full-color flyers',  status:'on', builtin:true },
+  { name:'Tarpaulin / Banner',  desc:'Flex/tarp banner printing',status:'on', builtin:true },
+  { name:'T-shirt print',       desc:'Heat transfer / sublimation', status:'on', builtin:true },
+  { name:'Sticker',             desc:'Vinyl, clear, paper',      status:'on', builtin:true },
+  { name:'Poster',              desc:'A3/A2/A1 poster printing', status:'on', builtin:true },
+  { name:'Brochure',            desc:'Tri-fold / bi-fold',       status:'on', builtin:true },
+  { name:'ID / Lanyard',        desc:'ID card and lanyards',     status:'on', builtin:true },
+  { name:'Other',               desc:'Custom / other requests',  status:'on', builtin:true },
+];
+
+let _editSvcId = null;
+
+async function getSvcDB() {
+  try {
+    const rows = await sbFetch('services?order=sort_order.asc,id.asc');
+    return rows || [];
+  } catch(e) { console.error('services fetch failed:', e); return []; }
+}
+
+async function renderServices() {
+  const list  = document.getElementById('services-list');
+  const empty = document.getElementById('services-empty');
+  list.innerHTML = '<div style="padding:1.25rem;font-size:13px;color:var(--text-muted)">Loading…</div>';
+  let rows = await getSvcDB();
+  // If table is empty, seed defaults
+  if (!rows.length) {
+    await seedDefaultServices();
+    rows = await getSvcDB();
+  }
+  if (!rows.length) { list.innerHTML = ''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display = 'none';
+  list.innerHTML = rows.map(r => `
+    <div class="svc-row" id="svcrow-${r.id}">
+      <label class="svc-toggle" title="${r.status==='on'?'Click to disable':'Click to enable'}">
+        <input type="checkbox" ${r.status==='on'?'checked':''} onchange="toggleSvc(${r.id},this.checked)">
+        <span class="svc-toggle-slider"></span>
+      </label>
+      <div style="flex:1;min-width:0">
+        <div class="svc-name">${r.name}</div>
+        ${r.desc ? `<div class="svc-desc">${r.desc}</div>` : ''}
+      </div>
+      <span class="${r.status==='on'?'svc-badge-on':'svc-badge-off'}" id="svcbadge-${r.id}">${r.status==='on'?'On':'Off'}</span>
+      <div class="actions">
+        <button class="btn btn-sm" onclick="openEditSvc(${r.id})" title="Edit"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSvc(${r.id},'${r.name.replace(/'/g,"\\'")}')" title="Delete"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+async function seedDefaultServices() {
+  for (let i = 0; i < DEFAULT_SERVICES.length; i++) {
+    const s = DEFAULT_SERVICES[i];
+    try {
+      await sbFetch('services', {
+        method:'POST', prefer:'return=minimal',
+        body: JSON.stringify({ name:s.name, desc:s.desc, status:s.status, sort_order:i, builtin:true })
+      });
+    } catch(e) {}
+  }
+}
+
+async function toggleSvc(id, isOn) {
+  const status = isOn ? 'on' : 'off';
+  // optimistic UI
+  const badge = document.getElementById('svcbadge-' + id);
+  if (badge) { badge.className = isOn ? 'svc-badge-on' : 'svc-badge-off'; badge.textContent = isOn ? 'On' : 'Off'; }
+  try {
+    await sbFetch('services?id=eq.' + id, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ status }) });
+    toast(isOn ? 'Service enabled — visible to customers.' : 'Service disabled — hidden from customers.');
+  } catch(e) {
+    toast('⚠️ Could not update. Check Supabase connection.');
+    renderServices(); // revert
+  }
+}
+
+function openAddServiceModal() {
+  _editSvcId = null;
+  document.getElementById('svc-modal-title').textContent = 'Add service';
+  document.getElementById('svc-name').value = '';
+  document.getElementById('svc-desc').value = '';
+  setSvcStatus('on');
+  document.getElementById('svc-modal').classList.add('open');
+  setTimeout(() => document.getElementById('svc-name').focus(), 100);
+}
+
+async function openEditSvc(id) {
+  const rows = await getSvcDB();
+  const r = rows.find(x => x.id === id);
+  if (!r) return;
+  _editSvcId = id;
+  document.getElementById('svc-modal-title').textContent = 'Edit service';
+  document.getElementById('svc-name').value = r.name;
+  document.getElementById('svc-desc').value = r.desc || '';
+  setSvcStatus(r.status || 'on');
+  document.getElementById('svc-modal').classList.add('open');
+}
+
+function setSvcStatus(val) {
+  document.getElementById('svc-status-val').value = val;
+  const onBtn  = document.getElementById('svc-status-on');
+  const offBtn = document.getElementById('svc-status-off');
+  if (val === 'on') {
+    onBtn.className  = 'btn btn-success'; onBtn.style.width='auto'; onBtn.style.padding='6px 18px';
+    offBtn.className = 'btn';             offBtn.style.width='auto'; offBtn.style.padding='6px 18px';
+  } else {
+    onBtn.className  = 'btn';             onBtn.style.width='auto'; onBtn.style.padding='6px 18px';
+    offBtn.className = 'btn btn-danger';  offBtn.style.width='auto'; offBtn.style.padding='6px 18px';
+  }
+}
+
+async function saveService() {
+  const name   = document.getElementById('svc-name').value.trim();
+  const desc   = document.getElementById('svc-desc').value.trim();
+  const status = document.getElementById('svc-status-val').value;
+  if (!name) { alert('Please enter a service name.'); return; }
+  try {
+    if (_editSvcId) {
+      await sbFetch('services?id=eq.' + _editSvcId, {
+        method:'PATCH', prefer:'return=minimal',
+        body: JSON.stringify({ name, desc, status })
+      });
+      toast('Service updated.');
+    } else {
+      await sbFetch('services', {
+        method:'POST', prefer:'return=minimal',
+        body: JSON.stringify({ name, desc, status, sort_order: 999 })
+      });
+      toast('Service added — now visible on the customer form.');
+    }
+    closeModal('svc-modal');
+    renderServices();
+  } catch(e) {
+    alert('Could not save. Check Supabase connection.\n' + e.message);
+  }
+}
+
+async function deleteSvc(id, name) {
+  if (!confirm(`Delete service "${name}"?\n\nThis will remove it from the customer form immediately.`)) return;
+  try {
+    await sbFetch('services?id=eq.' + id, { method:'DELETE' });
+    toast('Service deleted.');
+    renderServices();
+  } catch(e) {
+    toast('⚠️ Could not delete.');
+  }
+}
+
 // ─── TEMPLATES ────────────────────────────────────────────────────────────
 const TEMPLATES = [
   // SMS / Chat
@@ -2481,18 +2734,91 @@ Thank you for always choosing Arroyo Suite! 🙏` },
 
 let activeTplTag = 'all';
 
+// ─── TEMPLATE AUTO-FILL ───────────────────────────────────────────────────────
+// Populate the customer and order dropdowns when the Templates page opens
+function tplFillPopulate() {
+  const custSel = document.getElementById('tpl-cust');
+  const ordSel  = document.getElementById('tpl-order');
+  if (!custSel || !ordSel) return;
+  // customers
+  const prevC = custSel.value;
+  custSel.innerHTML = '<option value="">— none —</option>' +
+    customers.map(c => `<option value="${c.id}"${c.id == prevC ? ' selected' : ''}>${c.name}</option>`).join('');
+  // orders (filtered by selected customer, or all)
+  tplFillOrders();
+}
+
+function tplFillOrders() {
+  const custId = Number(document.getElementById('tpl-cust')?.value || 0);
+  const ordSel = document.getElementById('tpl-order');
+  if (!ordSel) return;
+  const pool = custId ? orders.filter(o => o.customerId === custId) : orders;
+  ordSel.innerHTML = '<option value="">— none —</option>' +
+    [...pool].reverse().slice(0, 30).map(o =>
+      `<option value="${o.id}">#${String(o.id).padStart(4,'0')} ${o.jobtype}${o.due ? ' · ' + o.due : ''}</option>`
+    ).join('');
+}
+
+function tplFillUpdate() {
+  // when customer changes, re-filter orders
+  tplFillOrders();
+  renderTemplates();
+}
+
+// Build the filled text for a given template body using current selections
+function tplApplyFill(body) {
+  const custId  = Number(document.getElementById('tpl-cust')?.value || 0);
+  const ordId   = Number(document.getElementById('tpl-order')?.value || 0);
+  const amount  = (document.getElementById('tpl-amount')?.value || '').trim();
+  const cust    = customers.find(c => c.id === custId);
+  const ord     = orders.find(o => o.id === ordId);
+
+  let out = body;
+  if (cust) {
+    out = out.replace(/\[Name\]/gi, cust.name);
+    out = out.replace(/\[Phone\]/gi, cust.phone || '');
+    out = out.replace(/\[Email\]/gi, cust.email || '');
+  }
+  if (ord) {
+    out = out.replace(/\[Job type\]/gi, ord.jobtype || '');
+    out = out.replace(/\[Job\]/gi, ord.jobtype || '');
+    out = out.replace(/\[Size\]/gi, ord.size || '');
+    out = out.replace(/\[Quantity\]/gi, ord.qty || '');
+    out = out.replace(/\[Qty\]/gi, ord.qty || '');
+    out = out.replace(/\[Date\]/gi, ord.due || '');
+    out = out.replace(/\[Pickup\]/gi, ord.due || '');
+    out = out.replace(/\[REF\]/gi, '#' + String(ord.id).padStart(4, '0'));
+    if (!amount) out = out.replace(/\[Amount\]/gi, '₱' + Number(ord.amount).toLocaleString('en-PH'));
+  }
+  if (amount) {
+    out = out.replace(/\[Amount\]/gi, '₱' + Number(amount).toLocaleString('en-PH'));
+    out = out.replace(/\[Total\]/gi, '₱' + Number(amount).toLocaleString('en-PH'));
+  }
+  return out;
+}
+
 function renderTemplates(){
   const grid = document.getElementById('tpl-grid');
   if(!grid) return;
+  // populate dropdowns whenever page renders
+  tplFillPopulate();
   const filtered = activeTplTag === 'all' ? TEMPLATES : TEMPLATES.filter(t => t.tag === activeTplTag);
-  grid.innerHTML = filtered.map((t, i) => {
-    const tagLabels = {sms:'📱 SMS / Chat', social:'📣 Social Media', invoice:'🧾 Invoice / Payment', followup:'🔄 Follow-up', promo:'🎉 Promotions'};
+  const tagLabels = {sms:'📱 SMS / Chat', social:'📣 Social Media', invoice:'🧾 Invoice / Payment', followup:'🔄 Follow-up', promo:'🎉 Promotions'};
+  const hasFill = !!(document.getElementById('tpl-cust')?.value || document.getElementById('tpl-order')?.value || document.getElementById('tpl-amount')?.value);
+  grid.innerHTML = filtered.map((t) => {
+    const filled  = tplApplyFill(t.body);
+    const changed = filled !== t.body;
+    // show filled preview inline if something is selected
+    const previewHtml = hasFill && changed
+      ? `<div class="tpl-preview-body">${filled.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
+      : `<div class="tpl-body">${t.body}</div>`;
+    const filledTag = changed ? `<span class="tpl-fill-tag"><i class="ti ti-magic-wand"></i> Auto-filled</span>` : '';
     return `<div class="tpl-card">
       <div class="tpl-tag">${tagLabels[t.tag]||t.tag}</div>
-      <div class="tpl-title">${t.title}</div>
-      <div class="tpl-body">${t.body}</div>
+      <div class="tpl-title">${t.title}${filledTag}</div>
+      ${previewHtml}
       <button class="tpl-copy-btn" onclick="copyTpl(this, ${TEMPLATES.indexOf(t)})">
-        <i class="ti ti-copy"></i> Copy
+        <i class="ti ti-copy"></i> Copy${changed ? ' (filled)' : ''}
       </button>
     </div>`;
   }).join('');
@@ -2508,28 +2834,69 @@ function filterTpl(tag, el){
 function copyTpl(btn, idx){
   const tpl = TEMPLATES[idx];
   if(!tpl) return;
-  navigator.clipboard.writeText(tpl.body).then(() => {
+  const text = tplApplyFill(tpl.body);
+  const doCopy = (t) => {
+    navigator.clipboard.writeText(t).then(() => {}).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    });
     btn.classList.add('copied');
     btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = '<i class="ti ti-copy"></i> Copy';
-    }, 2000);
-  }).catch(() => {
-    // fallback
-    const ta = document.createElement('textarea');
-    ta.value = tpl.body;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    btn.classList.add('copied');
-    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = '<i class="ti ti-copy"></i> Copy';
-    }, 2000);
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '<i class="ti ti-copy"></i> Copy'; }, 2000);
+  };
+  doCopy(text);
+}
+
+// ─── CSV EXPORT ───────────────────────────────────────────────────────────────
+function csvEscape(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  // wrap in quotes if it contains comma, newline or quote
+  if (s.includes(',') || s.includes('\n') || s.includes('"')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function csvRow(arr) { return arr.map(csvEscape).join(','); }
+function downloadCSV(filename, rows) {
+  const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  toast('CSV downloaded.');
+}
+
+function exportOrdersCSV() {
+  const header = csvRow(['Order #','Customer','Phone','Email','Job type','Size','Qty','Amount (₱)','Payment','Status','Due date','Notes','Created']);
+  const rows = [...orders].reverse().map(o => {
+    const c = customers.find(x => x.id === o.customerId);
+    return csvRow([
+      '#' + String(o.id).padStart(4,'0'),
+      c ? c.name : '—',
+      c ? (c.phone || '') : '',
+      c ? (c.email || '') : '',
+      o.jobtype || '',
+      o.size || '',
+      o.qty || '',
+      Number(o.amount || 0).toFixed(2),
+      o.payment || 'Unpaid',
+      o.status || '',
+      o.due || '',
+      o.notes || '',
+      o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-PH') : ''
+    ]);
   });
+  downloadCSV('arroyo-orders-' + new Date().toISOString().slice(0,10) + '.csv', [header, ...rows]);
+}
+
+function exportCustomersCSV() {
+  const header = csvRow(['Name','Phone','Email','Address','Total orders','Total spent (₱)']);
+  const rows = customers.map(c => {
+    const custOrders = orders.filter(o => o.customerId === c.id);
+    const total = custOrders.reduce((s, o) => s + Number(o.amount || 0), 0);
+    return csvRow([c.name, c.phone || '', c.email || '', c.address || '', custOrders.length, total.toFixed(2)]);
+  });
+  downloadCSV('arroyo-customers-' + new Date().toISOString().slice(0,10) + '.csv', [header, ...rows]);
 }
 </script>
 </body>

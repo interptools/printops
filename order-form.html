@@ -194,22 +194,11 @@
 
       <div class="divider">Order details</div>
 
-      <!-- Job type -->
+      <!-- Job type — populated dynamically from Supabase services table -->
       <div class="form-group">
         <label>Job type *</label>
         <select id="f-jobtype" onchange="handleJobTypeChange()">
-          <option value="">Select job type...</option>
-          <option value="Print (file upload)">Print (upload file to print)</option>
-          <option value="Rush ID Photo">Rush ID Photo</option>
-          <option value="Business cards">Business cards</option>
-          <option value="Flyers">Flyers</option>
-          <option value="Tarpaulin">Tarpaulin / Banner</option>
-          <option value="T-shirt print">T-shirt print</option>
-          <option value="Sticker">Sticker</option>
-          <option value="Poster">Poster</option>
-          <option value="Brochure">Brochure</option>
-          <option value="ID / Lanyard">ID / Lanyard</option>
-          <option value="Other">Other</option>
+          <option value="">Loading services…</option>
         </select>
       </div>
 
@@ -734,7 +723,9 @@ const RUSH_PKG_LABELS = {
 };
 
 // ── Job type config ───────────────────────────────────────────────────────
-// Which sections to show per job type
+// Section mapping: which detail section to show for each known job type key.
+// Custom/new services added via the dashboard fall back to 'section-other'
+// (generic notes + file upload + rush toggle) automatically.
 const JOB_SECTIONS = {
   'Print (file upload)': ['section-print'],
   'Rush ID Photo':       ['section-rush'],
@@ -748,6 +739,52 @@ const JOB_SECTIONS = {
   'ID / Lanyard':        ['section-id','section-design-upload','rush-toggle-wrap'],
   'Other':               ['section-other','section-design-upload','rush-toggle-wrap'],
 };
+
+// ── Load active services from Supabase and populate the dropdown ──────────
+// ── Default service list — used when Supabase table isn't set up yet ─────────
+const FALLBACK_SERVICES = [
+  'Print (file upload)',
+  'Rush ID Photo',
+  'Business cards',
+  'Flyers',
+  'Tarpaulin / Banner',
+  'T-shirt print',
+  'Sticker',
+  'Poster',
+  'Brochure',
+  'ID / Lanyard',
+  'Other',
+];
+
+const FALLBACK_LABELS = {
+  'Print (file upload)': 'Print (upload file to print)',
+};
+
+function applyFallbackServices() {
+  const sel = document.getElementById('f-jobtype');
+  sel.innerHTML = '<option value="">Select job type...</option>' +
+    FALLBACK_SERVICES.map(s => `<option value="${s}">${FALLBACK_LABELS[s] || s}</option>`).join('');
+}
+
+async function loadServices() {
+  // Show full working list immediately — no "Loading…" flash, no broken state
+  applyFallbackServices();
+  // Then try to upgrade from Supabase silently (only if table exists and has rows)
+  try {
+    const rows = await sbFetch('services?status=eq.on&order=sort_order.asc,id.asc');
+    if (rows && rows.length) {
+      const sel = document.getElementById('f-jobtype');
+      sel.innerHTML = '<option value="">Select job type...</option>' +
+        rows.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+    }
+    // If empty or null — keep the fallback already shown, no action needed
+  } catch(e) {
+    // Table not set up yet or network issue — fallback already showing, nothing to do
+  }
+}
+
+// Call on page load
+loadServices();
 
 const ALL_SECTIONS = ['section-print','section-rush','section-bizcard','section-flyers',
   'section-tarp','section-tshirt','section-sticker','section-poster','section-brochure',
@@ -765,8 +802,8 @@ function handleJobTypeChange(){
     if(el) el.style.display = 'none';
   });
   if(!jt) return;
-  // show relevant
-  const toShow = JOB_SECTIONS[jt] || [];
+  // show relevant sections — unknown/custom services fall back to 'Other' sections
+  const toShow = JOB_SECTIONS[jt] || ['section-other','section-design-upload','rush-toggle-wrap'];
   toShow.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = '';
