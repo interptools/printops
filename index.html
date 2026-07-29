@@ -1317,26 +1317,8 @@ function markPaid(id) { invoices = invoices.map(i => i.id === id ? {...i, status
 function deleteInv(id) { if (!confirm('Delete this invoice?')) return; invoices = invoices.filter(i => i.id !== id); persist(); renderInvoices(); toast('Invoice deleted.'); }
 
 // ── Supabase config ────────────────────────────────────────────────────────
-// Keys are NOT hardcoded in source. They are entered once per browser session
-// AFTER the password gate passes, then held in sessionStorage only
-// (automatically cleared when the tab/window closes — never written to disk).
-let SUPABASE_URL      = '';
-let SUPABASE_ANON_KEY = '';
-
-function _initSbConfig() {
-  SUPABASE_URL      = sessionStorage.getItem('sb_url') || '';
-  SUPABASE_ANON_KEY = sessionStorage.getItem('sb_key') || '';
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    const url = (prompt('Enter your Supabase Project URL:') || '').trim();
-    const key = (prompt('Enter your Supabase Anon Key:') || '').trim();
-    if (url && key) {
-      sessionStorage.setItem('sb_url', url);
-      sessionStorage.setItem('sb_key', key);
-      SUPABASE_URL      = url;
-      SUPABASE_ANON_KEY = key;
-    }
-  }
-}
+const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
 
 async function sbFetch(path, options = {}) {
   const headers = {
@@ -2196,7 +2178,7 @@ function importData(e) {
 // Supabase sync page — shows connection status
 function saveSbConfig() {
   // Config is now hardcoded at the top of the script. This function is kept for compatibility.
-  toast('Keys are loaded from sessionStorage. Close and reopen the tab to re-enter them.');
+  toast('Keys are hardcoded in the file. Edit SUPABASE_URL and SUPABASE_ANON_KEY directly to change them.');
 }
 
 async function renderSync() {
@@ -2286,7 +2268,6 @@ function checkPassword() {
   if (val === OWNER_PASSWORD) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app-content').style.display = 'block';
-    _initSbConfig();
     renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
   } else {
     document.getElementById('gate-err').style.display = 'block';
@@ -2377,14 +2358,6 @@ async function renderServices() {
   const list  = document.getElementById('services-list');
   const empty = document.getElementById('services-empty');
   if(empty) empty.style.display = 'none';
-
-  // Guard: check keys are loaded
-  if (!SUPABASE_URL) {
-    list.innerHTML = `<div style="padding:1.5rem;font-size:13px;color:var(--danger)">
-      <i class="ti ti-alert-triangle"></i> Supabase not connected — please log out and log back in to enter your keys.
-    </div>`;
-    return;
-  }
 
   list.innerHTML = '<div style="padding:1.25rem;font-size:13px;color:var(--text-muted)">Loading…</div>';
   const { ok, rows, error } = await getSvcDB();
