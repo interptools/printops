@@ -2367,21 +2367,55 @@ let _editSvcId = null;
 async function getSvcDB() {
   try {
     const rows = await sbFetch('services?order=sort_order.asc,id.asc');
-    return rows || [];
-  } catch(e) { console.error('services fetch failed:', e); return []; }
+    return { ok: true, rows: rows || [] };
+  } catch(e) {
+    return { ok: false, rows: [], error: e.message };
+  }
 }
 
 async function renderServices() {
   const list  = document.getElementById('services-list');
   const empty = document.getElementById('services-empty');
-  list.innerHTML = '<div style="padding:1.25rem;font-size:13px;color:var(--text-muted)">Loading…</div>';
-  let rows = await getSvcDB();
-  // If table is empty, seed defaults
-  if (!rows.length) {
-    await seedDefaultServices();
-    rows = await getSvcDB();
+  if(empty) empty.style.display = 'none';
+
+  // Guard: check keys are loaded
+  if (!SUPABASE_URL) {
+    list.innerHTML = `<div style="padding:1.5rem;font-size:13px;color:var(--danger)">
+      <i class="ti ti-alert-triangle"></i> Supabase not connected — please log out and log back in to enter your keys.
+    </div>`;
+    return;
   }
-  if (!rows.length) { list.innerHTML = ''; if(empty) empty.style.display='block'; return; }
+
+  list.innerHTML = '<div style="padding:1.25rem;font-size:13px;color:var(--text-muted)">Loading…</div>';
+  const { ok, rows, error } = await getSvcDB();
+
+  if (!ok) {
+    list.innerHTML = `<div style="padding:1.5rem;font-size:13px;color:var(--danger)">
+      <i class="ti ti-alert-triangle"></i> Could not load services: ${error}
+    </div>`;
+    return;
+  }
+
+  // Table exists but empty — seed defaults
+  if (!rows.length) {
+    list.innerHTML = '<div style="padding:1.25rem;font-size:13px;color:var(--text-muted)">Seeding default services…</div>';
+    await seedDefaultServices();
+    const { rows: seeded } = await getSvcDB();
+    if (!seeded.length) {
+      list.innerHTML = '';
+      if(empty) empty.style.display = 'block';
+      return;
+    }
+    renderServiceRows(seeded);
+    return;
+  }
+
+  renderServiceRows(rows);
+}
+
+function renderServiceRows(rows) {
+  const list  = document.getElementById('services-list');
+  const empty = document.getElementById('services-empty');
   if(empty) empty.style.display = 'none';
   list.innerHTML = rows.map(r => `
     <div class="svc-row" id="svcrow-${r.id}">
@@ -2438,7 +2472,7 @@ function openAddServiceModal() {
 }
 
 async function openEditSvc(id) {
-  const rows = await getSvcDB();
+  const { rows } = await getSvcDB();
   const r = rows.find(x => x.id === id);
   if (!r) return;
   _editSvcId = id;
