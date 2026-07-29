@@ -44,7 +44,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .page.active{display:block}
 .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:10px}
 .page-title{font-size:18px;font-weight:600;letter-spacing:-0.3px}
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
 @media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
 @media(max-width:700px){.sidebar{width:56px}.logo span,.nav-item span,.sidebar-bottom{display:none}.nav-item{justify-content:center;padding:12px}.logo{padding:0.75rem;text-align:center}.main{padding:1rem}}
@@ -220,6 +220,7 @@ tbody tr:hover td{background:var(--surface-1)}
         <div class="metric"><div class="metric-label">In progress</div><div class="metric-value warning" id="m-inprogress">0</div></div>
         <div class="metric"><div class="metric-label">Completed</div><div class="metric-value success" id="m-done">0</div></div>
         <div class="metric"><div class="metric-label">Unpaid invoices</div><div class="metric-value danger" id="m-unpaid">₱0</div></div>
+        <div class="metric"><div class="metric-label">Total revenue (paid)</div><div class="metric-value success" id="m-revenue">₱0</div></div>
       </div>
       <!-- Services quick links -->
       <div style="margin-bottom:1.25rem;display:flex;gap:10px;flex-wrap:wrap">
@@ -899,6 +900,12 @@ function renderDash() {
   const unpaidTotal = invoices.filter(i => i.status === 'Unpaid').reduce((a, i) => a + Number(i.amount), 0);
   document.getElementById('m-unpaid').textContent = '₱' + unpaidTotal.toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:2});
 
+  // Total revenue = paid invoices + paid orders (excluding orders already covered by an invoice)
+  const _linkedIds = new Set(invoices.filter(i => i.orderId).map(i => i.orderId));
+  const paidInvTotal  = invoices.filter(i => i.status === 'Paid').reduce((a, i) => a + Number(i.amount), 0);
+  const paidOrdTotal  = orders.filter(o => o.payment === 'Paid' && !_linkedIds.has(o.id)).reduce((a, o) => a + Number(o.amount), 0);
+  document.getElementById('m-revenue').textContent = '₱' + (paidInvTotal + paidOrdTotal).toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:2});
+
   // Deadline alerts
   const alerts = orders.filter(o => o.status !== 'Done' && o.status !== 'Cancelled' && o.due).map(o => ({...o, days: daysUntil(o.due)})).filter(o => o.days !== null && o.days <= 1);
   const alertBox = document.getElementById('deadline-alerts');
@@ -932,10 +939,20 @@ function renderRevenueChart() {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({ label: d.toLocaleString('default', {month:'short'}), year: d.getFullYear(), month: d.getMonth() });
   }
-  const data = months.map(m => invoices.filter(i => i.status === 'Paid' && i.createdAt).reduce((sum, i) => {
-    const d = new Date(i.createdAt);
-    return (d.getFullYear() === m.year && d.getMonth() === m.month) ? sum + Number(i.amount) : sum;
-  }, 0));
+  // Revenue = paid invoices + orders marked as Paid (to avoid double-counting,
+  // skip orders that already have a linked invoice in the invoices list)
+  const linkedOrderIds = new Set(invoices.filter(i => i.orderId).map(i => i.orderId));
+  const data = months.map(m => {
+    const invRev = invoices.filter(i => i.status === 'Paid' && i.createdAt).reduce((sum, i) => {
+      const d = new Date(i.createdAt);
+      return (d.getFullYear() === m.year && d.getMonth() === m.month) ? sum + Number(i.amount) : sum;
+    }, 0);
+    const orderRev = orders.filter(o => o.payment === 'Paid' && o.createdAt && !linkedOrderIds.has(o.id)).reduce((sum, o) => {
+      const d = new Date(o.createdAt);
+      return (d.getFullYear() === m.year && d.getMonth() === m.month) ? sum + Number(o.amount) : sum;
+    }, 0);
+    return invRev + orderRev;
+  });
 
   const ctx = document.getElementById('revenue-chart').getContext('2d');
   if (revenueChart) revenueChart.destroy();
@@ -1200,15 +1217,33 @@ function markPaid(id) { invoices = invoices.map(i => i.id === id ? {...i, status
 function deleteInv(id) { if (!confirm('Delete this invoice?')) return; invoices = invoices.filter(i => i.id !== id); persist(); renderInvoices(); toast('Invoice deleted.'); }
 
 // ── Supabase config ────────────────────────────────────────────────────────
-// Use the SAME values you put in order-form.html
-const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
+// Keys are NOT hardcoded in source. They are entered once per browser session
+// AFTER the password gate passes, then held in sessionStorage only
+// (automatically cleared when the tab/window closes — never written to disk).
+let SUPABASE_URL      = '';
+let SUPABASE_ANON_KEY = '';
+
+function _initSbConfig() {
+  SUPABASE_URL      = sessionStorage.getItem('sb_url') || '';
+  SUPABASE_ANON_KEY = sessionStorage.getItem('sb_key') || '';
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    const url = (prompt('Enter your Supabase Project URL:') || '').trim();
+    const key = (prompt('Enter your Supabase Anon Key:') || '').trim();
+    if (url && key) {
+      sessionStorage.setItem('sb_url', url);
+      sessionStorage.setItem('sb_key', key);
+      SUPABASE_URL      = url;
+      SUPABASE_ANON_KEY = key;
+    }
+  }
+}
 
 async function sbFetch(path, options = {}) {
   const headers = {
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
+    'x-app-source': 'arroyo-dashboard',
     ...(options.prefer ? {'Prefer': options.prefer} : {}),
     ...(options.extraHeaders || {})
   };
@@ -1471,9 +1506,22 @@ async function convertReqToOrder(id) {
       fileRow.style.display = 'flex';
       fileNameEl.textContent = fname;
     }
-    toast('Customer details loaded — set amount and save.');
+    toast('Customer details loaded — set amount and save. An invoice draft will be created automatically.');
     // Auto-mark request as In Progress
     updateReqStatusDB(id, 'In progress').catch(() => {});
+    // Auto-create a ₱0 draft invoice linked to this customer so the owner only needs to fill in the amount
+    const draftInv = {
+      id: nextId(invoices),
+      customerId: cust.id,
+      orderId: null, // will be linked properly once the order is saved
+      amount: 0,
+      due: r.due || '',
+      notes: `Auto-created from request ${r.ref || '#' + id}. Update amount after saving the order.`,
+      status: 'Unpaid',
+      createdAt: new Date().toISOString()
+    };
+    invoices = [...invoices, draftInv];
+    persist();
   }, 150);
 }
 
@@ -2048,7 +2096,7 @@ function importData(e) {
 // Supabase sync page — shows connection status
 function saveSbConfig() {
   // Config is now hardcoded at the top of the script. This function is kept for compatibility.
-  toast('Config is now hardcoded in the file. Edit SUPABASE_URL and SUPABASE_ANON_KEY directly.');
+  toast('Keys are loaded from sessionStorage. Close and reopen the tab to re-enter them.');
 }
 
 async function renderSync() {
@@ -2138,6 +2186,7 @@ function checkPassword() {
   if (val === OWNER_PASSWORD) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app-content').style.display = 'block';
+    _initSbConfig();
     renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
   } else {
     document.getElementById('gate-err').style.display = 'block';
