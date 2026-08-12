@@ -257,14 +257,7 @@
     </div>
   </div>
 
-  <!-- Dashboard view (shown after successful login) -->
-  <div class="dashboard" id="dashboardView">
-    <span class="role-badge" id="roleBadge">owner</span>
-    <div class="dash-title" id="dashTitle">Welcome back!</div>
-    <p class="dash-sub" id="dashSub">You are signed in to Arroyo Suite.</p>
-    <div class="divider"></div>
-    <button class="btn-logout" onclick="signOut()">Sign out</button>
-  </div>
+
 
 </div>
 
@@ -301,7 +294,7 @@
     if (role === 'owner') {
       const pass = document.getElementById('ownerPass').value;
       if (pass === OWNER_PASSWORD) {
-        showDashboard('owner', 'Owner Dashboard', 'Full access to all Arroyo Suite features.');
+        showDashboard('owner', 'Owner');
       } else {
         document.getElementById('ownerError').textContent = 'Incorrect password. Please try again.';
       }
@@ -311,33 +304,19 @@
       const pass = document.getElementById('empPass').value;
       const match = EMPLOYEES.find(e => e.username === user && e.password === pass);
       if (match) {
-        showDashboard('employee', `Welcome, ${capitalize(match.username)}!`, 'You have employee access. Some features may be restricted.');
+        showDashboard('employee', capitalize(match.username));
       } else {
         document.getElementById('empError').textContent = 'Invalid username or password.';
       }
     }
   }
 
-  function showDashboard(role, title, sub) {
-    document.getElementById('loginView').style.display = 'none';
-    const dash = document.getElementById('dashboardView');
-    dash.classList.add('active');
-
-    const badge = document.getElementById('roleBadge');
-    badge.textContent = role === 'owner' ? '👑 Owner' : '👤 Employee';
-    badge.className = 'role-badge ' + role;
-
-    document.getElementById('dashTitle').textContent = title;
-    document.getElementById('dashSub').textContent = sub;
-  }
-
-  function signOut() {
-    document.getElementById('loginView').style.display = 'flex';
-    document.getElementById('dashboardView').classList.remove('active');
-    document.getElementById('ownerPass').value = '';
-    document.getElementById('empUser').value = '';
-    document.getElementById('empPass').value = '';
-    switchTab('owner');
+  function showDashboard(role, name) {
+    // Store session info so the dashboard knows who is logged in
+    sessionStorage.setItem('arroyoRole', role);
+    sessionStorage.setItem('arroyoName', name);
+    // Redirect to dashboard — both Owner and Employee get full access
+    window.location.href = 'order-form.html';
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
