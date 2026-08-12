@@ -1043,6 +1043,27 @@ tbody tr:hover td{background:var(--surface-1)}
   </div>
 </div>
 
+<!-- Logout Modal -->
+<div class="modal-overlay" id="logout-modal" onclick="bgClose(event,'logout-modal')">
+  <div class="modal" style="width:340px;text-align:center;padding:2rem">
+    <div style="width:56px;height:56px;border-radius:50%;background:var(--danger-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i class="ti ti-logout" style="font-size:26px;color:var(--danger)"></i>
+    </div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:6px">Log out?</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.6">
+      You'll need to enter your password to access the dashboard again.
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;padding:10px" onclick="closeModal('logout-modal')">
+        Cancel
+      </button>
+      <button class="btn btn-danger" style="flex:1;padding:10px;background:var(--danger);color:#fff;border-color:var(--danger)" onclick="confirmLogout()">
+        <i class="ti ti-logout"></i> Log out
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Print Invoice Modal -->
 <div class="modal-overlay" id="print-modal" onclick="bgClose(event,'print-modal')">
   <div class="modal" style="width:580px">
@@ -2687,7 +2708,10 @@ function unlockDashboard() {
 }
 
 function logout() {
-  if (!confirm('Log out of Arroyo Suite?')) return;
+  document.getElementById('logout-modal').classList.add('open');
+}
+
+function confirmLogout() {
   sessionStorage.removeItem('arroyo_session');
   location.reload();
 }
