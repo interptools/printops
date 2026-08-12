@@ -31,113 +31,125 @@
       --danger:#f07070;--danger-bg:#2e0d0d;
     }
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface-0);color:var(--text-primary);min-height:100vh}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface-0);color:var(--text-primary);min-height:100vh;-webkit-text-size-adjust:100%}
 
-  .header{background:var(--surface-2);border-bottom:0.5px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:10}
-  .header-logo{font-size:16px;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:10px}
-  .header-logo span{color:var(--text-secondary);font-weight:400;font-size:13px;margin-left:8px}
+  /* Header */
+  .header{background:var(--surface-2);border-bottom:0.5px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:10}
+  .header-logo{font-size:15px;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
+  .header-logo span{color:var(--text-secondary);font-weight:400;font-size:12px;margin-left:6px}
 
-  .container{max-width:640px;margin:0 auto;padding:2.5rem 1.5rem}
-  .hero{margin-bottom:2rem}
-  .hero h1{font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:6px}
-  .hero p{font-size:14px;color:var(--text-secondary);line-height:1.6}
+  /* Container — tighter padding on mobile */
+  .container{max-width:640px;margin:0 auto;padding:1.5rem 1rem}
+  @media(min-width:600px){.container{padding:2.5rem 1.5rem}}
 
-  .tabs{display:flex;gap:4px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;padding:4px;margin-bottom:2rem}
-  .tab{flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-family:inherit;color:var(--text-secondary);border-radius:7px;transition:background 0.12s,color 0.12s;font-weight:500}
+  .hero{margin-bottom:1.5rem}
+  .hero h1{font-size:20px;font-weight:600;letter-spacing:-0.4px;margin-bottom:6px}
+  .hero p{font-size:13px;color:var(--text-secondary);line-height:1.6}
+
+  /* Tabs — larger tap targets on mobile */
+  .tabs{display:flex;gap:4px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;padding:4px;margin-bottom:1.5rem}
+  .tab{flex:1;padding:10px 6px;border:none;background:none;cursor:pointer;font-size:12px;font-family:inherit;color:var(--text-secondary);border-radius:7px;transition:background 0.12s,color 0.12s;font-weight:500;line-height:1.3;text-align:center}
   .tab.active{background:var(--surface-2);color:var(--text-primary);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
 
-  .card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;padding:1.75rem}
+  /* Card */
+  .card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;padding:1.25rem}
+  @media(min-width:500px){.card{padding:1.75rem}}
 
+  /* Form — larger inputs for touch */
   .form-group{margin-bottom:1rem}
   .form-group label{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:5px}
-  .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none;transition:border-color 0.12s}
+  .form-group input,.form-group select,.form-group textarea{
+    width:100%;padding:12px 14px;border:0.5px solid var(--border-strong);
+    border-radius:var(--radius);font-size:16px;/* 16px prevents iOS zoom */
+    font-family:inherit;background:var(--surface-1);color:var(--text-primary);
+    outline:none;transition:border-color 0.12s;-webkit-appearance:none;appearance:none
+  }
   .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);background:var(--surface-2)}
-  .form-group textarea{resize:vertical;min-height:80px;line-height:1.5}
-  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:500px){.form-row{grid-template-columns:1fr}}
+  .form-group textarea{resize:vertical;min-height:90px;line-height:1.5;font-size:15px}
+  .form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%236b6b67' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:480px){.form-row{grid-template-columns:1fr}}
   .form-hint{font-size:11px;color:var(--text-muted);margin-top:4px}
   .form-err{font-size:11px;color:var(--danger);margin-top:4px;display:none}
 
   .divider{display:flex;align-items:center;gap:10px;margin:1.25rem 0;color:var(--text-muted);font-size:12px}
   .divider::before,.divider::after{content:'';flex:1;height:0.5px;background:var(--border)}
 
-  .btn{width:100%;padding:11px;border-radius:var(--radius);border:none;cursor:pointer;font-size:14px;font-family:inherit;font-weight:500;transition:opacity 0.12s;display:flex;align-items:center;justify-content:center;gap:8px}
+  /* Buttons — larger tap targets */
+  .btn{width:100%;padding:14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:15px;font-family:inherit;font-weight:600;transition:opacity 0.12s;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent}
   .btn-primary{background:var(--accent);color:#fff}
-  .btn-primary:hover{opacity:0.88}
+  .btn-primary:active{opacity:0.8}
   .btn-secondary{background:var(--surface-1);color:var(--text-primary);border:0.5px solid var(--border-strong)}
-  .btn-secondary:hover{background:var(--surface-0)}
+  .btn-secondary:active{background:var(--surface-0)}
 
-  /* Chip buttons (size presets, qty presets, etc.) */
-  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-  .chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface-1);font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-primary);transition:all 0.1s}
-  .chip:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text)}
-  .chip.sel{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text);font-weight:600}
+  /* Chips — bigger on mobile */
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{padding:8px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface-1);font-size:13px;font-family:inherit;cursor:pointer;color:var(--text-primary);transition:all 0.1s;-webkit-tap-highlight-color:transparent}
+  .chip:active,.chip.sel{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text);font-weight:600}
 
-  /* Toggle chip row (single select) */
-  .toggle-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-  .toggle-chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--surface-1);font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-secondary);transition:all 0.1s;font-weight:500}
-  .toggle-chip:hover{border-color:var(--accent);color:var(--accent-text)}
-  .toggle-chip.sel{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text)}
+  /* Toggle chips */
+  .toggle-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .toggle-chip{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border-strong);background:var(--surface-1);font-size:13px;font-family:inherit;cursor:pointer;color:var(--text-secondary);transition:all 0.1s;font-weight:500;-webkit-tap-highlight-color:transparent}
+  .toggle-chip:active,.toggle-chip.sel{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text)}
 
   /* Rush toggle */
-  .rush-toggle-wrap{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius);border:1.5px solid var(--border-strong);background:var(--surface-1);cursor:pointer;transition:all 0.12s;margin-bottom:1rem}
+  .rush-toggle-wrap{display:flex;align-items:center;gap:10px;padding:14px;border-radius:var(--radius);border:1.5px solid var(--border-strong);background:var(--surface-1);cursor:pointer;transition:all 0.12s;margin-bottom:1rem;-webkit-tap-highlight-color:transparent}
   .rush-toggle-wrap.on{border-color:#d97706;background:#fef9ed}
-  .rush-toggle-wrap .rush-label{font-size:13px;font-weight:500;flex:1}
+  .rush-toggle-wrap .rush-label{font-size:14px;font-weight:500;flex:1}
   .rush-toggle-wrap .rush-sub{font-size:11px;color:var(--text-muted)}
-  .rush-icon{font-size:18px;color:var(--text-muted)}
+  .rush-icon{font-size:20px;color:var(--text-muted)}
   .rush-toggle-wrap.on .rush-icon{color:#d97706}
 
   /* File upload */
-  .upload-area{border:2px dashed var(--border-strong);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all 0.12s;position:relative;background:var(--surface-1)}
-  .upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
+  .upload-area{border:2px dashed var(--border-strong);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all 0.12s;position:relative;background:var(--surface-1)}
+  .upload-area:active{border-color:var(--accent);background:var(--accent-bg)}
   .upload-area.has-file{border-color:var(--success);border-style:solid;background:var(--success-bg)}
   .upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-  .upload-icon{font-size:28px;color:var(--text-muted);margin-bottom:6px}
+  .upload-icon{font-size:32px;color:var(--text-muted);margin-bottom:8px}
   .upload-area.has-file .upload-icon{color:var(--success)}
-  .upload-label{font-size:13px;font-weight:500;color:var(--text-secondary)}
+  .upload-label{font-size:14px;font-weight:500;color:var(--text-secondary)}
   .upload-area.has-file .upload-label{color:var(--success)}
-  .upload-sub{font-size:11px;color:var(--text-muted);margin-top:3px}
-  .upload-clear{position:absolute;top:8px;right:10px;font-size:11px;color:var(--danger);cursor:pointer;z-index:2;background:none;border:none;font-family:inherit;padding:2px 6px;border-radius:4px}
-  .upload-clear:hover{background:var(--danger-bg)}
+  .upload-sub{font-size:12px;color:var(--text-muted);margin-top:4px}
+  .upload-clear{position:absolute;top:8px;right:10px;font-size:11px;color:var(--danger);cursor:pointer;z-index:2;background:none;border:none;font-family:inherit;padding:4px 8px;border-radius:4px}
 
-  /* Status */
+  /* Status card */
   .status-card{border-radius:12px;padding:1.25rem;margin-top:1rem;display:none}
   .status-card.found{background:var(--surface-1);border:0.5px solid var(--border)}
   .status-card.not-found{background:var(--danger-bg);border:0.5px solid var(--danger)}
-  .status-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:12px}
+  .status-row{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:12px}
   .status-row:last-child{border-bottom:none}
-  .status-row .label{color:var(--text-secondary);white-space:nowrap}
-  .status-row .value{font-weight:500;text-align:right}
-  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+  .status-row .label{color:var(--text-secondary);white-space:nowrap;min-width:90px}
+  .status-row .value{font-weight:500;text-align:right;word-break:break-word}
+  .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
   .badge-Pending{background:var(--warning-bg);color:var(--warning)}
   .badge-In{background:var(--accent-bg);color:var(--accent-text)}
   .badge-Done{background:var(--success-bg);color:var(--success)}
   .badge-Cancelled{background:var(--danger-bg);color:var(--danger)}
 
-  /* Success */
-  .success-screen{display:none;text-align:center;padding:2rem 0}
-  .success-icon{width:56px;height:56px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:26px;color:var(--success)}
-  .success-screen h2{font-size:18px;font-weight:600;margin-bottom:8px}
-  .success-screen p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:1.25rem}
-  .ref-box{background:var(--accent-bg);border-radius:var(--radius);padding:10px 16px;display:inline-block;margin-bottom:1.5rem}
+  /* Success screen */
+  .success-screen{display:none;text-align:center;padding:1.5rem 0}
+  .success-icon{width:60px;height:60px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:28px;color:var(--success)}
+  .success-screen h2{font-size:19px;font-weight:600;margin-bottom:8px}
+  .success-screen p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:1.25rem}
+  .ref-box{background:var(--accent-bg);border-radius:var(--radius);padding:12px 20px;display:inline-block;margin-bottom:1.5rem}
   .ref-box span{font-size:13px;color:var(--text-secondary)}
-  .ref-box strong{display:block;font-size:20px;color:var(--accent-text);letter-spacing:1px;margin-top:2px}
+  .ref-box strong{display:block;font-size:22px;color:var(--accent-text);letter-spacing:2px;margin-top:2px}
 
-  /* Rush ID pkg cards */
-  .pkg-card{border:1.5px solid var(--border-strong);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color 0.12s,background 0.12s,box-shadow 0.12s;background:var(--surface-1)}
-  .pkg-card:hover{border-color:var(--accent);background:var(--accent-bg)}
+  /* Package cards */
+  .pkg-card{border:1.5px solid var(--border-strong);border-radius:10px;padding:14px;cursor:pointer;transition:border-color 0.12s,background 0.12s,box-shadow 0.12s;background:var(--surface-1);-webkit-tap-highlight-color:transparent}
+  .pkg-card:active,.pkg-card:hover{border-color:var(--accent);background:var(--accent-bg)}
   .pkg-card.selected{border-color:var(--accent);background:var(--accent-bg);box-shadow:0 0 0 2px var(--accent)}
   .pkg-best{border-color:var(--success)!important}
   .pkg-best.selected{box-shadow:0 0 0 2px var(--success)!important}
-  .pkg-price{font-size:20px;font-weight:800;color:var(--text-primary);letter-spacing:-0.5px}
+  .pkg-price{font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-0.5px}
   .pkg-name{font-size:13px;font-weight:600;color:var(--text-primary);margin-top:2px;margin-bottom:6px}
-  .pkg-list{margin:0;padding-left:14px;font-size:12px;color:var(--text-secondary);line-height:1.7}
+  .pkg-list{margin:0;padding-left:14px;font-size:12px;color:var(--text-secondary);line-height:1.8}
   @media(max-width:500px){#pkg-grid{grid-template-columns:1fr!important}.pkg-best{grid-column:1!important}}
 
   /* Info banner */
-  .info-banner{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--accent-text);display:flex;align-items:flex-start;gap:8px;margin-bottom:1rem}
+  .info-banner{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:12px 14px;font-size:13px;color:var(--accent-text);display:flex;align-items:flex-start;gap:8px;margin-bottom:1rem;line-height:1.5}
 
-  .footer{text-align:center;margin-top:2rem;font-size:12px;color:var(--text-muted)}
+  .footer{text-align:center;margin-top:2rem;padding-bottom:2rem;font-size:12px;color:var(--text-muted)}
 
   /* Toast notification */
   .cf-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--surface-2);padding:11px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
@@ -650,18 +662,26 @@
       <div style="background:#f0f6ff;border:1.5px solid #c5d9fb;border-radius:14px;padding:18px 16px;text-align:left;margin-bottom:16px">
         <div style="font-size:13px;font-weight:700;color:#1a3c7a;margin-bottom:6px;display:flex;align-items:center;gap:7px">
           <i class="ti ti-mail-forward" style="font-size:17px"></i>
-          Last step — send your file to the shop
+          Last step — send your order to the shop
         </div>
         <p style="font-size:13px;color:#334;line-height:1.65;margin:0 0 12px">
-          Tap the button below. It will open Gmail with <strong>all your order details already filled in</strong>.
-          Just <strong>attach your file</strong> (JPG, PNG, PDF, etc.) then hit <strong>Send</strong>.
+          Tap the button below. It will <strong>copy your styled order email</strong> and <strong>open Gmail</strong> at the same time — just paste and attach your file.
         </p>
-        <a id="mailto-shop-btn" href="#" target="_blank"
-          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:14px;font-weight:600;text-decoration:none;box-sizing:border-box;margin-bottom:10px">
-          <i class="ti ti-mail"></i> Send order details &amp; file to shop
-        </a>
-        <p style="font-size:11px;color:#667;margin:0;line-height:1.5;text-align:center">
-          No file to send? You can skip this — we'll follow up with you via phone or email.
+
+        <button onclick="sendOrderEmail(this)"
+          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;box-sizing:border-box;margin-bottom:12px;-webkit-tap-highlight-color:transparent">
+          <i class="ti ti-mail"></i> Send order to shop
+        </button>
+
+        <div id="send-steps" style="display:none;background:#e8f5ee;border:1px solid #18794e;border-radius:10px;padding:12px 14px;font-size:13px;color:#18794e;line-height:1.8;margin-bottom:10px">
+          <strong>✅ Email copied!</strong> Now in Gmail:<br>
+          1. <strong>Paste</strong> (Ctrl+V on PC · Long-press → Paste on phone)<br>
+          2. <strong>Attach your file</strong> (JPG, PNG, PDF, etc.)<br>
+          3. Hit <strong>Send</strong> ✉️
+        </div>
+
+        <p style="font-size:11px;color:#667;margin:0;line-height:1.6;text-align:center">
+          No file to send? Skip this — we'll follow up via phone or email.
         </p>
       </div>
 
@@ -1036,7 +1056,7 @@ async function submitOrder(){
 
     document.getElementById('ref-number').textContent = ref;
 
-    // ── Build mailto with full order details ──────────────────────────────
+    // ── Build HTML email ──────────────────────────────────────────────────
     const _name    = row.name || '';
     const _phone   = row.phone || '';
     const _email   = row.email || '(not provided)';
@@ -1044,67 +1064,114 @@ async function submitOrder(){
     const _pkg     = row.pkg_label || '';
     const _size    = row.size || '—';
     const _qty     = row.qty || 1;
-    const _rush    = row.rush ? 'YES (Rush order)' : 'No';
-    const _file    = row.print_file || '(none)';
-    const _design  = row.design_file || '(none)';
+    const _rush    = row.rush;
     const _due     = row.due || 'Not specified';
     const _notes   = row.notes || '(none)';
     const _date    = new Date().toLocaleString('en-PH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
-    let _extrasText = '';
+    let extrasRows = '';
     try {
       const ex = JSON.parse(row.extras || '{}');
-      if(ex.colorMode)  _extrasText += '\n  Color mode: ' + ex.colorMode;
-      if(ex.finish)     _extrasText += '\n  Finish: ' + ex.finish;
-      if(ex.material)   _extrasText += '\n  Material: ' + ex.material;
-      if(ex.fold)       _extrasText += '\n  Fold type: ' + ex.fold;
-      if(ex.printType)  _extrasText += '\n  Print type: ' + ex.printType;
-      if(ex.shape)      _extrasText += '\n  Shape: ' + ex.shape;
-      if(ex.idType)     _extrasText += '\n  ID type: ' + ex.idType;
-      if(ex.sizes)      _extrasText += '\n  Sizes: ' + ex.sizes;
+      if(ex.colorMode)  extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Color mode</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.colorMode}</td></tr>`;
+      if(ex.finish)     extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Finish</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.finish}</td></tr>`;
+      if(ex.material)   extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Material</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.material}</td></tr>`;
+      if(ex.fold)       extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Fold type</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.fold}</td></tr>`;
+      if(ex.printType)  extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Print type</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.printType}</td></tr>`;
+      if(ex.shape)      extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Shape</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.shape}</td></tr>`;
+      if(ex.idType)     extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">ID type</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.idType}</td></tr>`;
+      if(ex.sizes)      extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Sizes</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.sizes}</td></tr>`;
     } catch(e) {}
 
-    const mailSubject = '[Arroyo Suite] New Order: ' + ref + ' — ' + _name;
-    const mailBody = [
-      '============================',
-      '  ARROYO SUITE — ORDER REQUEST',
-      '============================',
-      '',
-      'Reference No. : ' + ref,
-      'Date Submitted: ' + _date,
-      '',
-      '─── CUSTOMER DETAILS ────────',
-      'Name    : ' + _name,
-      'Phone   : ' + _phone,
-      'Email   : ' + _email,
-      '',
-      '─── ORDER DETAILS ───────────',
-      'Job Type: ' + _job,
-      (_pkg  ? 'Package : ' + _pkg : ''),
-      'Size    : ' + _size,
-      'Qty     : ' + _qty,
-      'Rush    : ' + _rush,
-      (_extrasText ? 'Extras  :' + _extrasText : ''),
-      '',
-      '─── FILES ───────────────────',
-      'Please attach your file(s) to this email.',
-      '',
-      '─── SCHEDULE ────────────────',
-      'Needed by: ' + _due,
-      '',
-      '─── NOTES ───────────────────',
-      _notes,
-      '',
-      '============================',
-      'Please reply to confirm pricing and availability.',
-      'Track your order at: ' + (window.location.href.split('?')[0]),
-      '============================'
-    ].filter(l => l !== null && l !== undefined && l !== '' || l === '').join('\n');
+    const htmlEmail = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 16px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
 
+  <!-- Header -->
+  <tr><td style="background:#1a6ef5;padding:28px 32px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td>
+        <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px">Arroyo Suite</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:3px">New Order Request</div>
+      </td>
+      <td align="right">
+        ${_rush ? '<div style="background:#d97706;border-radius:8px;padding:6px 14px;font-size:13px;color:#fff;font-weight:700">⚡ RUSH ORDER</div>' : ''}
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Ref banner -->
+  <tr><td style="background:#eaf0fe;padding:14px 32px;border-bottom:1px solid #d0e0fd">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td><div style="font-size:13px;color:#1a4db5">Reference Number</div><div style="font-size:24px;font-weight:800;color:#1a6ef5;letter-spacing:2px;margin-top:2px">${ref}</div></td>
+      <td align="right"><div style="font-size:12px;color:#888">Submitted<br>${_date}</div></td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Customer details -->
+  <tr><td style="padding:20px 32px 0">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:10px">Customer Details</div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;width:40%">Name</td><td style="padding:8px 12px;font-size:13px;color:#222;border-bottom:1px solid #f0f0f0;font-weight:600">${_name}</td></tr>
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Phone</td><td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${_phone}</td></tr>
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px">Email</td><td style="padding:8px 12px;font-size:13px;color:#333;font-weight:500">${_email}</td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Order details -->
+  <tr><td style="padding:20px 32px 0">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:10px">Order Details</div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:8px;overflow:hidden">
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;width:40%">Job type</td><td style="padding:8px 12px;font-size:13px;color:#222;border-bottom:1px solid #f0f0f0;font-weight:600">${_job}</td></tr>
+      ${_pkg ? `<tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Package</td><td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${_pkg}</td></tr>` : ''}
+      ${!_pkg ? `<tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Size / specs</td><td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${_size}</td></tr>
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Quantity</td><td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${_qty} pcs</td></tr>` : ''}
+      ${extrasRows}
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Date needed</td><td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${_due}</td></tr>
+      <tr><td style="padding:8px 12px;color:#888;font-size:13px">Notes</td><td style="padding:8px 12px;font-size:13px;color:#333;font-weight:500;white-space:pre-wrap">${_notes}</td></tr>
+    </table>
+  </td></tr>
+
+  <!-- File notice -->
+  <tr><td style="padding:16px 32px 0">
+    <div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;font-size:13px;color:#92400e;line-height:1.6">
+      📎 <strong>Please attach your print/design file to this email</strong> before sending. Accepted formats: JPG, PNG, PDF, DOCX, AI, PSD.
+    </div>
+  </td></tr>
+
+  <!-- Divider -->
+  <tr><td style="padding:20px 32px 0"><hr style="border:none;border-top:1px solid #eee;margin:0"></td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:18px 32px 24px;background:#fafafa">
+    <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:4px">Arroyo Suite</div>
+    <div style="font-size:12px;color:#888;line-height:1.8">
+      📱 09063964052<br>
+      📍 Bayanihan Flats, Pajac, Lapu-lapu City, Cebu 6015
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#bbb">This email was generated automatically via the Arroyo Suite order form.</div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+    // Store for copy button
+    window._lastOrderHtmlEmail = htmlEmail;
+    window._lastOrderSubject   = '[Arroyo Suite] New Order: ' + ref + ' — ' + _name;
+    window._lastOrderEmail     = 'areymar36@gmail.com';
+
+    // Fallback plain text mailto (still works for quick send)
+    const plainBody = `Order Ref: ${ref}\nName: ${_name}\nPhone: ${_phone}\nJob: ${_job}${_pkg?' | '+_pkg:''}\nSize: ${_size} | Qty: ${_qty}\nDate needed: ${_due}\nNotes: ${_notes}\n\n[Please attach your file to this email]`;
     const mailtoUrl = 'mailto:areymar36@gmail.com'
-      + '?subject=' + encodeURIComponent(mailSubject)
-      + '&body=' + encodeURIComponent(mailBody)
-      + (row.email ? '&cc=' + encodeURIComponent(row.email) : '');
+      + '?subject=' + encodeURIComponent(window._lastOrderSubject)
+      + '&body=' + encodeURIComponent(plainBody)
+      + (_email && _email !== '(not provided)' ? '&cc=' + encodeURIComponent(_email) : '');
 
     const mailBtn = document.getElementById('mailto-shop-btn');
     if (mailBtn) mailBtn.href = mailtoUrl;
@@ -1117,6 +1184,38 @@ async function submitOrder(){
     cfToast('⚠️ Could not submit your order. Please check your internet connection and try again.');
     if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Submit order'; }
   }
+}
+
+// ── Send order email — copies HTML + opens Gmail simultaneously ───────────
+async function sendOrderEmail(btn) {
+  const html    = window._lastOrderHtmlEmail;
+  const subject = window._lastOrderSubject || '[Arroyo Suite] New Order';
+  const to      = window._lastOrderEmail   || 'areymar36@gmail.com';
+  if (!html) { cfToast('⚠️ No order data found. Please submit the form first.'); return; }
+
+  // Step 1 — Copy HTML to clipboard
+  try {
+    await navigator.clipboard.writeText(html);
+  } catch(e) {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = html; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+
+  // Step 2 — Open Gmail compose with subject + to pre-filled
+  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' +
+    encodeURIComponent(to) + '&su=' + encodeURIComponent(subject);
+  window.open(gmailUrl, '_blank');
+
+  // Step 3 — Show instructions + update button
+  document.getElementById('send-steps').style.display = 'block';
+  btn.innerHTML = '<i class="ti ti-check"></i> Gmail opened — paste & attach file!';
+  btn.style.background = '#18794e';
+  setTimeout(() => {
+    btn.innerHTML = '<i class="ti ti-mail"></i> Send order to shop';
+    btn.style.background = '#1a6ef5';
+  }, 8000);
 }
 
 // ── resetForm ─────────────────────────────────────────────────────────────
