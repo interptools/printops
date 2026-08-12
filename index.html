@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>Arroyo Suite — Business Manager</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1458,6 +1455,7 @@ async function renderRequests() {
         ${r.jobtype==='Rush ID Photo'
           ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
           : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
+        <button class="btn btn-sm" onclick="printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm btn-danger" onclick="deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>
@@ -1519,6 +1517,74 @@ function printJobTicket() {
       ${['Pending','In progress','Done'].map(s=>`<div class="jt-status-box" style="${s===status?'background:#000;color:#fff':''}">${s}</div>`).join('')}
     </div>
     <div class="jt-footer">Arroyo Suite · Keep this ticket until order is claimed.</div>
+  `;
+  area.style.display = 'block';
+  window.print();
+  area.style.display = 'none';
+}
+
+async function printReqTicket(id) {
+  const allReqs = await getRequestsFromDB();
+  const r = allReqs.find(x => x.id === id);
+  if (!r) { toast('Request not found.'); return; }
+
+  const now = new Date().toLocaleString('en-PH', {
+    year:'numeric', month:'long', day:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+
+  // Build details string
+  let details = '';
+  if (r.pkgLabel) {
+    details = r.pkgLabel;
+  } else {
+    const parts = [];
+    if (r.size) parts.push(r.size);
+    if (r.qty && r.qty > 1) parts.push('Qty: ' + r.qty);
+    if (r.extras) {
+      const e = r.extras;
+      if (e.colorMode) parts.push(e.colorMode);
+      if (e.finish)    parts.push(e.finish);
+      if (e.material)  parts.push(e.material);
+      if (e.fold)      parts.push(e.fold);
+      if (e.printType) parts.push(e.printType);
+      if (e.shape)     parts.push(e.shape);
+      if (e.idType)    parts.push(e.idType);
+      if (e.sizes)     parts.push('Sizes: ' + e.sizes);
+    }
+    details = parts.join(' · ') || '—';
+  }
+
+  const area = document.getElementById('job-ticket-area');
+  area.innerHTML = `
+    <div class="jt-header">
+      <div>
+        <div class="jt-shop">Arroyo Suite${r.rush ? ' &nbsp;⚡ RUSH' : ''}</div>
+        <div class="jt-ref">Order Slip · Printed: ${now}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:#1a6ef5">${r.ref || '—'}</div>
+        <div style="font-size:12px;color:#555">Reference #</div>
+      </div>
+    </div>
+    <div class="jt-row"><span class="jt-label">Customer</span><span class="jt-val">${r.name}</span></div>
+    <div class="jt-row"><span class="jt-label">Contact</span><span class="jt-val">${r.phone}</span></div>
+    ${r.email ? `<div class="jt-row"><span class="jt-label">Email</span><span class="jt-val">${r.email}</span></div>` : ''}
+    <div class="jt-divider"></div>
+    <div class="jt-row"><span class="jt-label">Job type</span><span class="jt-val">${r.jobtype}</span></div>
+    <div class="jt-row"><span class="jt-label">Details</span><span class="jt-val">${details}</span></div>
+    ${r.qty && !r.pkgLabel ? `<div class="jt-row"><span class="jt-label">Quantity</span><span class="jt-val">${r.qty} pcs</span></div>` : ''}
+    <div class="jt-row"><span class="jt-label">Date needed</span><span class="jt-val">${r.due || '—'}</span></div>
+    ${r.print_file  ? `<div class="jt-row"><span class="jt-label">Print file</span><span class="jt-val">📄 ${r.print_file}</span></div>`  : ''}
+    ${r.design_file ? `<div class="jt-row"><span class="jt-label">Design file</span><span class="jt-val">🎨 ${r.design_file}</span></div>` : ''}
+    ${r.notes ? `<div class="jt-divider"></div><div class="jt-row"><span class="jt-label">Notes</span><span class="jt-val" style="white-space:pre-wrap">${r.notes}</span></div>` : ''}
+    <div class="jt-divider"></div>
+    <div class="jt-status-row">
+      ${['Pending','In progress','Done'].map(s =>
+        `<div class="jt-status-box" style="${s===r.status?'background:#000;color:#fff':''}">${s}</div>`
+      ).join('')}
+    </div>
+    <div class="jt-footer">Arroyo Suite · Keep this slip until your order is claimed. · Ref: ${r.ref || '—'}</div>
   `;
   area.style.display = 'block';
   window.print();
