@@ -138,6 +138,12 @@
   .info-banner{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--accent-text);display:flex;align-items:flex-start;gap:8px;margin-bottom:1rem}
 
   .footer{text-align:center;margin-top:2rem;font-size:12px;color:var(--text-muted)}
+
+  /* Toast notification */
+  .cf-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--surface-2);padding:11px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+  .cf-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .cf-toast.error{background:var(--danger)}
+  .cf-toast.success{background:var(--success)}
 </style>
 </head>
 <body>
@@ -715,7 +721,18 @@
   <div class="footer">Arroyo Suite &mdash; All data is private and managed by the shop owner.</div>
 </div>
 
+<div class="cf-toast" id="cf-toast"></div>
+
 <script>
+// ── Toast notification ────────────────────────────────────────────────────
+function cfToast(msg, type = 'error') {
+  const t = document.getElementById('cf-toast');
+  t.textContent = msg;
+  t.className = 'cf-toast ' + type + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
 // ── Supabase config ────────────────────────────────────────────────────────
 // STEP 1: Replace these two values with your own Supabase project details.
 // Get them from: https://supabase.com → your project → Settings → API
@@ -945,9 +962,9 @@ async function submitOrder(){
   const phone = document.getElementById('f-phone').value.trim();
   const jobtype = document.getElementById('f-jobtype').value;
 
-  if(!name){ alert('Please enter your name.'); return; }
-  if(!phone){ alert('Please enter your contact number.'); return; }
-  if(!jobtype){ alert('Please select a job type.'); return; }
+  if(!name){ cfToast('⚠️ Please enter your name.'); return; }
+  if(!phone){ cfToast('⚠️ Please enter your contact number.'); return; }
+  if(!jobtype){ cfToast('⚠️ Please select a job type.'); return; }
 
   let size='', qty=1, pkgKey='', pkgLabel='';
 
@@ -968,7 +985,7 @@ async function submitOrder(){
     const sEl = document.getElementById('f-size');
     qty = qEl ? qEl.value : 1;
     size = sEl ? sEl.value : '';
-    if(!qty || qty < 1){ alert('Please enter a valid quantity.'); return; }
+    if(!qty || qty < 1){ cfToast('⚠️ Please enter a valid quantity.'); return; }
   }
 
   const extras = collectExtras(jobtype);
@@ -1097,7 +1114,7 @@ async function submitOrder(){
 
   } catch(e) {
     console.error(e);
-    alert('⚠️ Could not submit your order. Please check your internet connection and try again.\n\n' + e.message);
+    cfToast('⚠️ Could not submit your order. Please check your internet connection and try again.');
     if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Submit order'; }
   }
 }
@@ -1311,7 +1328,7 @@ async function trackOrder(){
   const ref  = document.getElementById('t-ref').value.trim().toUpperCase();
   const name = document.getElementById('t-name').value.trim().toLowerCase();
   const result = document.getElementById('track-result');
-  if(!ref||!name){ alert('Please enter both your reference number and name.'); return; }
+  if(!ref||!name){ cfToast('⚠️ Please enter both your reference number and name.'); return; }
 
   // Hide amendment panel on new search
   document.getElementById('amend-panel').style.display = 'none';
