@@ -593,6 +593,40 @@
         </div>
       </div>
 
+      <!-- ── MUG / SUBLIMATION section ── -->
+      <div id="section-mug" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Item type</label>
+            <div class="toggle-row">
+              <button class="toggle-chip sel" onclick="setToggle('mug-type',this,'Ceramic mug (11oz)')">Mug 11oz</button>
+              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Ceramic mug (15oz)')">Mug 15oz</button>
+              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Tumbler')">Tumbler</button>
+              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Magic mug (color-changing)')">Magic mug</button>
+            </div>
+            <input type="hidden" id="mug-type" value="Ceramic mug (11oz)">
+          </div>
+          <div class="form-group">
+            <label>Quantity</label>
+            <div class="chip-row" id="mug-qty-chips">
+              <button class="chip sel" onclick="setChip('mug-qty-chips','f-qty',this,'1')">1</button>
+              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'3')">3</button>
+              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'5')">5</button>
+              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'10')">10</button>
+            </div>
+            <input id="f-qty" type="number" min="1" value="1" style="margin-top:8px" oninput="clearChips('mug-qty-chips')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Print side</label>
+          <div class="toggle-row">
+            <button class="toggle-chip sel" onclick="setToggle('mug-side',this,'One side')">One side</button>
+            <button class="toggle-chip" onclick="setToggle('mug-side',this,'Full wrap')">Full wrap</button>
+          </div>
+          <input type="hidden" id="mug-side" value="One side">
+        </div>
+      </div>
+
       <!-- ── OTHER section ── -->
       <div id="section-other" style="display:none">
         <div class="form-row">
@@ -686,6 +720,31 @@
 
         <p style="font-size:11px;color:#667;margin-top:10px;line-height:1.6;text-align:center">
           No file to send? Skip this — we'll follow up via phone or email.
+        </p>
+      </div>
+
+      <!-- ── GCash / payment section ── -->
+      <div id="gcash-panel" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:16px;text-align:left;margin-bottom:16px;display:none">
+        <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-cash" style="font-size:17px"></i>
+          Pay via GCash
+        </div>
+        <p style="font-size:13px;color:#166534;line-height:1.6;margin:0 0 10px">
+          Send your payment to the GCash number below, then <strong>screenshot your receipt</strong> and attach it when you send your email.
+        </p>
+        <div style="background:#fff;border:1px solid #86efac;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <i class="ti ti-device-mobile" style="font-size:22px;color:#16a34a;flex-shrink:0"></i>
+          <div>
+            <div style="font-size:11px;color:#6b7280;font-weight:500">GCash Number</div>
+            <div id="gcash-number-display" style="font-size:18px;font-weight:700;color:#111;letter-spacing:1px">—</div>
+            <div id="gcash-name-display" style="font-size:11px;color:#6b7280;margin-top:1px"></div>
+          </div>
+          <button onclick="copyGcash()" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid #86efac;background:transparent;color:#15803d;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px" id="gcash-copy-btn">
+            <i class="ti ti-copy"></i> Copy
+          </button>
+        </div>
+        <p style="font-size:11px;color:#6b7280;margin:0;line-height:1.5;text-align:center">
+          Cash payment is also accepted upon pickup. Order will be processed after confirmation.
         </p>
       </div>
 
@@ -788,6 +847,38 @@ async function sbFetch(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+// ── GCash / shop info ─────────────────────────────────────────────────────
+let _shopInfo = null;
+
+async function loadShopInfo() {
+  try {
+    const rows = await sbFetch('settings?key=in.(gcash_number,gcash_name,shop_name)');
+    if (rows && rows.length) {
+      _shopInfo = {};
+      rows.forEach(r => { _shopInfo[r.key] = r.value; });
+    }
+  } catch(e) { /* settings table not set up — silently ignore */ }
+}
+
+function showGcashPanel() {
+  const panel = document.getElementById('gcash-panel');
+  if (!_shopInfo || !_shopInfo.gcash_number) return; // hide if not configured
+  document.getElementById('gcash-number-display').textContent = _shopInfo.gcash_number || '—';
+  document.getElementById('gcash-name-display').textContent = _shopInfo.gcash_name || '';
+  panel.style.display = 'block';
+}
+
+function copyGcash() {
+  const num = (_shopInfo && _shopInfo.gcash_number) ? _shopInfo.gcash_number : '';
+  if (!num) return;
+  navigator.clipboard.writeText(num).catch(() => {});
+  const btn = document.getElementById('gcash-copy-btn');
+  btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+  setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy"></i> Copy'; }, 2000);
+}
+
+loadShopInfo();
+
 // ── File upload: filename only saved, no Supabase Storage used ─────────────
 
 // ── Rush ID package labels ────────────────────────────────────────────────
@@ -814,6 +905,7 @@ const JOB_SECTIONS = {
   'Poster':              ['section-poster','section-design-upload','rush-toggle-wrap'],
   'Brochure':            ['section-brochure','section-design-upload','rush-toggle-wrap'],
   'ID / Lanyard':        ['section-id','section-design-upload','rush-toggle-wrap'],
+  'Mug / Sublimation':  ['section-mug','section-design-upload','rush-toggle-wrap'],
   'Other':               ['section-other','section-design-upload','rush-toggle-wrap'],
 };
 
@@ -830,6 +922,7 @@ const FALLBACK_SERVICES = [
   'Poster',
   'Brochure',
   'ID / Lanyard',
+  'Mug / Sublimation',
   'Other',
 ];
 
@@ -865,7 +958,7 @@ loadServices();
 
 const ALL_SECTIONS = ['section-print','section-rush','section-bizcard','section-flyers',
   'section-tarp','section-tshirt','section-sticker','section-poster','section-brochure',
-  'section-id','section-other','section-design-upload','rush-toggle-wrap','section-shared'];
+  'section-id','section-mug','section-other','section-design-upload','rush-toggle-wrap','section-shared'];
 
 // ── File storage ──────────────────────────────────────────────────────────
 
@@ -976,6 +1069,9 @@ function collectExtras(jt){
     extras.finish = document.getElementById('br-finish').value;
   } else if(jt==='ID / Lanyard'){
     extras.idType = document.getElementById('id-type').value;
+  } else if(jt==='Mug / Sublimation'){
+    extras.mugType = document.getElementById('mug-type').value;
+    extras.mugSide = document.getElementById('mug-side').value;
   }
   return extras;
 }
@@ -1084,6 +1180,8 @@ async function submitOrder(){
       if(ex.shape)      extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Shape</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.shape}</td></tr>`;
       if(ex.idType)     extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">ID type</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.idType}</td></tr>`;
       if(ex.sizes)      extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Sizes</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.sizes}</td></tr>`;
+      if(ex.mugType)    extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Mug type</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.mugType}</td></tr>`;
+      if(ex.mugSide)    extrasRows += `<tr><td style="padding:7px 12px;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0">Print side</td><td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0;font-weight:500">${ex.mugSide}</td></tr>`;
     } catch(e) {}
 
     const htmlEmail = `<!DOCTYPE html>
@@ -1208,6 +1306,7 @@ async function submitOrder(){
 
     document.getElementById('order-form-card').style.display = 'none';
     document.getElementById('success-screen').style.display = 'block';
+    showGcashPanel();
 
   } catch(e) {
     console.error(e);
@@ -1260,6 +1359,7 @@ function resetForm(){
   document.getElementById('rush-toggle-wrap').classList.remove('on');
   document.getElementById('order-form-card').style.display='block';
   document.getElementById('success-screen').style.display='none';
+  document.getElementById('gcash-panel').style.display='none';
 }
 
 // ── switchTab ─────────────────────────────────────────────────────────────
@@ -1331,6 +1431,13 @@ const PRICE_LIST = [
     { label:'ID + Lanyard',          price:'₱160',  note:'' },
     { label:'ID + Holder + Lanyard', price:'₱220',  note:'' },
   ]},
+  { service:'Mug / Sublimation', icon:'ti-mug', color:'#c2410c', items:[
+    { label:'Ceramic Mug 11oz',            price:'₱250',  note:'one side' },
+    { label:'Ceramic Mug 11oz Full Wrap',  price:'₱300',  note:'full wrap' },
+    { label:'Ceramic Mug 15oz',            price:'₱320',  note:'one side' },
+    { label:'Magic Mug (color-changing)',   price:'₱380',  note:'heat-activated' },
+    { label:'Tumbler sublimation',         price:'₱420',  note:'per piece' },
+  ]},
 ];
 
 let _priceListRendered = false;
@@ -1393,6 +1500,7 @@ const PRICE_ESTIMATES = {
   'Poster':               '₱80 – ₱300 per piece',
   'Brochure':             '₱300 – ₱1,000 per 100 pcs',
   'ID / Lanyard':         '₱80 – ₱250 per set',
+  'Mug / Sublimation':   '₱250 – ₱450 per piece',
   'Other':                'Price varies — we\'ll confirm after review',
 };
 
@@ -1484,6 +1592,8 @@ async function trackOrder(){
     if(extras.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${extras.shape}</span></div>`;
     if(extras.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${extras.idType}</span></div>`;
     if(extras.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${extras.sizes}</span></div>`;
+    if(extras.mugType)   extrasHtml+=`<div class="status-row"><span class="label">Mug type</span><span class="value">${extras.mugType}</span></div>`;
+    if(extras.mugSide)   extrasHtml+=`<div class="status-row"><span class="label">Print side</span><span class="value">${extras.mugSide}</span></div>`;
     result.className='status-card found';
     result.innerHTML=`
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Order — ${req.ref}</div>

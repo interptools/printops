@@ -691,7 +691,8 @@ tbody tr:hover td{background:var(--surface-1)}
             <div class="step-desc">In your Supabase dashboard, go to <strong>SQL Editor</strong> and run this query:<br><br>
             <code>create table po_orders (id serial primary key, data jsonb);</code><br>
             <code>create table po_customers (id serial primary key, data jsonb);</code><br>
-            <code>create table po_invoices (id serial primary key, data jsonb);</code>
+            <code>create table po_invoices (id serial primary key, data jsonb);</code><br>
+            <code>create table settings (key text primary key, value text);</code>
             </div>
           </div>
         </div>
@@ -708,6 +709,43 @@ tbody tr:hover td{background:var(--surface-1)}
             <div class="step-title">Test and push your data</div>
             <div class="step-desc">Click <strong>Test connection</strong> to verify. Then click <strong>Push local data to cloud</strong> to upload your existing orders, customers, and invoices. From any device, click <strong>Pull data from cloud</strong> to sync.</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Shop Info -->
+      <div class="card" style="margin-top:1rem;max-width:480px">
+        <div class="card-title"><i class="ti ti-building-store"></i> Shop Info &amp; Payment Details</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">This info is shown to customers on the order form after they submit — so they know who and where to send payment.</div>
+        <div class="form-row">
+          <div class="form-group form-full">
+            <label>Shop name</label>
+            <input id="si-shopname" type="text" placeholder="e.g. Arroyo Print Shop">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>GCash number</label>
+            <input id="si-gcash" type="tel" placeholder="09XX XXX XXXX" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>GCash account name</label>
+            <input id="si-gcashname" type="text" placeholder="e.g. R. Arroyo">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contact number</label>
+            <input id="si-phone" type="tel" placeholder="09XX XXX XXXX" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>Shop address</label>
+            <input id="si-address" type="text" placeholder="e.g. Pajac, Lapu-lapu City">
+          </div>
+        </div>
+        <div id="si-msg" style="font-size:12px;margin-bottom:10px;display:none"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="padding:8px 20px" onclick="saveShopInfo()"><i class="ti ti-check"></i> Save shop info</button>
+          <button class="btn" style="padding:8px 16px" onclick="loadShopInfoFields()"><i class="ti ti-refresh"></i> Reload</button>
         </div>
       </div>
 
@@ -4343,6 +4381,13 @@ const DASH_PRICE_LIST = [
     { label:'ID + Lanyard',           price:'₱160', note:'' },
     { label:'ID + Holder + Lanyard',  price:'₱220', note:'' },
   ]},
+  { service:'Mug / Sublimation', icon:'ti-mug', color:'#c2410c', items:[
+    { label:'Ceramic Mug 11oz',            price:'₱250',  note:'one side' },
+    { label:'Ceramic Mug 11oz Full Wrap',  price:'₱300',  note:'full wrap' },
+    { label:'Ceramic Mug 15oz',            price:'₱320',  note:'one side' },
+    { label:'Magic Mug (color-changing)',   price:'₱380',  note:'heat-activated' },
+    { label:'Tumbler sublimation',         price:'₱420',  note:'per piece' },
+  ]},
 ];
 
 async function renderDashPriceList(filter='') {
@@ -4419,7 +4464,63 @@ nav = function(p) {
   _origNavPriceList(p);
   if (p === 'pricelist')    renderDashPriceList();
   if (p === 'pricepresets') renderPresets();
+  if (p === 'settings')     loadShopInfoFields();
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── SHOP INFO SETTINGS ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadShopInfoFields() {
+  try {
+    const keys = ['shop_name','gcash_number','gcash_name','contact_number','shop_address'];
+    const rows = await sbFetch('settings?key=in.(' + keys.join(',') + ')');
+    if (rows && rows.length) {
+      const map = {};
+      rows.forEach(r => { map[r.key] = r.value; });
+      const f = (id, key) => { const el = document.getElementById(id); if (el && map[key] !== undefined) el.value = map[key]; };
+      f('si-shopname',  'shop_name');
+      f('si-gcash',     'gcash_number');
+      f('si-gcashname', 'gcash_name');
+      f('si-phone',     'contact_number');
+      f('si-address',   'shop_address');
+    }
+  } catch(e) { /* settings table may not exist yet */ }
+}
+
+async function saveShopInfo() {
+  const msg = document.getElementById('si-msg');
+  msg.style.display = 'none';
+  const fields = [
+    { key: 'shop_name',      val: (document.getElementById('si-shopname')?.value || '').trim() },
+    { key: 'gcash_number',   val: (document.getElementById('si-gcash')?.value || '').trim() },
+    { key: 'gcash_name',     val: (document.getElementById('si-gcashname')?.value || '').trim() },
+    { key: 'contact_number', val: (document.getElementById('si-phone')?.value || '').trim() },
+    { key: 'shop_address',   val: (document.getElementById('si-address')?.value || '').trim() },
+  ];
+  try {
+    for (const f of fields) {
+      if (!f.val) continue;
+      // upsert by key
+      await sbFetch('settings?key=eq.' + f.key, {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: JSON.stringify({ value: f.val })
+      }).catch(async () => {
+        // Row may not exist — try insert
+        await sbFetch('settings', {
+          method: 'POST',
+          prefer: 'return=minimal',
+          body: JSON.stringify({ key: f.key, value: f.val })
+        });
+      });
+    }
+    msg.style.cssText = 'display:block;color:var(--success);padding:8px 10px;background:var(--success-bg);border-radius:var(--radius)';
+    msg.innerHTML = '<i class="ti ti-circle-check"></i> Shop info saved! Customers will see your GCash number after submitting an order.';
+  } catch(e) {
+    msg.style.cssText = 'display:block;color:var(--danger);padding:8px 10px;background:var(--danger-bg);border-radius:var(--radius)';
+    msg.textContent = '⚠️ Could not save. Make sure your Supabase "settings" table exists (key text, value text).';
+  }
+}
 
 // Log startup + load Supabase-backed data
 window.addEventListener('load', () => {
