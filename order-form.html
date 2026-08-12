@@ -203,6 +203,11 @@
         <select id="f-jobtype" onchange="handleJobTypeChange()">
           <option value="">Loading services…</option>
         </select>
+        <!-- Estimated price banner -->
+        <div id="price-estimate-banner" style="display:none;margin-top:8px;padding:9px 13px;background:var(--success-bg);border:0.5px solid var(--success);border-radius:var(--radius);font-size:12px;color:var(--success);align-items:center;gap:7px">
+          <i class="ti ti-tag" style="font-size:14px;flex-shrink:0"></i>
+          <span id="price-estimate-text"></span>
+        </div>
       </div>
 
       <!-- ── PRINT FILE UPLOAD section ── -->
@@ -677,6 +682,34 @@
       </button>
       <div class="status-card" id="track-result"></div>
     </div>
+
+    <!-- Amendment Panel — shown when order is still Pending -->
+    <div id="amend-panel" style="display:none;margin-top:1rem">
+      <div class="card" style="border:1.5px solid var(--accent)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+          <i class="ti ti-edit" style="font-size:18px;color:var(--accent)"></i>
+          <span style="font-size:14px;font-weight:600;color:var(--accent-text)">Edit your request</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:auto">Only available while status is Pending</span>
+        </div>
+        <div class="form-group">
+          <label>Preferred date needed</label>
+          <input id="amend-due" type="date">
+        </div>
+        <div class="form-group">
+          <label>Notes / instructions</label>
+          <textarea id="amend-notes" placeholder="Update your instructions here..." style="min-height:80px"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" onclick="submitAmendment()" style="flex:1">
+            <i class="ti ti-check"></i> Save changes
+          </button>
+          <button class="btn btn-secondary" onclick="cancelAmendment()" style="width:auto;padding:11px 16px">
+            Cancel
+          </button>
+        </div>
+        <div id="amend-result" style="margin-top:10px;font-size:12px;display:none"></div>
+      </div>
+    </div>
   </div>
 
   <div class="footer">Arroyo Suite &mdash; All data is private and managed by the shop owner.</div>
@@ -804,6 +837,7 @@ function handleJobTypeChange(){
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
+  showPriceEstimate(jt);
   if(!jt) return;
   // show relevant sections — unknown/custom services fall back to 'Other' sections
   const toShow = JOB_SECTIONS[jt] || ['section-other','section-design-upload','rush-toggle-wrap'];
@@ -1097,12 +1131,80 @@ function switchTab(t){
   if(t==='track') document.getElementById('track-result').style.display='none';
 }
 
+// ── Estimated price ranges per job type ───────────────────────────────────
+const PRICE_ESTIMATES = {
+  'Print (file upload)':  '₱5 – ₱20 per page',
+  'Rush ID Photo':        '₱30 – ₱60 per package',
+  'Business cards':       '₱150 – ₱500 per 100 pcs',
+  'Flyers':               '₱200 – ₱800 per 100 pcs',
+  'Tarpaulin / Banner':   '₱150 – ₱600 depending on size',
+  'T-shirt print':        '₱150 – ₱350 per shirt',
+  'Sticker':              '₱80 – ₱400 per design',
+  'Poster':               '₱80 – ₱300 per piece',
+  'Brochure':             '₱300 – ₱1,000 per 100 pcs',
+  'ID / Lanyard':         '₱80 – ₱250 per set',
+  'Other':                'Price varies — we\'ll confirm after review',
+};
+
+function showPriceEstimate(jt) {
+  const banner = document.getElementById('price-estimate-banner');
+  const text   = document.getElementById('price-estimate-text');
+  if (!jt || !PRICE_ESTIMATES[jt]) { banner.style.display = 'none'; return; }
+  text.textContent = 'Estimated price: ' + PRICE_ESTIMATES[jt];
+  banner.style.display = 'flex';
+}
+
+// ── Amendment helpers ─────────────────────────────────────────────────────
+let _amendId = null;
+
+function showAmendPanel(req) {
+  _amendId = req.id;
+  const due = req.due || '';
+  const notes = req.notes || '';
+  document.getElementById('amend-due').value = due;
+  document.getElementById('amend-notes').value = notes;
+  document.getElementById('amend-result').style.display = 'none';
+  document.getElementById('amend-panel').style.display = 'block';
+  document.getElementById('amend-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function cancelAmendment() {
+  document.getElementById('amend-panel').style.display = 'none';
+  _amendId = null;
+}
+
+async function submitAmendment() {
+  if (!_amendId) return;
+  const due   = document.getElementById('amend-due').value || null;
+  const notes = document.getElementById('amend-notes').value.trim() || null;
+  const result = document.getElementById('amend-result');
+  result.style.display = 'none';
+  try {
+    await sbFetch('requests?id=eq.' + _amendId, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ due, notes })
+    });
+    result.style.cssText = 'display:block;color:var(--success);padding:8px 10px;background:var(--success-bg);border-radius:var(--radius)';
+    result.innerHTML = '<i class="ti ti-circle-check"></i> Changes saved! The shop has been updated.';
+    // Re-track to refresh the status card
+    await trackOrder();
+  } catch(e) {
+    result.style.cssText = 'display:block;color:var(--danger);padding:8px 10px;background:var(--danger-bg);border-radius:var(--radius)';
+    result.textContent = '⚠️ Could not save changes. Please try again.';
+  }
+}
+
 // ── trackOrder ────────────────────────────────────────────────────────────
 async function trackOrder(){
   const ref  = document.getElementById('t-ref').value.trim().toUpperCase();
   const name = document.getElementById('t-name').value.trim().toLowerCase();
   const result = document.getElementById('track-result');
   if(!ref||!name){ alert('Please enter both your reference number and name.'); return; }
+
+  // Hide amendment panel on new search
+  document.getElementById('amend-panel').style.display = 'none';
+  _amendId = null;
 
   result.className='status-card';
   result.style.display='block';
@@ -1147,6 +1249,14 @@ async function trackOrder(){
       <div class="status-row"><span class="label">Submitted</span><span class="value">${sub}</span></div>
       <div class="status-row"><span class="label">Status</span><span class="value"><span class="badge ${bc}">${req.status}</span></span></div>
       ${req.notes?`<div style="margin-top:10px;padding:10px;background:var(--surface-0);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)"><strong>Notes:</strong> ${req.notes}</div>`:''}
+      ${req.status==='Pending'?`
+      <div style="margin-top:14px;padding-top:12px;border-top:0.5px solid var(--border)">
+        <button onclick="showAmendPanel(${JSON.stringify(req).replace(/"/g,'&quot;')})"
+          style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--accent);background:var(--accent-bg);color:var(--accent-text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit">
+          <i class="ti ti-edit"></i> Edit this request
+        </button>
+        <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:5px">You can update your date or notes while status is Pending</div>
+      </div>`:''}
     `;
   } catch(e){
     result.className='status-card not-found';

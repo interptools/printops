@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Arroyo Suite — Business Manager</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -220,6 +223,8 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('requests')" id="nav-requests"><i class="ti ti-inbox" aria-hidden="true"></i><span>Requests <span id="req-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('services')" id="nav-services"><i class="ti ti-settings-2" aria-hidden="true"></i><span>Services</span></button>
+    <button class="nav-item" onclick="nav('inventory')" id="nav-inventory"><i class="ti ti-box" aria-hidden="true"></i><span>Inventory <span id="stock-alert-badge" style="display:none;background:var(--danger);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">!</span></span></button>
+    <button class="nav-item" onclick="nav('activitylog')" id="nav-activitylog"><i class="ti ti-history" aria-hidden="true"></i><span>Activity Log</span></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
     <button class="nav-item" onclick="nav('templates')" id="nav-templates"><i class="ti ti-template" aria-hidden="true"></i><span>Templates</span></button>
@@ -229,7 +234,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="exportData()"><i class="ti ti-download" aria-hidden="true"></i><span>Export backup</span></button>
     <button class="nav-item" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload" aria-hidden="true"></i><span>Import backup</span></button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
-    <div class="sidebar-bottom">Data saved locally.<br>v2.0 — Arroyo Suite</div>
+    <div class="sidebar-bottom">Data saved locally.<br>v2.1 — Arroyo Suite</div>
   </div>
 
   <div class="main">
@@ -794,9 +799,106 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
     </div>
 
+    <!-- INVENTORY -->
+    <div class="page" id="page-inventory">
+      <div class="page-header">
+        <div class="page-title">Inventory & Stock</div>
+        <button class="btn btn-primary" onclick="openStockModal()"><i class="ti ti-plus"></i> Add item</button>
+      </div>
+      <div id="low-stock-banner" style="display:none;background:var(--danger-bg);border:0.5px solid var(--danger);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:1rem;display:none;align-items:center;gap:8px">
+        <i class="ti ti-alert-triangle"></i> <span id="low-stock-msg"></span>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Item</th><th>Category</th><th>Current Stock</th><th>Low Stock Alert</th><th>Unit</th><th>Last Updated</th><th>Actions</th></tr></thead>
+          <tbody id="inventory-table"></tbody>
+        </table>
+        <div class="empty" id="inventory-empty" style="display:none">No inventory items yet. Click <strong>Add item</strong> to start tracking stock.</div>
+      </div>
+      <!-- Material Cost Logger -->
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Material Cost Logger — Log cost per order/request</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end" id="cost-logger-row">
+          <div class="form-group" style="margin:0"><label>Order / Ref #</label><input id="cost-ref" placeholder="e.g. REQ-0001 or #0003"></div>
+          <div class="form-group" style="margin:0"><label>Material cost (₱)</label><input id="cost-amount" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="form-group" style="margin:0"><label>Notes (optional)</label><input id="cost-note" placeholder="e.g. Tarp 4×6, ink"></div>
+          <button class="btn btn-primary" onclick="logMaterialCost()" style="white-space:nowrap"><i class="ti ti-plus"></i> Log</button>
+        </div>
+        <div id="cost-log-table-wrap" style="margin-top:1rem;overflow-x:auto">
+          <table>
+            <thead><tr><th>Order / Ref</th><th>Material Cost</th><th>Notes</th><th>Logged at</th><th></th></tr></thead>
+            <tbody id="cost-log-table"></tbody>
+          </table>
+          <div class="empty" id="cost-log-empty" style="display:none">No cost logs yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY LOG -->
+    <div class="page" id="page-activitylog">
+      <div class="page-header">
+        <div class="page-title">Activity Log</div>
+        <button class="btn btn-danger" onclick="clearActivityLog()" style="opacity:0.7"><i class="ti ti-trash"></i> Clear log</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Time</th><th>Action</th><th>Details</th><th>By</th></tr></thead>
+          <tbody id="activity-log-table"></tbody>
+        </table>
+        <div class="empty" id="activity-log-empty" style="display:none">No activity recorded yet. Status changes and key actions will appear here.</div>
+      </div>
+    </div>
+
   </div><!-- end .main -->
 </div><!-- end .app -->
 </div><!-- end #app-content -->
+
+<!-- Stock Item Modal -->
+<div class="modal-overlay" id="stock-modal" onclick="bgClose(event,'stock-modal')">
+  <div class="modal" style="width:460px">
+    <div class="modal-title">
+      <span id="stock-modal-title">Add inventory item</span>
+      <button class="modal-close" onclick="closeModal('stock-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-row">
+      <div class="form-group form-full"><label>Item name *</label><input id="st-name" placeholder="e.g. A4 Bond Paper, Black Ink, Tarpaulin Roll"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Category</label>
+        <select id="st-category">
+          <option>Paper</option><option>Ink / Toner</option><option>Material</option><option>Consumable</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Unit</label><input id="st-unit" placeholder="e.g. reams, pcs, rolls, liters"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Current stock *</label><input id="st-qty" type="number" min="0" value="0"></div>
+      <div class="form-group"><label>Low stock alert at</label><input id="st-low" type="number" min="0" value="5" placeholder="Warn when below this"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('stock-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStockItem()">Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN Prompt Modal -->
+<div class="modal-overlay" id="pin-modal">
+  <div class="modal" style="width:340px;text-align:center">
+    <div style="font-size:18px;font-weight:600;margin-bottom:6px"><i class="ti ti-lock" style="color:var(--accent)"></i> Confirm status change</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem" id="pin-modal-desc">Enter your owner PIN to save this change.</div>
+    <input id="pin-input" type="password" inputmode="numeric" maxlength="6"
+      placeholder="Enter PIN"
+      style="width:100%;padding:12px;text-align:center;font-size:20px;letter-spacing:6px;border:1.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);outline:none;font-family:inherit"
+      onkeydown="if(event.key==='Enter')confirmPin()">
+    <div id="pin-error" style="color:var(--danger);font-size:12px;margin-top:8px;display:none">Incorrect PIN. Try again.</div>
+    <div style="display:flex;gap:8px;margin-top:1rem">
+      <button class="btn" style="flex:1" onclick="cancelPin()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="confirmPin()">Confirm</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Default PIN: <strong>1234</strong> — change it in Settings</div>
+  </div>
+</div>
 
 <!-- Print Invoice Modal -->
 <div class="modal-overlay" id="print-modal" onclick="bgClose(event,'print-modal')">
@@ -1455,8 +1557,8 @@ async function renderRequests() {
         ${r.jobtype==='Rush ID Photo'
           ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
           : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
-        <button class="btn btn-sm" onclick="printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
+        <button class="btn btn-sm" onclick="event.stopPropagation();printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>
     <tr class="row-notes" id="rownotes-${r.id}">
@@ -1527,13 +1629,7 @@ async function printReqTicket(id) {
   const allReqs = await getRequestsFromDB();
   const r = allReqs.find(x => x.id === id);
   if (!r) { toast('Request not found.'); return; }
-
-  const now = new Date().toLocaleString('en-PH', {
-    year:'numeric', month:'long', day:'numeric',
-    hour:'2-digit', minute:'2-digit'
-  });
-
-  // Build details string
+  const now = new Date().toLocaleString('en-PH', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
   let details = '';
   if (r.pkgLabel) {
     details = r.pkgLabel;
@@ -1554,7 +1650,6 @@ async function printReqTicket(id) {
     }
     details = parts.join(' · ') || '—';
   }
-
   const area = document.getElementById('job-ticket-area');
   area.innerHTML = `
     <div class="jt-header">
@@ -1575,7 +1670,7 @@ async function printReqTicket(id) {
     <div class="jt-row"><span class="jt-label">Details</span><span class="jt-val">${details}</span></div>
     ${r.qty && !r.pkgLabel ? `<div class="jt-row"><span class="jt-label">Quantity</span><span class="jt-val">${r.qty} pcs</span></div>` : ''}
     <div class="jt-row"><span class="jt-label">Date needed</span><span class="jt-val">${r.due || '—'}</span></div>
-    ${r.print_file  ? `<div class="jt-row"><span class="jt-label">Print file</span><span class="jt-val">📄 ${r.print_file}</span></div>`  : ''}
+    ${r.print_file  ? `<div class="jt-row"><span class="jt-label">Print file</span><span class="jt-val">📄 ${r.print_file}</span></div>` : ''}
     ${r.design_file ? `<div class="jt-row"><span class="jt-label">Design file</span><span class="jt-val">🎨 ${r.design_file}</span></div>` : ''}
     ${r.notes ? `<div class="jt-divider"></div><div class="jt-row"><span class="jt-label">Notes</span><span class="jt-val" style="white-space:pre-wrap">${r.notes}</span></div>` : ''}
     <div class="jt-divider"></div>
@@ -2974,6 +3069,304 @@ function exportCustomersCSV() {
   });
   downloadCSV('arroyo-customers-' + new Date().toISOString().slice(0,10) + '.csv', [header, ...rows]);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── PIN PROTECTION ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const OWNER_PIN_KEY = 'arroyo_owner_pin';
+function getOwnerPin() { return localStorage.getItem(OWNER_PIN_KEY) || '1234'; }
+
+let _pinResolve = null;
+let _pinReject  = null;
+
+function requirePin(description = '') {
+  return new Promise((resolve, reject) => {
+    _pinResolve = resolve;
+    _pinReject  = reject;
+    document.getElementById('pin-modal-desc').textContent =
+      description || 'Enter your owner PIN to confirm this action.';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-error').style.display = 'none';
+    document.getElementById('pin-modal').classList.add('open');
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+  });
+}
+
+function confirmPin() {
+  const entered = document.getElementById('pin-input').value;
+  if (entered === getOwnerPin()) {
+    document.getElementById('pin-modal').classList.remove('open');
+    document.getElementById('pin-error').style.display = 'none';
+    if (_pinResolve) { _pinResolve(); _pinResolve = null; _pinReject = null; }
+  } else {
+    document.getElementById('pin-error').style.display = 'block';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+  }
+}
+
+function cancelPin() {
+  document.getElementById('pin-modal').classList.remove('open');
+  if (_pinReject) { _pinReject(new Error('cancelled')); _pinResolve = null; _pinReject = null; }
+}
+
+// Wrap updateReqStatus with PIN
+const _originalUpdateReqStatus = updateReqStatus;
+updateReqStatus = async function(id, status) {
+  try {
+    await requirePin('Confirm status change to "' + status + '"');
+    await _originalUpdateReqStatus(id, status);
+    logActivity('Status changed', 'Request #' + id + ' → ' + status, 'Owner');
+    renderRequests();
+  } catch(e) {
+    if (e.message !== 'cancelled') toast('⚠️ Could not update status.');
+    // Revert the dropdown visually
+    renderRequests();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── ACTIVITY LOG ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+function getActivityLog() { return JSON.parse(localStorage.getItem('arroyo_activity_log') || '[]'); }
+function saveActivityLog(log) { localStorage.setItem('arroyo_activity_log', JSON.stringify(log)); }
+
+function logActivity(action, details, by = 'Owner') {
+  const log = getActivityLog();
+  log.unshift({ action, details, by, time: new Date().toISOString() });
+  // Keep last 200 entries
+  if (log.length > 200) log.splice(200);
+  saveActivityLog(log);
+  // Refresh log page if open
+  const page = document.getElementById('page-activitylog');
+  if (page && page.classList.contains('active')) renderActivityLog();
+}
+
+function renderActivityLog() {
+  const log = getActivityLog();
+  const tbody = document.getElementById('activity-log-table');
+  const empty = document.getElementById('activity-log-empty');
+  if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = log.map(entry => {
+    const t = new Date(entry.time).toLocaleString('en-PH', {
+      month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+    });
+    return `<tr>
+      <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${t}</td>
+      <td style="font-weight:500;font-size:13px">${entry.action}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${entry.details}</td>
+      <td style="font-size:12px">${entry.by}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearActivityLog() {
+  if (!confirm('Clear all activity log entries?')) return;
+  saveActivityLog([]);
+  renderActivityLog();
+  toast('Activity log cleared.');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── INVENTORY & STOCK ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+function getInventory() { return JSON.parse(localStorage.getItem('arroyo_inventory') || '[]'); }
+function saveInventory(items) { localStorage.setItem('arroyo_inventory', JSON.stringify(items)); }
+
+let _editStockId = null;
+
+function openStockModal(id = null) {
+  _editStockId = id;
+  const items = getInventory();
+  const item = id ? items.find(i => i.id === id) : null;
+  document.getElementById('stock-modal-title').textContent = id ? 'Edit item' : 'Add inventory item';
+  document.getElementById('st-name').value     = item ? item.name : '';
+  document.getElementById('st-category').value = item ? item.category : 'Paper';
+  document.getElementById('st-unit').value      = item ? item.unit : '';
+  document.getElementById('st-qty').value       = item ? item.qty : 0;
+  document.getElementById('st-low').value       = item ? item.low : 5;
+  document.getElementById('stock-modal').classList.add('open');
+}
+
+function saveStockItem() {
+  const name = document.getElementById('st-name').value.trim();
+  if (!name) { alert('Please enter an item name.'); return; }
+  const items = getInventory();
+  const payload = {
+    name,
+    category: document.getElementById('st-category').value,
+    unit:     document.getElementById('st-unit').value.trim() || 'pcs',
+    qty:      Number(document.getElementById('st-qty').value) || 0,
+    low:      Number(document.getElementById('st-low').value) || 5,
+    updatedAt: new Date().toISOString()
+  };
+  if (_editStockId) {
+    const idx = items.findIndex(i => i.id === _editStockId);
+    if (idx > -1) items[idx] = { ...items[idx], ...payload };
+    logActivity('Stock updated', name + ' → ' + payload.qty + ' ' + payload.unit);
+  } else {
+    payload.id = items.length ? Math.max(...items.map(i => i.id)) + 1 : 1;
+    payload.createdAt = new Date().toISOString();
+    items.push(payload);
+    logActivity('Stock item added', name + ' (' + payload.qty + ' ' + payload.unit + ')');
+  }
+  saveInventory(items);
+  closeModal('stock-modal');
+  renderInventory();
+  toast('Item saved.');
+}
+
+function deleteStockItem(id) {
+  if (!confirm('Delete this inventory item?')) return;
+  const items = getInventory().filter(i => i.id !== id);
+  saveInventory(items);
+  renderInventory();
+  toast('Item deleted.');
+}
+
+function adjustStock(id, delta) {
+  const items = getInventory();
+  const idx = items.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  items[idx].qty = Math.max(0, (items[idx].qty || 0) + delta);
+  items[idx].updatedAt = new Date().toISOString();
+  saveInventory(items);
+  logActivity('Stock adjusted', items[idx].name + ': ' + (delta > 0 ? '+' : '') + delta + ' → ' + items[idx].qty + ' ' + items[idx].unit);
+  renderInventory();
+}
+
+function renderInventory() {
+  const items = getInventory();
+  const tbody = document.getElementById('inventory-table');
+  const empty = document.getElementById('inventory-empty');
+  const banner = document.getElementById('low-stock-banner');
+  const badge  = document.getElementById('stock-alert-badge');
+
+  const lowItems = items.filter(i => i.qty <= i.low);
+
+  // Dashboard badge
+  if (badge) { badge.style.display = lowItems.length ? 'inline' : 'none'; }
+
+  // Low stock banner
+  if (lowItems.length) {
+    banner.style.display = 'flex';
+    document.getElementById('low-stock-msg').textContent =
+      lowItems.length === 1
+        ? `Low stock: ${lowItems[0].name} (${lowItems[0].qty} ${lowItems[0].unit} remaining)`
+        : `${lowItems.length} items low on stock: ${lowItems.map(i => i.name).join(', ')}`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  if (!items.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = items.map(item => {
+    const isLow = item.qty <= item.low;
+    const updated = item.updatedAt
+      ? new Date(item.updatedAt).toLocaleDateString('en-PH', {month:'short', day:'numeric'})
+      : '—';
+    return `<tr style="${isLow ? 'background:var(--danger-bg)' : ''}">
+      <td style="font-weight:500">${item.name}${isLow ? ' <span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px;font-weight:600">LOW</span>' : ''}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${item.category}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-sm" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700">−</button>
+          <span style="font-size:15px;font-weight:600;min-width:28px;text-align:center;color:${isLow?'var(--danger)':'var(--text-primary)'}">${item.qty}</span>
+          <button class="btn btn-sm" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700">+</button>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--text-muted)">${item.low} ${item.unit}</td>
+      <td style="font-size:12px">${item.unit}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${updated}</td>
+      <td>
+        <div class="actions">
+          <button class="btn btn-sm" onclick="openStockModal(${item.id})"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteStockItem(${item.id})"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Material Cost Logger ──────────────────────────────────────────────────
+function getCostLog() { return JSON.parse(localStorage.getItem('arroyo_cost_log') || '[]'); }
+function saveCostLog(log) { localStorage.setItem('arroyo_cost_log', JSON.stringify(log)); }
+
+function logMaterialCost() {
+  const ref    = document.getElementById('cost-ref').value.trim();
+  const amount = Number(document.getElementById('cost-amount').value);
+  const note   = document.getElementById('cost-note').value.trim();
+  if (!ref) { alert('Please enter an order or reference number.'); return; }
+  if (!amount || amount <= 0) { alert('Please enter a valid cost.'); return; }
+  const log = getCostLog();
+  log.unshift({ id: Date.now(), ref, amount, note, loggedAt: new Date().toISOString() });
+  saveCostLog(log);
+  document.getElementById('cost-ref').value = '';
+  document.getElementById('cost-amount').value = '';
+  document.getElementById('cost-note').value = '';
+  logActivity('Material cost logged', ref + ' — ₱' + amount.toFixed(2) + (note ? ' (' + note + ')' : ''));
+  renderCostLog();
+  toast('Cost logged.');
+}
+
+function deleteCostLog(id) {
+  saveCostLog(getCostLog().filter(e => e.id !== id));
+  renderCostLog();
+  toast('Entry deleted.');
+}
+
+function renderCostLog() {
+  const log = getCostLog();
+  const tbody = document.getElementById('cost-log-table');
+  const empty = document.getElementById('cost-log-empty');
+  if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  const total = log.reduce((s, e) => s + e.amount, 0);
+  tbody.innerHTML = log.map(e => {
+    const t = new Date(e.loggedAt).toLocaleDateString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    return `<tr>
+      <td style="font-weight:500">${e.ref}</td>
+      <td style="color:var(--danger);font-weight:600">₱${Number(e.amount).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${e.note || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${t}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteCostLog(${e.id})"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+  // Add total row
+  tbody.innerHTML += `<tr style="background:var(--surface-1);font-weight:600">
+    <td>Total material costs</td>
+    <td style="color:var(--danger)">₱${total.toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+    <td colspan="3" style="font-size:11px;color:var(--text-muted)">${log.length} entries</td>
+  </tr>`;
+}
+
+// ── Register new pages in nav() ───────────────────────────────────────────
+const _origNav = nav;
+nav = function(p) {
+  // Ensure page and nav elements exist before calling original nav
+  const pageEl = document.getElementById('page-' + p);
+  if (!pageEl) return;
+  _origNav(p);
+  if (p === 'inventory') { renderInventory(); renderCostLog(); }
+  if (p === 'activitylog') renderActivityLog();
+};
+
+// ── Update stock alert badge on dashboard load ────────────────────────────
+const _origRenderDash = renderDash;
+renderDash = function() {
+  _origRenderDash();
+  const items = getInventory();
+  const badge = document.getElementById('stock-alert-badge');
+  if (badge) badge.style.display = items.some(i => i.qty <= i.low) ? 'inline' : 'none';
+};
+
+// Log startup
+window.addEventListener('load', () => {
+  // Small delay to let auth gate show first
+  setTimeout(() => logActivity('Dashboard opened', 'Session started', 'Owner'), 2000);
+});
 </script>
 </body>
 </html>
