@@ -227,6 +227,8 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('activitylog')" id="nav-activitylog"><i class="ti ti-history" aria-hidden="true"></i><span>Activity Log</span></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
+    <button class="nav-item" onclick="nav('pricepresets')" id="nav-pricepresets"><i class="ti ti-tags" aria-hidden="true"></i><span>Price Presets</span></button>
+    <button class="nav-item" onclick="nav('pricelist')" id="nav-pricelist"><i class="ti ti-currency-peso" aria-hidden="true"></i><span>Price List</span></button>
     <button class="nav-item" onclick="nav('templates')" id="nav-templates"><i class="ti ti-template" aria-hidden="true"></i><span>Templates</span></button>
     <button class="nav-item" onclick="nav('freetools')" id="nav-freetools"><i class="ti ti-tools" aria-hidden="true"></i><span>Free tools</span></button>
     <button class="nav-item" onclick="nav('sync')" id="nav-sync"><i class="ti ti-cloud" aria-hidden="true"></i><span>Sync setup</span></button>
@@ -799,6 +801,35 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
     </div>
 
+    <!-- PRICE LIST -->
+    <div class="page" id="page-pricelist">
+      <div class="page-header">
+        <div class="page-title">Price List</div>
+        <button class="btn" onclick="nav('pricepresets')"><i class="ti ti-edit"></i> Edit presets</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem">Quick reference when customers ask for prices. All rates are your current standard prices.</div>
+      <input id="dash-price-search" type="text" placeholder="🔍 Search service or price..." oninput="filterDashPriceList()"
+        style="width:100%;max-width:400px;padding:8px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none;margin-bottom:1.25rem;display:block">
+      <div id="dash-price-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+    </div>
+
+    <!-- PRICE PRESETS -->
+    <div class="page" id="page-pricepresets">
+      <div class="page-header">
+        <div class="page-title">Price Presets</div>
+        <button class="btn btn-primary" onclick="openPresetModal()"><i class="ti ti-plus"></i> Add preset</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.6">
+        Save your most common prices here. When you create an invoice from a request, tap a preset to fill in the amount instantly.
+      </div>
+      <div class="card" style="padding:0">
+        <div id="presets-list"></div>
+        <div class="empty" id="presets-empty" style="display:none;padding:2rem">
+          No price presets yet. Click <strong>Add preset</strong> to save your common prices.
+        </div>
+      </div>
+    </div>
+
     <!-- INVENTORY -->
     <div class="page" id="page-inventory">
       <div class="page-header">
@@ -897,6 +928,86 @@ tbody tr:hover td{background:var(--surface-1)}
       <button class="btn btn-primary" style="flex:1" onclick="confirmPin()">Confirm</button>
     </div>
     <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Default PIN: <strong>1234</strong> — change it in Settings</div>
+  </div>
+</div>
+
+<!-- Quick Invoice from Request Modal -->
+<div class="modal-overlay" id="quick-inv-modal" onclick="bgClose(event,'quick-inv-modal')">
+  <div class="modal" style="width:520px">
+    <div class="modal-title">
+      <span><i class="ti ti-receipt" style="color:var(--warning);margin-right:6px"></i>Quick Invoice</span>
+      <button class="modal-close" onclick="closeModal('quick-inv-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <!-- Request summary -->
+    <div id="qi-summary" style="background:var(--surface-1);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;font-size:13px;border:0.5px solid var(--border)"></div>
+    <!-- Price presets strip -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Price presets <span style="font-weight:400;text-transform:none;font-size:11px">— tap to apply</span></div>
+      <div id="qi-presets-strip" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="qi-no-presets" style="font-size:12px;color:var(--text-muted);display:none">No presets saved yet — <button onclick="closeModal('quick-inv-modal');nav('pricepresets')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0;font-family:inherit">add some in Price Presets</button></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Amount (₱) *</label>
+        <input id="qi-amount" type="number" min="0" step="0.01" placeholder="0.00" style="font-size:18px;font-weight:600">
+      </div>
+      <div class="form-group">
+        <label>Due date</label>
+        <input id="qi-due" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="qi-notes" placeholder="Payment terms, bank details, pickup instructions..." style="min-height:60px"></textarea>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;padding:8px 12px;background:var(--accent-bg);border-radius:var(--radius)">
+      <i class="ti ti-info-circle"></i> The customer will be auto-created if not in your records yet. The request stays in your Requests list.
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('quick-inv-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveQuickInvoice()"><i class="ti ti-receipt"></i> Create invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Price Presets Modal (add/edit) -->
+<div class="modal-overlay" id="preset-modal" onclick="bgClose(event,'preset-modal')">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">
+      <span id="preset-modal-title">Add price preset</span>
+      <button class="modal-close" onclick="closeModal('preset-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Label *</label>
+      <input id="ps-label" placeholder="e.g. A4 BW Print, Business Card 100pcs">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Price (₱) *</label>
+        <input id="ps-price" type="number" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Job type (optional)</label>
+        <select id="ps-jobtype">
+          <option value="">Any</option>
+          <option>Print (file upload)</option>
+          <option>Rush ID Photo</option>
+          <option>Business cards</option>
+          <option>Flyers</option>
+          <option>Tarpaulin / Banner</option>
+          <option>T-shirt print</option>
+          <option>Sticker</option>
+          <option>Poster</option>
+          <option>Brochure</option>
+          <option>ID / Lanyard</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('preset-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePreset()">Save preset</button>
+    </div>
   </div>
 </div>
 
@@ -1557,6 +1668,7 @@ async function renderRequests() {
         ${r.jobtype==='Rush ID Photo'
           ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
           : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
+        <button class="btn btn-sm" onclick="event.stopPropagation();quickInvoiceFromReq(${r.id})" title="Create invoice from this request" style="color:var(--warning);border-color:var(--warning)"><i class="ti ti-receipt"></i></button>
         <button class="btn btn-sm" onclick="event.stopPropagation();printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteReq(${r.id})"><i class="ti ti-trash"></i></button>
       </div></td>
@@ -3362,9 +3474,371 @@ renderDash = function() {
   if (badge) badge.style.display = items.some(i => i.qty <= i.low) ? 'inline' : 'none';
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ── PRICE PRESETS ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const DEFAULT_PRESETS = [
+  // Print (file upload)
+  { id:1,  label:'A4 Black & White',         price:6,    jobtype:'Print (file upload)' },
+  { id:2,  label:'A4 Full Color',            price:25,   jobtype:'Print (file upload)' },
+  { id:3,  label:'A3 Black & White',         price:12,   jobtype:'Print (file upload)' },
+  { id:4,  label:'A3 Full Color',            price:40,   jobtype:'Print (file upload)' },
+  { id:5,  label:'Short B&W',               price:6,    jobtype:'Print (file upload)' },
+  { id:6,  label:'Short Full Color',         price:20,   jobtype:'Print (file upload)' },
+  { id:7,  label:'Long B&W',                price:8,    jobtype:'Print (file upload)' },
+  { id:8,  label:'Long Full Color',          price:22,   jobtype:'Print (file upload)' },
+  // Rush ID Photo
+  { id:9,  label:'ID Photo — Package A',     price:50,   jobtype:'Rush ID Photo' },
+  { id:10, label:'ID Photo — Package B',     price:50,   jobtype:'Rush ID Photo' },
+  { id:11, label:'ID Photo — Package C',     price:50,   jobtype:'Rush ID Photo' },
+  { id:12, label:'ID Photo — Package D',     price:60,   jobtype:'Rush ID Photo' },
+  // Business Cards
+  { id:13, label:'Business Cards 100pcs Glossy', price:380, jobtype:'Business cards' },
+  { id:14, label:'Business Cards 100pcs Matte',  price:400, jobtype:'Business cards' },
+  { id:15, label:'Business Cards 500pcs',        price:950, jobtype:'Business cards' },
+  // Flyers
+  { id:16, label:'Flyers A5 100pcs',         price:380,  jobtype:'Flyers' },
+  { id:17, label:'Flyers A4 100pcs',         price:650,  jobtype:'Flyers' },
+  { id:18, label:'Flyers 1/4 A4 100pcs',    price:250,  jobtype:'Flyers' },
+  // Tarpaulin
+  { id:19, label:'Tarp 2×3 ft',             price:160,  jobtype:'Tarpaulin / Banner' },
+  { id:20, label:'Tarp 3×4 ft',             price:270,  jobtype:'Tarpaulin / Banner' },
+  { id:21, label:'Tarp 4×6 ft',             price:430,  jobtype:'Tarpaulin / Banner' },
+  { id:22, label:'Tarp 4×8 ft',             price:560,  jobtype:'Tarpaulin / Banner' },
+  { id:23, label:'Tarp 6×8 ft',             price:800,  jobtype:'Tarpaulin / Banner' },
+  { id:24, label:'Tarp 8×10 ft',            price:1100, jobtype:'Tarpaulin / Banner' },
+  // T-shirt
+  { id:25, label:'T-shirt Heat Transfer',    price:200,  jobtype:'T-shirt print' },
+  { id:26, label:'T-shirt Sublimation',      price:280,  jobtype:'T-shirt print' },
+  // Sticker
+  { id:27, label:'Sticker A4 Glossy',        price:130,  jobtype:'Sticker' },
+  { id:28, label:'Sticker A4 Clear',         price:160,  jobtype:'Sticker' },
+  { id:29, label:'Sticker Custom cut (pc)',   price:30,   jobtype:'Sticker' },
+  // Poster
+  { id:30, label:'Poster A3',               price:130,  jobtype:'Poster' },
+  { id:31, label:'Poster A2',               price:240,  jobtype:'Poster' },
+  { id:32, label:'Poster A1',               price:400,  jobtype:'Poster' },
+  // Brochure
+  { id:33, label:'Brochure Tri-fold 100pcs', price:850,  jobtype:'Brochure' },
+  { id:34, label:'Brochure Bi-fold 100pcs',  price:750,  jobtype:'Brochure' },
+  // ID / Lanyard
+  { id:35, label:'ID Card only',             price:90,   jobtype:'ID / Lanyard' },
+  { id:36, label:'ID + Lanyard set',         price:160,  jobtype:'ID / Lanyard' },
+  { id:37, label:'ID + Holder + Lanyard',    price:220,  jobtype:'ID / Lanyard' },
+];
+
+function getPresets() {
+  const stored = localStorage.getItem('arroyo_price_presets');
+  if (stored) return JSON.parse(stored);
+  // First run — seed with defaults
+  savePresets(DEFAULT_PRESETS);
+  return DEFAULT_PRESETS;
+}
+function savePresets(p) { localStorage.setItem('arroyo_price_presets', JSON.stringify(p)); }
+
+let _editPresetId = null;
+
+function openPresetModal(id = null) {
+  _editPresetId = id;
+  const presets = getPresets();
+  const p = id !== null ? presets.find(x => x.id === id) : null;
+  document.getElementById('preset-modal-title').textContent = id !== null ? 'Edit preset' : 'Add price preset';
+  document.getElementById('ps-label').value   = p ? p.label : '';
+  document.getElementById('ps-price').value   = p ? p.price : '';
+  document.getElementById('ps-jobtype').value = p ? (p.jobtype || '') : '';
+  document.getElementById('preset-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ps-label').focus(), 100);
+}
+
+function savePreset() {
+  const label   = document.getElementById('ps-label').value.trim();
+  const price   = Number(document.getElementById('ps-price').value);
+  const jobtype = document.getElementById('ps-jobtype').value;
+  if (!label) { alert('Please enter a label.'); return; }
+  if (!price || price <= 0) { alert('Please enter a valid price.'); return; }
+  const presets = getPresets();
+  if (_editPresetId !== null) {
+    const idx = presets.findIndex(x => x.id === _editPresetId);
+    if (idx > -1) presets[idx] = { ...presets[idx], label, price, jobtype };
+  } else {
+    presets.push({ id: presets.length ? Math.max(...presets.map(x => x.id)) + 1 : 1, label, price, jobtype });
+  }
+  savePresets(presets);
+  closeModal('preset-modal');
+  renderPresets();
+  toast('Preset saved.');
+}
+
+function deletePreset(id) {
+  if (!confirm('Delete this preset?')) return;
+  savePresets(getPresets().filter(p => p.id !== id));
+  renderPresets();
+  toast('Preset deleted.');
+}
+
+function renderPresets() {
+  const presets = getPresets();
+  const list  = document.getElementById('presets-list');
+  const empty = document.getElementById('presets-empty');
+  if (!list) return;
+  if (!presets.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = presets.map(p => `
+    <div style="display:flex;align-items:center;gap:12px;padding:13px 1.25rem;border-bottom:0.5px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${p.label}</div>
+        ${p.jobtype ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.jobtype}</div>` : ''}
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--success);min-width:80px;text-align:right">₱${Number(p.price).toLocaleString('en-PH', {minimumFractionDigits:2})}</div>
+      <div class="actions">
+        <button class="btn btn-sm" onclick="openPresetModal(${p.id})"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deletePreset(${p.id})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── QUICK INVOICE FROM REQUEST ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+let _qiReq = null;
+
+async function quickInvoiceFromReq(id) {
+  const allReqs = await getRequestsFromDB();
+  const r = allReqs.find(x => x.id === id);
+  if (!r) { toast('Request not found.'); return; }
+  _qiReq = r;
+
+  // Build summary
+  let details = r.pkgLabel || r.size || '—';
+  if (!r.pkgLabel && r.qty && r.qty > 1) details += ' · Qty: ' + r.qty;
+  document.getElementById('qi-summary').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:600;font-size:14px">${r.name}</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">${r.phone}${r.email ? ' · ' + r.email : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:600">${r.jobtype}${r.rush ? ' <span style="color:#d97706;font-size:11px">⚡ RUSH</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${details}</div>
+      </div>
+    </div>
+    ${r.due ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)"><i class="ti ti-calendar"></i> Needed by: <strong>${r.due}</strong></div>` : ''}
+    ${r.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted)">Notes: ${r.notes}</div>` : ''}
+  `;
+
+  // Populate presets strip — show all, highlight matching job type
+  const presets = getPresets();
+  const strip = document.getElementById('qi-presets-strip');
+  const noPresets = document.getElementById('qi-no-presets');
+  if (!presets.length) {
+    strip.innerHTML = '';
+    noPresets.style.display = 'block';
+  } else {
+    noPresets.style.display = 'none';
+    // Sort: matching job type first
+    const sorted = [...presets].sort((a, b) => {
+      const aMatch = a.jobtype === r.jobtype;
+      const bMatch = b.jobtype === r.jobtype;
+      return (bMatch ? 1 : 0) - (aMatch ? 1 : 0);
+    });
+    strip.innerHTML = sorted.map(p => {
+      const isMatch = p.jobtype === r.jobtype || !p.jobtype;
+      return `<button
+        onclick="applyPresetToInvoice(${p.price})"
+        style="padding:5px 12px;border-radius:20px;border:1.5px solid ${isMatch ? 'var(--success)' : 'var(--border-strong)'};
+               background:${isMatch ? 'var(--success-bg)' : 'var(--surface-1)'};
+               color:${isMatch ? 'var(--success)' : 'var(--text-secondary)'};
+               font-size:12px;font-family:inherit;cursor:pointer;font-weight:600;transition:all 0.1s"
+        title="${p.jobtype || 'Any job type'}">
+        ${p.label} — ₱${Number(p.price).toLocaleString('en-PH')}
+      </button>`;
+    }).join('');
+  }
+
+  // Pre-fill due date and reset amount
+  document.getElementById('qi-amount').value = '';
+  document.getElementById('qi-due').value = r.due || '';
+  document.getElementById('qi-notes').value = '';
+  document.getElementById('quick-inv-modal').classList.add('open');
+  setTimeout(() => document.getElementById('qi-amount').focus(), 100);
+}
+
+function applyPresetToInvoice(price) {
+  document.getElementById('qi-amount').value = price;
+  document.getElementById('qi-amount').focus();
+}
+
+function saveQuickInvoice() {
+  const amount = Number(document.getElementById('qi-amount').value);
+  if (!amount || amount <= 0) { alert('Please enter the invoice amount.'); return; }
+  if (!_qiReq) return;
+
+  const r = _qiReq;
+  const due   = document.getElementById('qi-due').value;
+  const notes = document.getElementById('qi-notes').value.trim();
+
+  // Find or auto-create customer
+  let cust = customers.find(c =>
+    c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone
+  );
+  if (!cust) {
+    cust = {
+      id: nextId(customers),
+      name: r.name, phone: r.phone, email: r.email || '',
+      address: '', createdAt: new Date().toISOString()
+    };
+    customers = [...customers, cust];
+    persist();
+    toast('Customer auto-created: ' + cust.name);
+  }
+
+  // Build invoice notes
+  const autoNote = [
+    'From request: ' + (r.ref || '#' + r.id),
+    r.jobtype,
+    r.pkgLabel || r.size || '',
+    r.rush ? '⚡ RUSH' : '',
+    notes
+  ].filter(Boolean).join(' · ');
+
+  invoices.push({
+    id: nextId(invoices),
+    customerId: cust.id,
+    orderId: null,
+    amount,
+    due,
+    notes: autoNote,
+    status: 'Unpaid',
+    createdAt: new Date().toISOString()
+  });
+  persist();
+  logActivity('Quick invoice created', (r.ref || 'Request #' + r.id) + ' — ₱' + amount.toLocaleString('en-PH'));
+  closeModal('quick-inv-modal');
+  renderInvoices();
+  toast('✅ Invoice created — ₱' + amount.toLocaleString('en-PH') + ' for ' + r.name);
+  _qiReq = null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── PRICE LIST PAGE ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const DASH_PRICE_LIST = [
+  { service:'Print (file upload)', icon:'ti-printer', color:'#1a6ef5', items:[
+    { label:'A4 Black & White',  price:'₱6',    note:'per page' },
+    { label:'A4 Full Color',     price:'₱25',   note:'per page' },
+    { label:'A3 Black & White',  price:'₱12',   note:'per page' },
+    { label:'A3 Full Color',     price:'₱40',   note:'per page' },
+    { label:'Short B&W',         price:'₱6',    note:'per page' },
+    { label:'Short Full Color',  price:'₱20',   note:'per page' },
+    { label:'Long B&W',          price:'₱8',    note:'per page' },
+    { label:'Long Full Color',   price:'₱22',   note:'per page' },
+  ]},
+  { service:'Rush ID Photo', icon:'ti-camera', color:'#9333ea', items:[
+    { label:'Package A — 1×1(7) + 2×2(2)',       price:'₱50',  note:'9 pcs' },
+    { label:'Package B — 2×2(4) + 1×1(8)',       price:'₱50',  note:'12 pcs' },
+    { label:'Package C — 1×1(4)+2×2(2)+Pass(5)', price:'₱50',  note:'11 pcs' },
+    { label:'Package D — Passport (8pcs)',        price:'₱60',  note:'Best value' },
+  ]},
+  { service:'Business Cards', icon:'ti-address-card', color:'#0891b2', items:[
+    { label:'100 pcs Glossy',  price:'₱380',  note:'' },
+    { label:'100 pcs Matte',   price:'₱400',  note:'' },
+    { label:'500 pcs Glossy',  price:'₱950',  note:'bulk' },
+  ]},
+  { service:'Flyers', icon:'ti-file-text', color:'#d97706', items:[
+    { label:'A5 100 pcs',      price:'₱380',  note:'' },
+    { label:'A4 100 pcs',      price:'₱650',  note:'' },
+    { label:'1/4 A4 100 pcs',  price:'₱250',  note:'' },
+  ]},
+  { service:'Tarpaulin / Banner', icon:'ti-dimensions', color:'#16a34a', items:[
+    { label:'2×3 ft',   price:'₱160',   note:'' },
+    { label:'3×4 ft',   price:'₱270',   note:'' },
+    { label:'4×6 ft',   price:'₱430',   note:'' },
+    { label:'4×8 ft',   price:'₱560',   note:'' },
+    { label:'6×8 ft',   price:'₱800',   note:'' },
+    { label:'8×10 ft',  price:'₱1,100', note:'' },
+  ]},
+  { service:'T-shirt Print', icon:'ti-shirt', color:'#e11d48', items:[
+    { label:'Heat Transfer', price:'₱200', note:'per shirt' },
+    { label:'Sublimation',   price:'₱280', note:'per shirt' },
+  ]},
+  { service:'Sticker', icon:'ti-sticker', color:'#f59e0b', items:[
+    { label:'A4 Glossy',   price:'₱130', note:'per sheet' },
+    { label:'A4 Clear',    price:'₱160', note:'per sheet' },
+    { label:'Custom cut',  price:'₱30',  note:'per piece' },
+  ]},
+  { service:'Poster', icon:'ti-photo', color:'#7c3aed', items:[
+    { label:'A3', price:'₱130', note:'' },
+    { label:'A2', price:'₱240', note:'' },
+    { label:'A1', price:'₱400', note:'' },
+  ]},
+  { service:'Brochure', icon:'ti-book', color:'#0f766e', items:[
+    { label:'Tri-fold 100 pcs', price:'₱850', note:'' },
+    { label:'Bi-fold 100 pcs',  price:'₱750', note:'' },
+  ]},
+  { service:'ID / Lanyard', icon:'ti-id', color:'#1d4ed8', items:[
+    { label:'ID Card only',           price:'₱90',  note:'' },
+    { label:'ID + Lanyard',           price:'₱160', note:'' },
+    { label:'ID + Holder + Lanyard',  price:'₱220', note:'' },
+  ]},
+];
+
+function renderDashPriceList(filter='') {
+  const grid = document.getElementById('dash-price-list-grid');
+  if (!grid) return;
+  const q = filter.toLowerCase();
+  const filtered = DASH_PRICE_LIST.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item =>
+      !q ||
+      cat.service.toLowerCase().includes(q) ||
+      item.label.toLowerCase().includes(q) ||
+      item.price.includes(q)
+    )
+  })).filter(cat => cat.items.length);
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px;grid-column:1/-1">No results found.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(cat => `
+    <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border);background:${cat.color}08">
+        <div style="width:32px;height:32px;border-radius:8px;background:${cat.color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti ${cat.icon}" style="font-size:16px;color:${cat.color}"></i>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${cat.service}</div>
+      </div>
+      ${cat.items.map((item, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;${i < cat.items.length-1 ? 'border-bottom:0.5px solid var(--border)' : ''}">
+          <div>
+            <div style="font-size:12px;color:var(--text-primary)">${item.label}</div>
+            ${item.note ? `<div style="font-size:11px;color:var(--text-muted)">${item.note}</div>` : ''}
+          </div>
+          <div style="font-size:14px;font-weight:700;color:${cat.color};white-space:nowrap;margin-left:10px">${item.price}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function filterDashPriceList() {
+  const q = document.getElementById('dash-price-search').value;
+  renderDashPriceList(q);
+}
+
+// Register pricelist in nav wrapper
+const _origNavPriceList = nav;
+nav = function(p) {
+  const pageEl = document.getElementById('page-' + p);
+  if (!pageEl) return;
+  _origNavPriceList(p);
+  if (p === 'pricelist')    renderDashPriceList();
+  if (p === 'pricepresets') renderPresets();
+};
+
 // Log startup
 window.addEventListener('load', () => {
-  // Small delay to let auth gate show first
   setTimeout(() => logActivity('Dashboard opened', 'Session started', 'Owner'), 2000);
 });
 </script>

@@ -1125,10 +1125,121 @@ function resetForm(){
 
 // ── switchTab ─────────────────────────────────────────────────────────────
 function switchTab(t){
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(i===0)===(t==='order')));
-  document.getElementById('tab-order').style.display = t==='order'?'block':'none';
-  document.getElementById('tab-track').style.display = t==='track'?'block':'none';
+  const tabs = document.querySelectorAll('.tab');
+  tabs[0].classList.toggle('active', t==='order');
+  tabs[1].classList.toggle('active', t==='track');
+  document.getElementById('tab-order').style.display = t==='order' ? 'block' : 'none';
+  document.getElementById('tab-track').style.display = t==='track' ? 'block' : 'none';
   if(t==='track') document.getElementById('track-result').style.display='none';
+}
+
+// ── Price list data ────────────────────────────────────────────────────────
+const PRICE_LIST = [
+  { service:'Print (file upload)', icon:'ti-printer', color:'#1a6ef5', items:[
+    { label:'A4 Black & White',   price:'₱6',    note:'per page' },
+    { label:'A4 Full Color',      price:'₱25',   note:'per page' },
+    { label:'A3 Black & White',   price:'₱12',   note:'per page' },
+    { label:'A3 Full Color',      price:'₱40',   note:'per page' },
+    { label:'Short B&W',          price:'₱6',    note:'per page' },
+    { label:'Short Full Color',   price:'₱20',   note:'per page' },
+    { label:'Long B&W',           price:'₱8',    note:'per page' },
+    { label:'Long Full Color',    price:'₱22',   note:'per page' },
+  ]},
+  { service:'Rush ID Photo', icon:'ti-camera', color:'#9333ea', items:[
+    { label:'Package A — 1×1 (7pcs) + 2×2 (2pcs)',        price:'₱50',  note:'9 pcs total' },
+    { label:'Package B — 2×2 (4pcs) + 1×1 (8pcs)',        price:'₱50',  note:'12 pcs total' },
+    { label:'Package C — 1×1 (4) + 2×2 (2) + Pass (5)',   price:'₱50',  note:'11 pcs total' },
+    { label:'Package D — Passport ID (8pcs)',              price:'₱60',  note:'Best value' },
+  ]},
+  { service:'Business Cards', icon:'ti-address-card', color:'#0891b2', items:[
+    { label:'100 pcs Glossy',  price:'₱380',  note:'standard size' },
+    { label:'100 pcs Matte',   price:'₱400',  note:'standard size' },
+    { label:'500 pcs Glossy',  price:'₱950',  note:'bulk rate' },
+  ]},
+  { service:'Flyers', icon:'ti-file-text', color:'#d97706', items:[
+    { label:'A5 — 100 pcs',      price:'₱380',  note:'half A4' },
+    { label:'A4 — 100 pcs',      price:'₱650',  note:'full size' },
+    { label:'1/4 A4 — 100 pcs',  price:'₱250',  note:'quarter size' },
+  ]},
+  { service:'Tarpaulin / Banner', icon:'ti-dimensions', color:'#16a34a', items:[
+    { label:'2×3 ft',   price:'₱160',   note:'' },
+    { label:'3×4 ft',   price:'₱270',   note:'' },
+    { label:'4×6 ft',   price:'₱430',   note:'' },
+    { label:'4×8 ft',   price:'₱560',   note:'' },
+    { label:'6×8 ft',   price:'₱800',   note:'' },
+    { label:'8×10 ft',  price:'₱1,100', note:'' },
+  ]},
+  { service:'T-shirt Print', icon:'ti-shirt', color:'#e11d48', items:[
+    { label:'Heat Transfer',  price:'₱200',  note:'per shirt' },
+    { label:'Sublimation',    price:'₱280',  note:'per shirt' },
+  ]},
+  { service:'Sticker', icon:'ti-sticker', color:'#f59e0b', items:[
+    { label:'A4 Glossy',         price:'₱130',  note:'per sheet' },
+    { label:'A4 Clear',          price:'₱160',  note:'per sheet' },
+    { label:'Custom cut',        price:'₱30',   note:'per piece' },
+  ]},
+  { service:'Poster', icon:'ti-photo', color:'#7c3aed', items:[
+    { label:'A3', price:'₱130',  note:'' },
+    { label:'A2', price:'₱240',  note:'' },
+    { label:'A1', price:'₱400',  note:'' },
+  ]},
+  { service:'Brochure', icon:'ti-book', color:'#0f766e', items:[
+    { label:'Tri-fold — 100 pcs',  price:'₱850',  note:'' },
+    { label:'Bi-fold — 100 pcs',   price:'₱750',  note:'' },
+  ]},
+  { service:'ID / Lanyard', icon:'ti-id', color:'#1d4ed8', items:[
+    { label:'ID Card only',          price:'₱90',   note:'' },
+    { label:'ID + Lanyard',          price:'₱160',  note:'' },
+    { label:'ID + Holder + Lanyard', price:'₱220',  note:'' },
+  ]},
+];
+
+let _priceListRendered = false;
+function renderPriceList(filter=''){
+  const grid = document.getElementById('price-list-grid');
+  if(!grid) return;
+  const q = filter.toLowerCase();
+  const filtered = PRICE_LIST.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item =>
+      !q ||
+      cat.service.toLowerCase().includes(q) ||
+      item.label.toLowerCase().includes(q) ||
+      item.price.includes(q)
+    )
+  })).filter(cat => cat.items.length);
+
+  if(!filtered.length){
+    grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">No results found.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(cat => `
+    <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">
+      <!-- Card header -->
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border)">
+        <div style="width:36px;height:36px;border-radius:9px;background:${cat.color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti ${cat.icon}" style="font-size:18px;color:${cat.color}"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${cat.service}</div>
+        <button onclick="switchTab('order')" style="margin-left:auto;padding:5px 12px;border-radius:20px;border:1px solid ${cat.color};background:transparent;color:${cat.color};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Order →</button>
+      </div>
+      <!-- Items -->
+      ${cat.items.map((item, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;${i < cat.items.length-1 ? 'border-bottom:0.5px solid var(--border)' : ''}">
+          <div>
+            <div style="font-size:13px;color:var(--text-primary)">${item.label}</div>
+            ${item.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${item.note}</div>` : ''}
+          </div>
+          <div style="font-size:15px;font-weight:700;color:${cat.color};white-space:nowrap;margin-left:12px">${item.price}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function filterPriceList(){
+  const q = document.getElementById('price-search').value;
+  renderPriceList(q);
 }
 
 // ── Estimated price ranges per job type ───────────────────────────────────
