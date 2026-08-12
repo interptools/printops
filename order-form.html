@@ -665,22 +665,26 @@
           Last step — send your order to the shop
         </div>
         <p style="font-size:13px;color:#334;line-height:1.65;margin:0 0 12px">
-          Tap the button below. It will <strong>copy your styled order email</strong> and <strong>open Gmail</strong> at the same time — just paste and attach your file.
+          Tap below — it will open your <strong>Gmail app</strong> with all order details ready. Just <strong>attach your file</strong> and hit Send.
         </p>
 
+        <!-- Primary: opens Gmail app via mailto -->
+        <a id="mailto-shop-btn" href="#" target="_blank"
+          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:15px;font-weight:700;text-decoration:none;box-sizing:border-box;margin-bottom:10px;-webkit-tap-highlight-color:transparent">
+          <i class="ti ti-mail"></i> Open Gmail &amp; send order
+        </a>
+
+        <!-- Secondary: copy HTML for pasting into Gmail web -->
         <button onclick="sendOrderEmail(this)"
-          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:10px;background:#1a6ef5;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;box-sizing:border-box;margin-bottom:12px;-webkit-tap-highlight-color:transparent">
-          <i class="ti ti-mail"></i> Send order to shop
+          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:10px;background:transparent;color:#1a6ef5;font-size:13px;font-weight:600;border:1.5px solid #c5d9fb;cursor:pointer;font-family:inherit;box-sizing:border-box;margin-bottom:10px">
+          <i class="ti ti-clipboard-copy"></i> Using Gmail on browser? Copy HTML email instead
         </button>
 
-        <div id="send-steps" style="display:none;background:#e8f5ee;border:1px solid #18794e;border-radius:10px;padding:12px 14px;font-size:13px;color:#18794e;line-height:1.8;margin-bottom:10px">
-          <strong>✅ Email copied!</strong> Now in Gmail:<br>
-          1. <strong>Paste</strong> (Ctrl+V on PC · Long-press → Paste on phone)<br>
-          2. <strong>Attach your file</strong> (JPG, PNG, PDF, etc.)<br>
-          3. Hit <strong>Send</strong> ✉️
+        <div id="send-steps" style="display:none;background:#e8f5ee;border:1px solid #18794e;border-radius:10px;padding:12px 14px;font-size:13px;color:#18794e;line-height:1.8">
+          ✅ <strong>Copied!</strong> Go to Gmail → Compose → Paste (Ctrl+V) → Attach file → Send
         </div>
 
-        <p style="font-size:11px;color:#667;margin:0;line-height:1.6;text-align:center">
+        <p style="font-size:11px;color:#667;margin-top:10px;line-height:1.6;text-align:center">
           No file to send? Skip this — we'll follow up via phone or email.
         </p>
       </div>
@@ -1166,11 +1170,37 @@ async function submitOrder(){
     window._lastOrderSubject   = '[Arroyo Suite] New Order: ' + ref + ' — ' + _name;
     window._lastOrderEmail     = 'areymar36@gmail.com';
 
-    // Fallback plain text mailto (still works for quick send)
-    const plainBody = `Order Ref: ${ref}\nName: ${_name}\nPhone: ${_phone}\nJob: ${_job}${_pkg?' | '+_pkg:''}\nSize: ${_size} | Qty: ${_qty}\nDate needed: ${_due}\nNotes: ${_notes}\n\n[Please attach your file to this email]`;
+    // Fallback plain text mailto — opens Gmail app directly
+    const plainBody = [
+      'Hi Arroyo Suite,',
+      '',
+      'I would like to place the following order:',
+      '',
+      'Reference No. : ' + ref,
+      'Date Submitted: ' + _date,
+      '',
+      '--- CUSTOMER DETAILS ---',
+      'Name  : ' + _name,
+      'Phone : ' + _phone,
+      'Email : ' + _email,
+      '',
+      '--- ORDER DETAILS ---',
+      'Job Type : ' + _job,
+      (_pkg  ? 'Package  : ' + _pkg  : 'Size     : ' + _size),
+      (!_pkg  ? 'Quantity : ' + _qty + ' pcs' : ''),
+      (_rush  ? 'RUSH     : YES - This is a rush order' : ''),
+      'Date needed: ' + _due,
+      (_notes && _notes !== '(none)' ? 'Notes    : ' + _notes : ''),
+      '',
+      '--- FILE ---',
+      'Please see attached file.',
+      '',
+      'Thank you!'
+    ].filter(l => l !== null && l !== undefined).join('\n');
+
     const mailtoUrl = 'mailto:areymar36@gmail.com'
       + '?subject=' + encodeURIComponent(window._lastOrderSubject)
-      + '&body=' + encodeURIComponent(plainBody)
+      + '&body='    + encodeURIComponent(plainBody)
       + (_email && _email !== '(not provided)' ? '&cc=' + encodeURIComponent(_email) : '');
 
     const mailBtn = document.getElementById('mailto-shop-btn');
@@ -1186,36 +1216,29 @@ async function submitOrder(){
   }
 }
 
-// ── Send order email — copies HTML + opens Gmail simultaneously ───────────
+// ── Copy HTML email for Gmail browser users ───────────────────────────────
 async function sendOrderEmail(btn) {
-  const html    = window._lastOrderHtmlEmail;
-  const subject = window._lastOrderSubject || '[Arroyo Suite] New Order';
-  const to      = window._lastOrderEmail   || 'areymar36@gmail.com';
+  const html = window._lastOrderHtmlEmail;
   if (!html) { cfToast('⚠️ No order data found. Please submit the form first.'); return; }
-
-  // Step 1 — Copy HTML to clipboard
   try {
     await navigator.clipboard.writeText(html);
   } catch(e) {
-    // Fallback for older browsers
     const ta = document.createElement('textarea');
     ta.value = html; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
   }
-
-  // Step 2 — Open Gmail compose with subject + to pre-filled
-  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' +
-    encodeURIComponent(to) + '&su=' + encodeURIComponent(subject);
-  window.open(gmailUrl, '_blank');
-
-  // Step 3 — Show instructions + update button
   document.getElementById('send-steps').style.display = 'block';
-  btn.innerHTML = '<i class="ti ti-check"></i> Gmail opened — paste & attach file!';
-  btn.style.background = '#18794e';
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+  btn.style.background = '#e8f5ee';
+  btn.style.color = '#18794e';
+  btn.style.borderColor = '#18794e';
   setTimeout(() => {
-    btn.innerHTML = '<i class="ti ti-mail"></i> Send order to shop';
-    btn.style.background = '#1a6ef5';
-  }, 8000);
+    btn.innerHTML = orig;
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, 3000);
 }
 
 // ── resetForm ─────────────────────────────────────────────────────────────
