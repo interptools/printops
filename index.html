@@ -1054,12 +1054,25 @@ tbody tr:hover td{background:var(--surface-1)}
       You'll need to enter your password to access the dashboard again.
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn" style="flex:1;padding:10px" onclick="closeModal('logout-modal')">
-        Cancel
-      </button>
+      <button class="btn" style="flex:1;padding:10px" onclick="closeModal('logout-modal')">Cancel</button>
       <button class="btn btn-danger" style="flex:1;padding:10px;background:var(--danger);color:#fff;border-color:var(--danger)" onclick="confirmLogout()">
         <i class="ti ti-logout"></i> Log out
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reusable Confirm Modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="width:360px;text-align:center;padding:2rem">
+    <div id="confirm-icon-wrap" style="width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+      <i id="confirm-icon" style="font-size:24px"></i>
+    </div>
+    <div id="confirm-title" style="font-size:16px;font-weight:600;margin-bottom:6px"></div>
+    <div id="confirm-msg" style="font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.6"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;padding:10px" onclick="closeModal('confirm-modal');_confirmReject&&_confirmReject()">Cancel</button>
+      <button id="confirm-ok-btn" style="flex:1;padding:10px;border-radius:var(--radius);border:none;cursor:pointer;font-size:14px;font-family:inherit;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px" onclick="closeModal('confirm-modal');_confirmResolve&&_confirmResolve()"></button>
     </div>
   </div>
 </div>
@@ -1509,7 +1522,9 @@ async function saveOrder() {
 function editOrder(id) { openOrderModal(id); }
 function editThenTicket(id) { openOrderModal(id); setTimeout(()=>{ printJobTicket(); }, 300); }
 async function deleteOrder(id) {
-  if (!confirm('Delete this order?')) return;
+  try {
+    await showConfirm({ title:'Delete order?', msg:'This order will be permanently removed from Supabase.', okLabel:'Delete order' });
+  } catch { return; }
   try {
     await sbFetch('orders?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
     await loadAllData(); renderOrders(); toast('Order deleted.');
@@ -1579,7 +1594,9 @@ async function saveCustomer() {
 }
 
 async function deleteCust(id) {
-  if (!confirm('Delete this customer?')) return;
+  try {
+    await showConfirm({ title:'Delete customer?', msg:'This customer will be permanently removed. Their orders will remain.', okLabel:'Delete customer' });
+  } catch { return; }
   try {
     await sbFetch('customers?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
     await loadAllData(); renderCustomers(); toast('Customer deleted.');
@@ -1691,7 +1708,9 @@ async function markPaid(id) {
 }
 
 async function deleteInv(id) {
-  if (!confirm('Delete this invoice?')) return;
+  try {
+    await showConfirm({ title:'Delete invoice?', msg:'This invoice will be permanently removed.', okLabel:'Delete invoice' });
+  } catch { return; }
   try {
     await sbFetch('invoices?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
     await loadAllData(); renderInvoices(); toast('Invoice deleted.');
@@ -2070,16 +2089,13 @@ async function updateReqStatus(id, status) {
   }
 }
 async function deleteReq(id) {
-  if (!confirm('Delete this request?')) return;
+  try {
+    await showConfirm({ title:'Delete request?', msg:'This customer request will be permanently removed.', okLabel:'Delete request' });
+  } catch { return; }
   try {
     await deleteReqDB(id);
-    renderRequests();
-    updateReqBadge();
-    toast('Request deleted.');
-  } catch(e) {
-    toast('⚠️ Could not delete.');
-    console.error(e);
-  }
+    renderRequests(); updateReqBadge(); toast('Request deleted.');
+  } catch(e) { toast('⚠️ Could not delete.'); console.error(e); }
 }
 async function updateReqBadge() {
   try {
@@ -2191,11 +2207,12 @@ function updatePhotoStatus(id, status) {
   renderPhotoOrders();
   toast('Status updated.');
 }
-function deletePhotoOrder(id) {
-  if (!confirm('Delete this photo order?')) return;
+async function deletePhotoOrder(id) {
+  try {
+    await showConfirm({ title:'Delete photo order?', msg:'This ID photo order will be permanently removed.', okLabel:'Delete order' });
+  } catch { return; }
   savePhotoOrders(getPhotoOrders().filter(o => o.id !== id));
-  renderPhotoOrders();
-  toast('Order deleted.');
+  renderPhotoOrders(); toast('Order deleted.');
 }
 
 // ─── PRINT LAYOUT ENGINE ────────────────────────────────────────────────────
@@ -2586,9 +2603,9 @@ function importData(e) {
   reader.onload = async ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!confirm('This will import backup data. Existing records in Supabase are NOT deleted — items are added on top. Continue?')) return;
-      // Just reload from Supabase after import note
-      toast('Import note: use Supabase dashboard to bulk import data. Local backup loaded for reference.');
+      try {
+        await showConfirm({ title:'Import backup?', msg:'Existing records in Supabase are NOT deleted — items are added on top.', okLabel:'Import', okColor:'var(--accent)', icon:'ti-upload', iconBg:'var(--accent-bg)', iconColor:'var(--accent)' });
+      } catch { return; }
       if (data.requests) { saveRequests(data.requests); }
       await loadAllData();
       renderDash(); updateReqBadge(); updatePhotoBadge();
@@ -2714,6 +2731,30 @@ function logout() {
 function confirmLogout() {
   sessionStorage.removeItem('arroyo_session');
   location.reload();
+}
+
+// ── Reusable confirm dialog ───────────────────────────────────────────────
+let _confirmResolve = null;
+let _confirmReject  = null;
+
+function showConfirm({ title, msg, okLabel = 'Delete', okColor = 'var(--danger)', icon = 'ti-trash', iconBg = 'var(--danger-bg)', iconColor = 'var(--danger)' }) {
+  return new Promise((resolve, reject) => {
+    _confirmResolve = resolve;
+    _confirmReject  = reject;
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent   = msg;
+    const iconWrap = document.getElementById('confirm-icon-wrap');
+    iconWrap.style.background = iconBg;
+    const iconEl = document.getElementById('confirm-icon');
+    iconEl.className = 'ti ' + icon;
+    iconEl.style.color = iconColor;
+    const okBtn = document.getElementById('confirm-ok-btn');
+    okBtn.textContent = okLabel;
+    okBtn.style.background   = okColor;
+    okBtn.style.color        = '#fff';
+    okBtn.style.borderColor  = okColor;
+    document.getElementById('confirm-modal').classList.add('open');
+  });
 }
 
 // Auto-restore session on refresh (sessionStorage clears when tab is closed)
@@ -2977,14 +3018,13 @@ async function saveService() {
 }
 
 async function deleteSvc(id, name) {
-  if (!confirm(`Delete service "${name}"?\n\nThis will remove it from the customer form immediately.`)) return;
+  try {
+    await showConfirm({ title:'Delete service?', msg:`"${name}" will be removed from the customer form immediately.`, okLabel:'Delete service' });
+  } catch { return; }
   try {
     await sbFetch('services?id=eq.' + id, { method:'DELETE' });
-    toast('Service deleted.');
-    renderServices();
-  } catch(e) {
-    toast('⚠️ Could not delete.');
-  }
+    toast('Service deleted.'); renderServices();
+  } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
 // ─── TEMPLATES ────────────────────────────────────────────────────────────
@@ -3505,11 +3545,12 @@ async function renderActivityLog() {
 }
 
 async function clearActivityLog() {
-  if (!confirm('Clear all activity log entries?')) return;
+  try {
+    await showConfirm({ title:'Clear activity log?', msg:'All log entries will be permanently deleted.', okLabel:'Clear log', icon:'ti-trash' });
+  } catch { return; }
   try {
     await sbFetch('activity_log?id=gt.0', { method: 'DELETE', prefer: 'return=minimal' });
-    renderActivityLog();
-    toast('Activity log cleared.');
+    renderActivityLog(); toast('Activity log cleared.');
   } catch(e) { toast('⚠️ Could not clear log.'); }
 }
 
@@ -3574,11 +3615,12 @@ async function saveStockItem() {
 }
 
 async function deleteStockItem(id) {
-  if (!confirm('Delete this inventory item?')) return;
+  try {
+    await showConfirm({ title:'Delete inventory item?', msg:'This item will be removed from your stock tracker.', okLabel:'Delete item' });
+  } catch { return; }
   try {
     await sbFetch('inventory?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
-    renderInventory();
-    toast('Item deleted.');
+    renderInventory(); toast('Item deleted.');
   } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
@@ -3861,12 +3903,12 @@ async function savePreset() {
 }
 
 async function deletePreset(id) {
-  if (!confirm('Delete this preset?')) return;
+  try {
+    await showConfirm({ title:'Delete preset?', msg:'This price preset will be permanently removed.', okLabel:'Delete preset' });
+  } catch { return; }
   try {
     await sbFetch('price_presets?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
-    await loadPresetsFromDB();
-    renderPresets();
-    toast('Preset deleted.');
+    await loadPresetsFromDB(); renderPresets(); toast('Preset deleted.');
   } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
