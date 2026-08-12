@@ -656,7 +656,26 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
     </div>
 
-    <!-- ID PHOTOS PAGE -->
+    <!-- Change PIN -->
+    <div class="card" style="margin-top:1rem;max-width:400px">
+      <div class="card-title"><i class="ti ti-lock"></i> Change Owner PIN</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Your PIN is saved to Supabase — syncs across all devices. Default is <strong>1234</strong>.</div>
+      <div class="form-group">
+        <label>Current PIN</label>
+        <input id="pin-current" type="password" inputmode="numeric" maxlength="6" placeholder="Current PIN" style="letter-spacing:4px;font-size:16px">
+      </div>
+      <div class="form-group">
+        <label>New PIN</label>
+        <input id="pin-new" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digits" style="letter-spacing:4px;font-size:16px">
+      </div>
+      <div class="form-group">
+        <label>Confirm new PIN</label>
+        <input id="pin-confirm" type="password" inputmode="numeric" maxlength="6" placeholder="Repeat new PIN" style="letter-spacing:4px;font-size:16px">
+      </div>
+      <div id="pin-change-msg" style="font-size:12px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="changePinFromSettings()"><i class="ti ti-check"></i> Save new PIN</button>
+    </div>
+  </div>
     <div class="page" id="page-idphotos">
       <div class="page-header">
         <div class="page-title">ID Photo Orders</div>
@@ -938,7 +957,7 @@ tbody tr:hover td{background:var(--surface-1)}
       <button class="btn" style="flex:1" onclick="cancelPin()">Cancel</button>
       <button class="btn btn-primary" style="flex:1" onclick="confirmPin()">Confirm</button>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Default PIN: <strong>1234</strong> — change it in Settings</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Default PIN: <strong>1234</strong> — change it in <button onclick="cancelPin();nav('sync')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;padding:0;font-family:inherit">Sync setup</button></div>
   </div>
 </div>
 
@@ -3230,8 +3249,31 @@ function exportCustomersCSV() {
 // ═══════════════════════════════════════════════════════════════════════════
 // ── PIN PROTECTION ───────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-const OWNER_PIN_KEY = 'arroyo_owner_pin';
-function getOwnerPin() { return localStorage.getItem(OWNER_PIN_KEY) || '1234'; }
+let _cachedPin = null;
+
+async function getOwnerPin() {
+  if (_cachedPin) return _cachedPin;
+  try {
+    const rows = await sbFetch('settings?key=eq.owner_pin');
+    if (rows && rows.length) { _cachedPin = rows[0].value; return _cachedPin; }
+  } catch(e) {}
+  return '1234'; // default
+}
+
+async function setOwnerPin(pin) {
+  try {
+    await sbFetch('settings?key=eq.owner_pin', {
+      method: 'DELETE', prefer: 'return=minimal'
+    });
+  } catch(e) {}
+  try {
+    await sbFetch('settings', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({ key: 'owner_pin', value: pin })
+    });
+    _cachedPin = pin;
+  } catch(e) { toast('⚠️ Could not save PIN.'); }
+}
 
 let _pinResolve = null;
 let _pinReject  = null;
@@ -3249,9 +3291,10 @@ function requirePin(description = '') {
   });
 }
 
-function confirmPin() {
+async function confirmPin() {
   const entered = document.getElementById('pin-input').value;
-  if (entered === getOwnerPin()) {
+  const correct = await getOwnerPin();
+  if (entered === correct) {
     document.getElementById('pin-modal').classList.remove('open');
     document.getElementById('pin-error').style.display = 'none';
     if (_pinResolve) { _pinResolve(); _pinResolve = null; _pinReject = null; }
@@ -3285,218 +3328,242 @@ updateReqStatus = async function(id, status) {
 // ═══════════════════════════════════════════════════════════════════════════
 // ── ACTIVITY LOG ─────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-function getActivityLog() { return JSON.parse(localStorage.getItem('arroyo_activity_log') || '[]'); }
-function saveActivityLog(log) { localStorage.setItem('arroyo_activity_log', JSON.stringify(log)); }
-
-function logActivity(action, details, by = 'Owner') {
-  const log = getActivityLog();
-  log.unshift({ action, details, by, time: new Date().toISOString() });
-  // Keep last 200 entries
-  if (log.length > 200) log.splice(200);
-  saveActivityLog(log);
-  // Refresh log page if open
+async function logActivity(action, details, by = 'Owner') {
+  try {
+    await sbFetch('activity_log', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({ action, details, by, time: new Date().toISOString() })
+    });
+  } catch(e) { /* silent — don't block UI */ }
   const page = document.getElementById('page-activitylog');
   if (page && page.classList.contains('active')) renderActivityLog();
 }
 
-function renderActivityLog() {
-  const log = getActivityLog();
+async function renderActivityLog() {
   const tbody = document.getElementById('activity-log-table');
   const empty = document.getElementById('activity-log-empty');
-  if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-  tbody.innerHTML = log.map(entry => {
-    const t = new Date(entry.time).toLocaleString('en-PH', {
-      month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
-    });
-    return `<tr>
-      <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${t}</td>
-      <td style="font-weight:500;font-size:13px">${entry.action}</td>
-      <td style="font-size:12px;color:var(--text-secondary)">${entry.details}</td>
-      <td style="font-size:12px">${entry.by}</td>
-    </tr>`;
-  }).join('');
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1rem">Loading…</td></tr>';
+  try {
+    const log = await sbFetch('activity_log?order=time.desc&limit=200') || [];
+    if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = log.map(entry => {
+      const t = new Date(entry.time).toLocaleString('en-PH', {
+        month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+      });
+      return `<tr>
+        <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${t}</td>
+        <td style="font-weight:500;font-size:13px">${entry.action}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${entry.details}</td>
+        <td style="font-size:12px">${entry.by}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger);padding:1rem;font-size:13px">⚠️ Could not load activity log.</td></tr>`;
+  }
 }
 
-function clearActivityLog() {
+async function clearActivityLog() {
   if (!confirm('Clear all activity log entries?')) return;
-  saveActivityLog([]);
-  renderActivityLog();
-  toast('Activity log cleared.');
+  try {
+    await sbFetch('activity_log?id=gt.0', { method: 'DELETE', prefer: 'return=minimal' });
+    renderActivityLog();
+    toast('Activity log cleared.');
+  } catch(e) { toast('⚠️ Could not clear log.'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ── INVENTORY & STOCK ────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-function getInventory() { return JSON.parse(localStorage.getItem('arroyo_inventory') || '[]'); }
-function saveInventory(items) { localStorage.setItem('arroyo_inventory', JSON.stringify(items)); }
-
 let _editStockId = null;
 
 function openStockModal(id = null) {
   _editStockId = id;
-  const items = getInventory();
-  const item = id ? items.find(i => i.id === id) : null;
   document.getElementById('stock-modal-title').textContent = id ? 'Edit item' : 'Add inventory item';
-  document.getElementById('st-name').value     = item ? item.name : '';
-  document.getElementById('st-category').value = item ? item.category : 'Paper';
-  document.getElementById('st-unit').value      = item ? item.unit : '';
-  document.getElementById('st-qty').value       = item ? item.qty : 0;
-  document.getElementById('st-low').value       = item ? item.low : 5;
+  if (id) {
+    // Fetch from Supabase to pre-fill
+    sbFetch('inventory?id=eq.' + id).then(rows => {
+      const item = rows && rows[0];
+      if (!item) return;
+      document.getElementById('st-name').value     = item.name;
+      document.getElementById('st-category').value = item.category || 'Paper';
+      document.getElementById('st-unit').value      = item.unit || '';
+      document.getElementById('st-qty').value       = item.qty || 0;
+      document.getElementById('st-low').value       = item.low || 5;
+    }).catch(() => {});
+  } else {
+    document.getElementById('st-name').value = '';
+    document.getElementById('st-category').value = 'Paper';
+    document.getElementById('st-unit').value = '';
+    document.getElementById('st-qty').value = 0;
+    document.getElementById('st-low').value = 5;
+  }
   document.getElementById('stock-modal').classList.add('open');
 }
 
-function saveStockItem() {
+async function saveStockItem() {
   const name = document.getElementById('st-name').value.trim();
   if (!name) { alert('Please enter an item name.'); return; }
-  const items = getInventory();
   const payload = {
     name,
     category: document.getElementById('st-category').value,
     unit:     document.getElementById('st-unit').value.trim() || 'pcs',
     qty:      Number(document.getElementById('st-qty').value) || 0,
     low:      Number(document.getElementById('st-low').value) || 5,
-    updatedAt: new Date().toISOString()
+    updated_at: new Date().toISOString()
   };
-  if (_editStockId) {
-    const idx = items.findIndex(i => i.id === _editStockId);
-    if (idx > -1) items[idx] = { ...items[idx], ...payload };
-    logActivity('Stock updated', name + ' → ' + payload.qty + ' ' + payload.unit);
-  } else {
-    payload.id = items.length ? Math.max(...items.map(i => i.id)) + 1 : 1;
-    payload.createdAt = new Date().toISOString();
-    items.push(payload);
-    logActivity('Stock item added', name + ' (' + payload.qty + ' ' + payload.unit + ')');
-  }
-  saveInventory(items);
-  closeModal('stock-modal');
-  renderInventory();
-  toast('Item saved.');
+  try {
+    if (_editStockId) {
+      await sbFetch('inventory?id=eq.' + _editStockId, {
+        method: 'PATCH', prefer: 'return=minimal',
+        body: JSON.stringify(payload)
+      });
+      logActivity('Stock updated', name + ' → ' + payload.qty + ' ' + payload.unit);
+    } else {
+      await sbFetch('inventory', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify(payload)
+      });
+      logActivity('Stock item added', name + ' (' + payload.qty + ' ' + payload.unit + ')');
+    }
+    closeModal('stock-modal');
+    renderInventory();
+    toast('Item saved.');
+  } catch(e) { toast('⚠️ Could not save item.'); }
 }
 
-function deleteStockItem(id) {
+async function deleteStockItem(id) {
   if (!confirm('Delete this inventory item?')) return;
-  const items = getInventory().filter(i => i.id !== id);
-  saveInventory(items);
-  renderInventory();
-  toast('Item deleted.');
+  try {
+    await sbFetch('inventory?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    renderInventory();
+    toast('Item deleted.');
+  } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
-function adjustStock(id, delta) {
-  const items = getInventory();
-  const idx = items.findIndex(i => i.id === id);
-  if (idx === -1) return;
-  items[idx].qty = Math.max(0, (items[idx].qty || 0) + delta);
-  items[idx].updatedAt = new Date().toISOString();
-  saveInventory(items);
-  logActivity('Stock adjusted', items[idx].name + ': ' + (delta > 0 ? '+' : '') + delta + ' → ' + items[idx].qty + ' ' + items[idx].unit);
-  renderInventory();
+async function adjustStock(id, delta) {
+  try {
+    const rows = await sbFetch('inventory?id=eq.' + id);
+    const item = rows && rows[0];
+    if (!item) return;
+    const newQty = Math.max(0, (item.qty || 0) + delta);
+    await sbFetch('inventory?id=eq.' + id, {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: JSON.stringify({ qty: newQty, updated_at: new Date().toISOString() })
+    });
+    logActivity('Stock adjusted', item.name + ': ' + (delta > 0 ? '+' : '') + delta + ' → ' + newQty + ' ' + item.unit);
+    renderInventory();
+  } catch(e) { toast('⚠️ Could not adjust stock.'); }
 }
 
-function renderInventory() {
-  const items = getInventory();
+async function renderInventory() {
   const tbody = document.getElementById('inventory-table');
   const empty = document.getElementById('inventory-empty');
   const banner = document.getElementById('low-stock-banner');
   const badge  = document.getElementById('stock-alert-badge');
-
-  const lowItems = items.filter(i => i.qty <= i.low);
-
-  // Dashboard badge
-  if (badge) { badge.style.display = lowItems.length ? 'inline' : 'none'; }
-
-  // Low stock banner
-  if (lowItems.length) {
-    banner.style.display = 'flex';
-    document.getElementById('low-stock-msg').textContent =
-      lowItems.length === 1
-        ? `Low stock: ${lowItems[0].name} (${lowItems[0].qty} ${lowItems[0].unit} remaining)`
-        : `${lowItems.length} items low on stock: ${lowItems.map(i => i.name).join(', ')}`;
-  } else {
-    banner.style.display = 'none';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1rem">Loading…</td></tr>';
+  try {
+    const items = await sbFetch('inventory?order=name.asc') || [];
+    const lowItems = items.filter(i => i.qty <= i.low);
+    if (badge) badge.style.display = lowItems.length ? 'inline' : 'none';
+    if (lowItems.length) {
+      banner.style.display = 'flex';
+      document.getElementById('low-stock-msg').textContent =
+        lowItems.length === 1
+          ? `Low stock: ${lowItems[0].name} (${lowItems[0].qty} ${lowItems[0].unit} remaining)`
+          : `${lowItems.length} items low on stock: ${lowItems.map(i => i.name).join(', ')}`;
+    } else {
+      banner.style.display = 'none';
+    }
+    if (!items.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = items.map(item => {
+      const isLow = item.qty <= item.low;
+      const updated = item.updated_at
+        ? new Date(item.updated_at).toLocaleDateString('en-PH', {month:'short', day:'numeric'})
+        : '—';
+      return `<tr style="${isLow ? 'background:var(--danger-bg)' : ''}">
+        <td style="font-weight:500">${item.name}${isLow ? ' <span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px;font-weight:600">LOW</span>' : ''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${item.category || '—'}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-sm" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700">−</button>
+            <span style="font-size:15px;font-weight:600;min-width:28px;text-align:center;color:${isLow?'var(--danger)':'var(--text-primary)'}">${item.qty}</span>
+            <button class="btn btn-sm" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700">+</button>
+          </div>
+        </td>
+        <td style="font-size:12px;color:var(--text-muted)">${item.low} ${item.unit}</td>
+        <td style="font-size:12px">${item.unit}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${updated}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-sm" onclick="openStockModal(${item.id})"><i class="ti ti-edit"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="deleteStockItem(${item.id})"><i class="ti ti-trash"></i></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);padding:1rem;font-size:13px">⚠️ Could not load inventory.</td></tr>`;
   }
-
-  if (!items.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-
-  tbody.innerHTML = items.map(item => {
-    const isLow = item.qty <= item.low;
-    const updated = item.updatedAt
-      ? new Date(item.updatedAt).toLocaleDateString('en-PH', {month:'short', day:'numeric'})
-      : '—';
-    return `<tr style="${isLow ? 'background:var(--danger-bg)' : ''}">
-      <td style="font-weight:500">${item.name}${isLow ? ' <span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px;font-weight:600">LOW</span>' : ''}</td>
-      <td style="font-size:12px;color:var(--text-muted)">${item.category}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-sm" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700">−</button>
-          <span style="font-size:15px;font-weight:600;min-width:28px;text-align:center;color:${isLow?'var(--danger)':'var(--text-primary)'}">${item.qty}</span>
-          <button class="btn btn-sm" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700">+</button>
-        </div>
-      </td>
-      <td style="font-size:12px;color:var(--text-muted)">${item.low} ${item.unit}</td>
-      <td style="font-size:12px">${item.unit}</td>
-      <td style="font-size:12px;color:var(--text-muted)">${updated}</td>
-      <td>
-        <div class="actions">
-          <button class="btn btn-sm" onclick="openStockModal(${item.id})"><i class="ti ti-edit"></i></button>
-          <button class="btn btn-sm btn-danger" onclick="deleteStockItem(${item.id})"><i class="ti ti-trash"></i></button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
 }
 
 // ── Material Cost Logger ──────────────────────────────────────────────────
-function getCostLog() { return JSON.parse(localStorage.getItem('arroyo_cost_log') || '[]'); }
-function saveCostLog(log) { localStorage.setItem('arroyo_cost_log', JSON.stringify(log)); }
-
-function logMaterialCost() {
+async function logMaterialCost() {
   const ref    = document.getElementById('cost-ref').value.trim();
   const amount = Number(document.getElementById('cost-amount').value);
   const note   = document.getElementById('cost-note').value.trim();
   if (!ref) { alert('Please enter an order or reference number.'); return; }
   if (!amount || amount <= 0) { alert('Please enter a valid cost.'); return; }
-  const log = getCostLog();
-  log.unshift({ id: Date.now(), ref, amount, note, loggedAt: new Date().toISOString() });
-  saveCostLog(log);
-  document.getElementById('cost-ref').value = '';
-  document.getElementById('cost-amount').value = '';
-  document.getElementById('cost-note').value = '';
-  logActivity('Material cost logged', ref + ' — ₱' + amount.toFixed(2) + (note ? ' (' + note + ')' : ''));
-  renderCostLog();
-  toast('Cost logged.');
+  try {
+    await sbFetch('cost_log', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({ ref, amount, note, logged_at: new Date().toISOString() })
+    });
+    document.getElementById('cost-ref').value = '';
+    document.getElementById('cost-amount').value = '';
+    document.getElementById('cost-note').value = '';
+    logActivity('Material cost logged', ref + ' — ₱' + amount.toFixed(2) + (note ? ' (' + note + ')' : ''));
+    renderCostLog();
+    toast('Cost logged.');
+  } catch(e) { toast('⚠️ Could not log cost.'); }
 }
 
-function deleteCostLog(id) {
-  saveCostLog(getCostLog().filter(e => e.id !== id));
-  renderCostLog();
-  toast('Entry deleted.');
+async function deleteCostLog(id) {
+  try {
+    await sbFetch('cost_log?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    renderCostLog();
+    toast('Entry deleted.');
+  } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
-function renderCostLog() {
-  const log = getCostLog();
+async function renderCostLog() {
   const tbody = document.getElementById('cost-log-table');
   const empty = document.getElementById('cost-log-empty');
-  if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-  const total = log.reduce((s, e) => s + e.amount, 0);
-  tbody.innerHTML = log.map(e => {
-    const t = new Date(e.loggedAt).toLocaleDateString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
-    return `<tr>
-      <td style="font-weight:500">${e.ref}</td>
-      <td style="color:var(--danger);font-weight:600">₱${Number(e.amount).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
-      <td style="font-size:12px;color:var(--text-muted)">${e.note || '—'}</td>
-      <td style="font-size:12px;color:var(--text-muted)">${t}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteCostLog(${e.id})"><i class="ti ti-trash"></i></button></td>
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem">Loading…</td></tr>';
+  try {
+    const log = await sbFetch('cost_log?order=logged_at.desc') || [];
+    if (!log.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    const total = log.reduce((s, e) => s + Number(e.amount), 0);
+    tbody.innerHTML = log.map(e => {
+      const t = new Date(e.logged_at).toLocaleDateString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      return `<tr>
+        <td style="font-weight:500">${e.ref}</td>
+        <td style="color:var(--danger);font-weight:600">₱${Number(e.amount).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${e.note || '—'}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${t}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteCostLog(${e.id})"><i class="ti ti-trash"></i></button></td>
+      </tr>`;
+    }).join('');
+    tbody.innerHTML += `<tr style="background:var(--surface-1);font-weight:600">
+      <td>Total material costs</td>
+      <td style="color:var(--danger)">₱${total.toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+      <td colspan="3" style="font-size:11px;color:var(--text-muted)">${log.length} entries</td>
     </tr>`;
-  }).join('');
-  // Add total row
-  tbody.innerHTML += `<tr style="background:var(--surface-1);font-weight:600">
-    <td>Total material costs</td>
-    <td style="color:var(--danger)">₱${total.toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
-    <td colspan="3" style="font-size:11px;color:var(--text-muted)">${log.length} entries</td>
-  </tr>`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);padding:1rem;font-size:13px">⚠️ Could not load cost log.</td></tr>`;
+  }
 }
 
 // ── Register new pages in nav() ───────────────────────────────────────────
@@ -3514,9 +3581,10 @@ nav = function(p) {
 const _origRenderDash = renderDash;
 renderDash = function() {
   _origRenderDash();
-  const items = getInventory();
-  const badge = document.getElementById('stock-alert-badge');
-  if (badge) badge.style.display = items.some(i => i.qty <= i.low) ? 'inline' : 'none';
+  sbFetch('inventory?order=name.asc').then(items => {
+    const badge = document.getElementById('stock-alert-badge');
+    if (badge) badge.style.display = (items||[]).some(i => i.qty <= i.low) ? 'inline' : 'none';
+  }).catch(() => {});
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3572,53 +3640,104 @@ const DEFAULT_PRESETS = [
   { id:37, label:'ID + Holder + Lanyard',    price:220,  jobtype:'ID / Lanyard' },
 ];
 
-function getPresets() {
-  const stored = localStorage.getItem('arroyo_price_presets');
-  if (stored) return JSON.parse(stored);
-  // First run — seed with defaults
-  savePresets(DEFAULT_PRESETS);
-  return DEFAULT_PRESETS;
-}
-function savePresets(p) { localStorage.setItem('arroyo_price_presets', JSON.stringify(p)); }
-
 let _editPresetId = null;
+
+async function changePinFromSettings() {
+  const current  = document.getElementById('pin-current').value;
+  const newPin   = document.getElementById('pin-new').value;
+  const confirm  = document.getElementById('pin-confirm').value;
+  const msg      = document.getElementById('pin-change-msg');
+  const correct  = await getOwnerPin();
+  msg.style.display = 'block';
+  if (current !== correct) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✕ Current PIN is incorrect.';
+    return;
+  }
+  if (!newPin || newPin.length < 4) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✕ New PIN must be at least 4 digits.';
+    return;
+  }
+  if (newPin !== confirm) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✕ PINs do not match.';
+    return;
+  }
+  await setOwnerPin(newPin);
+  msg.style.color = 'var(--success)';
+  msg.textContent = '✓ PIN changed successfully — synced to all devices.';
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  document.getElementById('pin-confirm').value = '';
+  logActivity('PIN changed', 'Owner PIN updated', 'Owner');
+}
+
+function getPresets() { return _presetsCache; }
+let _presetsCache = [];
+
+async function loadPresetsFromDB() {
+  try {
+    const rows = await sbFetch('price_presets?order=id.asc') || [];
+    if (rows.length) { _presetsCache = rows; return; }
+    // First run — seed defaults into Supabase
+    for (const p of DEFAULT_PRESETS) {
+      try {
+        await sbFetch('price_presets', {
+          method: 'POST', prefer: 'return=minimal',
+          body: JSON.stringify({ label: p.label, price: p.price, jobtype: p.jobtype })
+        });
+      } catch(e) {}
+    }
+    const seeded = await sbFetch('price_presets?order=id.asc') || [];
+    _presetsCache = seeded;
+  } catch(e) { _presetsCache = DEFAULT_PRESETS; }
+}
+
+async function savePreset() {
+  const label   = document.getElementById('ps-label').value.trim();
+  const price   = Number(document.getElementById('ps-price').value);
+  const jobtype = document.getElementById('ps-jobtype').value;
+  if (!label) { alert('Please enter a label.'); return; }
+  if (!price || price <= 0) { alert('Please enter a valid price.'); return; }
+  try {
+    if (_editPresetId !== null) {
+      await sbFetch('price_presets?id=eq.' + _editPresetId, {
+        method: 'PATCH', prefer: 'return=minimal',
+        body: JSON.stringify({ label, price, jobtype })
+      });
+    } else {
+      await sbFetch('price_presets', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify({ label, price, jobtype })
+      });
+    }
+    await loadPresetsFromDB();
+    closeModal('preset-modal');
+    renderPresets();
+    toast('Preset saved.');
+  } catch(e) { toast('⚠️ Could not save preset.'); }
+}
+
+async function deletePreset(id) {
+  if (!confirm('Delete this preset?')) return;
+  try {
+    await sbFetch('price_presets?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    await loadPresetsFromDB();
+    renderPresets();
+    toast('Preset deleted.');
+  } catch(e) { toast('⚠️ Could not delete.'); }
+}
 
 function openPresetModal(id = null) {
   _editPresetId = id;
-  const presets = getPresets();
-  const p = id !== null ? presets.find(x => x.id === id) : null;
+  const p = id !== null ? _presetsCache.find(x => x.id === id) : null;
   document.getElementById('preset-modal-title').textContent = id !== null ? 'Edit preset' : 'Add price preset';
   document.getElementById('ps-label').value   = p ? p.label : '';
   document.getElementById('ps-price').value   = p ? p.price : '';
   document.getElementById('ps-jobtype').value = p ? (p.jobtype || '') : '';
   document.getElementById('preset-modal').classList.add('open');
   setTimeout(() => document.getElementById('ps-label').focus(), 100);
-}
-
-function savePreset() {
-  const label   = document.getElementById('ps-label').value.trim();
-  const price   = Number(document.getElementById('ps-price').value);
-  const jobtype = document.getElementById('ps-jobtype').value;
-  if (!label) { alert('Please enter a label.'); return; }
-  if (!price || price <= 0) { alert('Please enter a valid price.'); return; }
-  const presets = getPresets();
-  if (_editPresetId !== null) {
-    const idx = presets.findIndex(x => x.id === _editPresetId);
-    if (idx > -1) presets[idx] = { ...presets[idx], label, price, jobtype };
-  } else {
-    presets.push({ id: presets.length ? Math.max(...presets.map(x => x.id)) + 1 : 1, label, price, jobtype });
-  }
-  savePresets(presets);
-  closeModal('preset-modal');
-  renderPresets();
-  toast('Preset saved.');
-}
-
-function deletePreset(id) {
-  if (!confirm('Delete this preset?')) return;
-  savePresets(getPresets().filter(p => p.id !== id));
-  renderPresets();
-  toast('Preset deleted.');
 }
 
 function renderPresets() {
@@ -3904,9 +4023,13 @@ nav = function(p) {
   if (p === 'pricepresets') renderPresets();
 };
 
-// Log startup
+// Log startup + load Supabase-backed data
 window.addEventListener('load', () => {
-  setTimeout(() => logActivity('Dashboard opened', 'Session started', 'Owner'), 2000);
+  setTimeout(() => {
+    logActivity('Dashboard opened', 'Session started', 'Owner');
+    loadPresetsFromDB();
+    getOwnerPin(); // pre-cache PIN
+  }, 2000);
 });
 </script>
 </body>
