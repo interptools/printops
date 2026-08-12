@@ -1537,7 +1537,7 @@ function openOrderModal(id) {
 
 async function saveOrder() {
   const custId = Number(document.getElementById('o-customer').value);
-  if (!custId) { alert('Please select a customer.'); return; }
+  if (!custId) { toast('⚠️ Please select a customer.'); return; }
   const existing = editOrderId ? orders.find(o => o.id === editOrderId) : null;
   const payload = {
     customer_id: custId,
@@ -1569,7 +1569,7 @@ async function saveOrder() {
     await loadAllData();
     renderOrders();
     logActivity(editOrderId ? 'Order updated' : 'Order created', payload.jobtype + ' for ' + custName(custId));
-  } catch(e) { alert('Could not save order: ' + e.message); }
+  } catch(e) { toast('⚠️ Could not save order: ' + e.message); }
 }
 
 function editOrder(id) { openOrderModal(id); }
@@ -1629,7 +1629,7 @@ function openCustModal() {
 
 async function saveCustomer() {
   const name = document.getElementById('c-name').value.trim();
-  if (!name) { alert('Please enter a name.'); return; }
+  if (!name) { toast('⚠️ Please enter a name.'); return; }
   try {
     await sbFetch('customers', {
       method: 'POST', prefer: 'return=minimal',
@@ -1643,7 +1643,7 @@ async function saveCustomer() {
     await loadAllData();
     closeModal('cust-modal'); renderCustomers();
     toast('Customer saved.');
-  } catch(e) { alert('Could not save customer: ' + e.message); }
+  } catch(e) { toast('⚠️ Could not save customer: ' + e.message); }
 }
 
 async function deleteCust(id) {
@@ -1731,7 +1731,7 @@ function openInvModal() {
 
 async function saveInvoice() {
   const custId = Number(document.getElementById('i-customer').value);
-  if (!custId) { alert('Please select a customer.'); return; }
+  if (!custId) { toast('⚠️ Please select a customer.'); return; }
   try {
     await sbFetch('invoices', {
       method: 'POST', prefer: 'return=minimal',
@@ -1747,7 +1747,7 @@ async function saveInvoice() {
     });
     await loadAllData();
     closeModal('inv-modal'); renderInvoices(); toast('Invoice saved.');
-  } catch(e) { alert('Could not save invoice: ' + e.message); }
+  } catch(e) { toast('⚠️ Could not save invoice: ' + e.message); }
 }
 
 async function markPaid(id) {
@@ -2593,7 +2593,7 @@ function owSelectPkg(key, btn) {
 function owHandlePhoto(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 10*1024*1024) { alert('Photo too large (max 10 MB).'); return; }
+  if (file.size > 10*1024*1024) { toast('⚠️ Photo too large — max 10 MB.'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     owPhotoDataUrl = e.target.result;
@@ -2619,10 +2619,10 @@ function owRemovePhoto() {
 function owSubmitOrder() {
   const name = document.getElementById('ow-name').value.trim();
   const phone = document.getElementById('ow-phone').value.trim();
-  if (!name) { alert('Enter customer name.'); return; }
-  if (!phone) { alert('Enter contact number.'); return; }
-  if (!owSelectedPkg) { alert('Select a package.'); return; }
-  if (!owPhotoDataUrl) { alert('Upload the customer photo.'); return; }
+  if (!name) { toast('⚠️ Please enter customer name.'); return; }
+  if (!phone) { toast('⚠️ Please enter contact number.'); return; }
+  if (!owSelectedPkg) { toast('⚠️ Please select a package.'); return; }
+  if (!owPhotoDataUrl) { toast('⚠️ Please upload the customer photo.'); return; }
 
   const pkg = PHOTO_PACKAGES[owSelectedPkg];
   const orders = getPhotoOrders();
@@ -2676,7 +2676,7 @@ function importData(e) {
       await loadAllData();
       renderDash(); updateReqBadge(); updatePhotoBadge();
       toast('Backup data loaded.');
-    } catch { alert('Invalid backup file.'); }
+    } catch { toast('⚠️ Invalid backup file.'); }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -3051,7 +3051,7 @@ async function saveService() {
   const name   = document.getElementById('svc-name').value.trim();
   const desc   = document.getElementById('svc-desc').value.trim();
   const status = document.getElementById('svc-status-val').value;
-  if (!name) { alert('Please enter a service name.'); return; }
+  if (!name) { toast('⚠️ Please enter a service name.'); return; }
   // Collect price items
   const priceRows = document.querySelectorAll('#svc-price-items .svc-price-row');
   const priceItems = [];
@@ -3079,7 +3079,7 @@ async function saveService() {
     closeModal('svc-modal');
     renderServices();
   } catch(e) {
-    alert('Could not save. Check Supabase connection.\n' + e.message);
+    toast('⚠️ Could not save — check Supabase connection.');
   }
 }
 
@@ -3802,7 +3802,7 @@ function openStockModal(id = null) {
 
 async function saveStockItem() {
   const name = document.getElementById('st-name').value.trim();
-  if (!name) { alert('Please enter an item name.'); return; }
+  if (!name) { toast('⚠️ Please enter an item name.'); return; }
   const payload = {
     name,
     category: document.getElementById('st-category').value,
@@ -3913,8 +3913,8 @@ async function logMaterialCost() {
   const ref    = document.getElementById('cost-ref').value.trim();
   const amount = Number(document.getElementById('cost-amount').value);
   const note   = document.getElementById('cost-note').value.trim();
-  if (!ref) { alert('Please enter an order or reference number.'); return; }
-  if (!amount || amount <= 0) { alert('Please enter a valid cost.'); return; }
+  if (!ref) { toast('⚠️ Please enter an order or reference number.'); return; }
+  if (!amount || amount <= 0) { toast('⚠️ Please enter a valid cost.'); return; }
   try {
     await sbFetch('cost_log', {
       method: 'POST', prefer: 'return=minimal',
@@ -4098,8 +4098,8 @@ async function savePreset() {
   const label   = document.getElementById('ps-label').value.trim();
   const price   = Number(document.getElementById('ps-price').value);
   const jobtype = document.getElementById('ps-jobtype').value;
-  if (!label) { alert('Please enter a label.'); return; }
-  if (!price || price <= 0) { alert('Please enter a valid price.'); return; }
+  if (!label) { toast('⚠️ Please enter a label.'); return; }
+  if (!price || price <= 0) { toast('⚠️ Please enter a valid price.'); return; }
   try {
     if (_editPresetId !== null) {
       await sbFetch('price_presets?id=eq.' + _editPresetId, {
@@ -4235,7 +4235,7 @@ function applyPresetToInvoice(price) {
 
 async function saveQuickInvoice() {
   const amount = Number(document.getElementById('qi-amount').value);
-  if (!amount || amount <= 0) { alert('Please enter the invoice amount.'); return; }
+  if (!amount || amount <= 0) { toast('⚠️ Please enter the invoice amount.'); return; }
   if (!_qiReq) return;
 
   const r = _qiReq;
@@ -4279,7 +4279,7 @@ async function saveQuickInvoice() {
     renderInvoices();
     toast('✅ Invoice created — ₱' + amount.toLocaleString('en-PH') + ' for ' + r.name);
     _qiReq = null;
-  } catch(e) { alert('Could not create invoice: ' + e.message); }
+  } catch(e) { toast('⚠️ Could not create invoice: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
