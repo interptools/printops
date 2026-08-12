@@ -423,35 +423,44 @@ tbody tr:hover td{background:var(--surface-1)}
     </div>
 
     <!-- Add/Edit Service Modal -->
-    <div class="modal-overlay" id="svc-modal" onclick="bgClose(event,'svc-modal')">
-      <div class="modal" style="width:460px">
-        <div class="modal-title">
-          <span id="svc-modal-title">Add service</span>
-          <button class="modal-close" onclick="closeModal('svc-modal')"><i class="ti ti-x"></i></button>
-        </div>
-        <div class="form-group">
-          <label>Service name *</label>
-          <input id="svc-name" placeholder="e.g. Mug printing, Sublimation, Vinyl cut…">
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">This is what customers see in the dropdown.</div>
-        </div>
-        <div class="form-group">
-          <label>Description (optional)</label>
-          <input id="svc-desc" placeholder="Short description for your reference">
-        </div>
-        <div class="form-group">
-          <label>Status</label>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <button id="svc-status-on"  class="btn btn-success"  onclick="setSvcStatus('on')"  style="width:auto;padding:6px 18px">✓ On (available)</button>
-            <button id="svc-status-off" class="btn"              onclick="setSvcStatus('off')" style="width:auto;padding:6px 18px">✕ Off (hidden)</button>
-          </div>
-          <input type="hidden" id="svc-status-val" value="on">
-        </div>
-        <div class="modal-footer">
-          <button class="btn" onclick="closeModal('svc-modal')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveService()">Save service</button>
-        </div>
-      </div>
+<div class="modal-overlay" id="svc-modal" onclick="bgClose(event,'svc-modal')">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">
+      <span id="svc-modal-title">Add service</span>
+      <button class="modal-close" onclick="closeModal('svc-modal')"><i class="ti ti-x"></i></button>
     </div>
+    <div class="form-group">
+      <label>Service name *</label>
+      <input id="svc-name" placeholder="e.g. Mug printing, Sublimation, Vinyl cut…">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">This is what customers see in the dropdown.</div>
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <input id="svc-desc" placeholder="Short description for your reference">
+    </div>
+    <!-- Price items -->
+    <div class="form-group">
+      <label>Price items <span style="font-weight:400;color:var(--text-muted)">(shown in Price List)</span></label>
+      <div id="svc-price-items" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+      <button onclick="addSvcPriceItem()" type="button"
+        style="margin-top:8px;padding:6px 12px;border-radius:var(--radius);border:1px dashed var(--border-strong);background:transparent;font-size:12px;font-family:inherit;color:var(--text-secondary);cursor:pointer;width:100%;text-align:left">
+        <i class="ti ti-plus"></i> Add price item (e.g. "Per piece — ₱250")
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button id="svc-status-on"  class="btn btn-success"  onclick="setSvcStatus('on')"  style="width:auto;padding:6px 18px">✓ On (available)</button>
+        <button id="svc-status-off" class="btn"              onclick="setSvcStatus('off')" style="width:auto;padding:6px 18px">✕ Off (hidden)</button>
+      </div>
+      <input type="hidden" id="svc-status-val" value="on">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('svc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveService()">Save service</button>
+    </div>
+  </div>
+</div>
 
     <!-- PRICE CALCULATOR -->
     <div class="page" id="page-calculator">
@@ -807,10 +816,12 @@ tbody tr:hover td{background:var(--surface-1)}
         <div class="page-title">Price List</div>
         <button class="btn" onclick="nav('pricepresets')"><i class="ti ti-edit"></i> Edit presets</button>
       </div>
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem">Quick reference when customers ask for prices. All rates are your current standard prices.</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem">Quick reference when customers ask for prices. Default + custom services shown together.</div>
       <input id="dash-price-search" type="text" placeholder="🔍 Search service or price..." oninput="filterDashPriceList()"
         style="width:100%;max-width:400px;padding:8px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none;margin-bottom:1.25rem;display:block">
-      <div id="dash-price-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+      <div id="dash-price-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+        <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">Loading…</div>
+      </div>
     </div>
 
     <!-- PRICE PRESETS -->
@@ -2715,6 +2726,7 @@ function openAddServiceModal() {
   document.getElementById('svc-modal-title').textContent = 'Add service';
   document.getElementById('svc-name').value = '';
   document.getElementById('svc-desc').value = '';
+  document.getElementById('svc-price-items').innerHTML = '';
   setSvcStatus('on');
   document.getElementById('svc-modal').classList.add('open');
   setTimeout(() => document.getElementById('svc-name').focus(), 100);
@@ -2729,6 +2741,11 @@ async function openEditSvc(id) {
   document.getElementById('svc-name').value = r.name;
   document.getElementById('svc-desc').value = r.description || '';
   setSvcStatus(r.status || 'on');
+  // Load existing price items
+  const priceItems = r.price_items ? JSON.parse(r.price_items) : [];
+  const container = document.getElementById('svc-price-items');
+  container.innerHTML = '';
+  priceItems.forEach(item => addSvcPriceItem(item.label, item.price, item.note));
   document.getElementById('svc-modal').classList.add('open');
 }
 
@@ -2745,22 +2762,50 @@ function setSvcStatus(val) {
   }
 }
 
+function addSvcPriceItem(label='', price='', note='') {
+  const container = document.getElementById('svc-price-items');
+  const row = document.createElement('div');
+  row.className = 'svc-price-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 100px 1fr auto;gap:6px;align-items:center';
+  row.innerHTML = `
+    <input class="pi-label" placeholder="Label (e.g. Per piece)" value="${label}"
+      style="padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none">
+    <input class="pi-price" placeholder="₱0" value="${price}"
+      style="padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none;text-align:right">
+    <input class="pi-note" placeholder="Note (e.g. per shirt)" value="${note}"
+      style="padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:12px;font-family:inherit;background:var(--surface-1);color:var(--text-primary);outline:none">
+    <button onclick="this.closest('.svc-price-row').remove()" type="button"
+      style="padding:6px 8px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:var(--danger-bg);color:var(--danger);cursor:pointer;font-size:13px;line-height:1">✕</button>
+  `;
+  container.appendChild(row);
+}
+
 async function saveService() {
   const name   = document.getElementById('svc-name').value.trim();
   const desc   = document.getElementById('svc-desc').value.trim();
   const status = document.getElementById('svc-status-val').value;
   if (!name) { alert('Please enter a service name.'); return; }
+  // Collect price items
+  const priceRows = document.querySelectorAll('#svc-price-items .svc-price-row');
+  const priceItems = [];
+  priceRows.forEach(row => {
+    const label = row.querySelector('.pi-label').value.trim();
+    const price = row.querySelector('.pi-price').value.trim();
+    const note  = row.querySelector('.pi-note').value.trim();
+    if (label && price) priceItems.push({ label, price, note });
+  });
   try {
+    const payload = { name, description: desc, status, price_items: JSON.stringify(priceItems) };
     if (_editSvcId) {
       await sbFetch('services?id=eq.' + _editSvcId, {
         method:'PATCH', prefer:'return=minimal',
-        body: JSON.stringify({ name, description: desc, status })
+        body: JSON.stringify(payload)
       });
       toast('Service updated.');
     } else {
       await sbFetch('services', {
         method:'POST', prefer:'return=minimal',
-        body: JSON.stringify({ name, description: desc, status, sort_order: 999 })
+        body: JSON.stringify({ ...payload, sort_order: 999 })
       });
       toast('Service added — now visible on the customer form.');
     }
@@ -3783,17 +3828,34 @@ const DASH_PRICE_LIST = [
   ]},
 ];
 
-function renderDashPriceList(filter='') {
+async function renderDashPriceList(filter='') {
   const grid = document.getElementById('dash-price-list-grid');
   if (!grid) return;
+
+  // Load custom services from Supabase
+  let customServices = [];
+  try {
+    const rows = await sbFetch('services?status=eq.on&order=sort_order.asc,id.asc');
+    const defaultNames = new Set(DASH_PRICE_LIST.map(c => c.service.toLowerCase()));
+    customServices = (rows || [])
+      .filter(r => !defaultNames.has(r.name.toLowerCase()) && r.name.toLowerCase() !== 'other')
+      .map(r => {
+        let items = [];
+        try { items = JSON.parse(r.price_items || '[]'); } catch(e) {}
+        return { service: r.name, icon: 'ti-tag', color: '#6b7280', items, custom: true, desc: r.description };
+      })
+      .filter(r => r.items.length > 0);
+  } catch(e) {}
+
+  const allCategories = [...DASH_PRICE_LIST, ...customServices];
   const q = filter.toLowerCase();
-  const filtered = DASH_PRICE_LIST.map(cat => ({
+  const filtered = allCategories.map(cat => ({
     ...cat,
     items: cat.items.filter(item =>
       !q ||
       cat.service.toLowerCase().includes(q) ||
       item.label.toLowerCase().includes(q) ||
-      item.price.includes(q)
+      (item.price||'').toString().includes(q)
     )
   })).filter(cat => cat.items.length);
 
@@ -3801,13 +3863,18 @@ function renderDashPriceList(filter='') {
     grid.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px;grid-column:1/-1">No results found.</div>';
     return;
   }
+
   grid.innerHTML = filtered.map(cat => `
     <div style="background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden">
       <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border);background:${cat.color}08">
         <div style="width:32px;height:32px;border-radius:8px;background:${cat.color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="ti ${cat.icon}" style="font-size:16px;color:${cat.color}"></i>
         </div>
-        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${cat.service}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${cat.service}</div>
+          ${cat.desc ? `<div style="font-size:11px;color:var(--text-muted)">${cat.desc}</div>` : ''}
+        </div>
+        ${cat.custom ? `<span style="margin-left:auto;font-size:10px;font-weight:600;background:var(--accent-bg);color:var(--accent-text);padding:2px 7px;border-radius:20px">Custom</span>` : ''}
       </div>
       ${cat.items.map((item, i) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;${i < cat.items.length-1 ? 'border-bottom:0.5px solid var(--border)' : ''}">
