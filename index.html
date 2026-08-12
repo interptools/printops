@@ -154,28 +154,26 @@ tbody tr:hover td{background:var(--surface-1)}
 .sync-status.off{background:var(--surface-1);color:var(--text-muted)}
 .sync-status.err{background:var(--danger-bg);color:var(--danger)}
 /* Print styles */
-@media print{
-  .sidebar,.page-header,.actions,.btn,.modal-overlay,.toast,#gate{display:none!important}
-  .main{padding:0}
-  .page{display:block!important}
-  body{background:#fff}
+@media print {
+  /* Default page print — hide chrome */
+  .sidebar,.page-header,.actions,.btn,.modal-overlay,.toast,#gate { display:none!important }
+  .main { padding:0 }
+  body { background:#fff }
+
+  /* Job ticket print — when ticket area is visible, hide EVERYTHING else */
+  body:has(#job-ticket-area[style*="block"]) > *:not(#job-ticket-area) { display:none!important }
+  #job-ticket-area { font-family:sans-serif; padding:10mm; }
+  .jt-header { border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; }
+  .jt-shop { font-size:18px; font-weight:700; }
+  .jt-ref { font-size:13px; color:#555; }
+  .jt-row { display:flex; gap:6px; font-size:13px; margin-bottom:6px; }
+  .jt-label { font-weight:600; min-width:110px; color:#333; }
+  .jt-val { flex:1; }
+  .jt-divider { border-top:1px dashed #ccc; margin:10px 0; }
+  .jt-status-row { display:flex; gap:16px; margin-top:12px; }
+  .jt-status-box { border:1.5px solid #000; border-radius:6px; padding:8px 16px; text-align:center; font-size:11px; font-weight:600; text-transform:uppercase; min-width:70px; }
+  .jt-footer { margin-top:16px; font-size:11px; color:#888; border-top:1px solid #eee; padding-top:8px; }
 }
-  /* Job ticket print */
-  #job-ticket-area{display:none}
-  @media print {
-    body > *:not(#job-ticket-area){ display:none!important }
-    #job-ticket-area{ display:block!important; font-family:sans-serif; padding:10mm; }
-    .jt-header{ border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; }
-    .jt-shop{ font-size:18px; font-weight:700; }
-    .jt-ref{ font-size:13px; color:#555; }
-    .jt-row{ display:flex; gap:6px; font-size:13px; margin-bottom:6px; }
-    .jt-label{ font-weight:600; min-width:100px; color:#333; }
-    .jt-val{ flex:1; }
-    .jt-divider{ border-top:1px dashed #ccc; margin:10px 0; }
-    .jt-status-row{ display:flex; gap:16px; margin-top:12px; }
-    .jt-status-box{ border:1.5px solid #000; border-radius:6px; padding:8px 16px; text-align:center; font-size:11px; font-weight:600; text-transform:uppercase; min-width:70px; }
-    .jt-footer{ margin-top:16px; font-size:11px; color:#888; border-top:1px solid #eee; padding-top:8px; }
-  }
   /* Templates */
   .tpl-card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;transition:border-color 0.12s}
   .tpl-card:hover{border-color:var(--accent)}
@@ -1163,10 +1161,8 @@ tbody tr:hover td{background:var(--surface-1)}
   </div>
 </div>
 
-<!-- Job Ticket Print area (hidden, shown on print) -->
-<div id="job-ticket-area" style="display:none">
-  <div id="job-ticket-content"></div>
-</div>
+<!-- Job Ticket Print area (hidden by default, moved to body for printing) -->
+<div id="job-ticket-area" style="display:none;position:fixed;inset:0;background:#fff;z-index:99999;padding:10mm;overflow:auto"></div>
 
 <!-- Customer Modal -->
 <div class="modal-overlay" id="cust-modal" onclick="bgClose(event,'cust-modal')">
@@ -1850,7 +1846,6 @@ async function renderRequests() {
 }
 
 function printJobTicket() {
-  // Gather current modal values
   const custId = Number(document.getElementById('o-customer').value);
   const cust = customers.find(c => c.id === custId);
   const custName = cust ? cust.name : '—';
@@ -1868,38 +1863,65 @@ function printJobTicket() {
   const fileNameEl = document.getElementById('o-file-name');
   const fname    = fileNameEl ? fileNameEl.textContent : '';
 
-  const area = document.getElementById('job-ticket-area');
-  area.innerHTML = `
+  const html = buildTicketHTML({
+    title: 'Job Ticket',
+    ref: editOrderId ? '#' + String(editOrderId).padStart(4,'0') : 'NEW',
+    refLabel: 'Order #',
+    rush, now,
+    rows: [
+      ['Customer', custName],
+      ['Contact',  custPhone],
+      null,
+      ['Job type',    jobtype],
+      ['Size / specs', size],
+      ['Quantity',    qty + ' pcs'],
+      ['Date needed', due],
+      fname ? ['File', fname] : null,
+      notes ? ['Notes', notes] : null,
+      null,
+      ['Amount',  '₱' + Number(amount).toLocaleString('en-PH', {minimumFractionDigits:2})],
+      ['Payment', payment],
+    ],
+    status
+  });
+  triggerPrint(html);
+}
+
+// ── Shared ticket builder & print trigger ─────────────────────────────────
+function buildTicketHTML({ title, ref, refLabel, rush, now, rows, status }) {
+  const rowsHtml = rows.filter(r => r !== null && r !== undefined).map(r => {
+    if (r === null) return '<div class="jt-divider"></div>';
+    return `<div class="jt-row"><span class="jt-label">${r[0]}</span><span class="jt-val">${r[1]}</span></div>`;
+  }).join('');
+  return `
     <div class="jt-header">
       <div>
         <div class="jt-shop">Arroyo Suite${rush ? ' &nbsp;⚡ RUSH' : ''}</div>
-        <div class="jt-ref">Job Ticket · Printed: ${now}</div>
+        <div class="jt-ref">${title} · Printed: ${now}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:#1a6ef5">#${editOrderId ? String(editOrderId).padStart(4,'0') : 'NEW'}</div>
-        <div style="font-size:12px;color:#555">Order #</div>
+        <div style="font-size:22px;font-weight:800;color:#1a6ef5">${ref}</div>
+        <div style="font-size:12px;color:#555">${refLabel}</div>
       </div>
     </div>
-    <div class="jt-row"><span class="jt-label">Customer</span><span class="jt-val">${custName}</span></div>
-    <div class="jt-row"><span class="jt-label">Contact</span><span class="jt-val">${custPhone}</span></div>
+    ${rowsHtml}
     <div class="jt-divider"></div>
-    <div class="jt-row"><span class="jt-label">Job type</span><span class="jt-val">${jobtype}</span></div>
-    <div class="jt-row"><span class="jt-label">Size / specs</span><span class="jt-val">${size}</span></div>
-    <div class="jt-row"><span class="jt-label">Quantity</span><span class="jt-val">${qty} pcs</span></div>
-    <div class="jt-row"><span class="jt-label">Date needed</span><span class="jt-val">${due}</span></div>
-    ${fname ? `<div class="jt-row"><span class="jt-label">File</span><span class="jt-val">${fname}</span></div>` : ''}
-    ${notes ? `<div class="jt-divider"></div><div class="jt-row"><span class="jt-label">Notes</span><span class="jt-val" style="white-space:pre-wrap">${notes}</span></div>` : ''}
-    <div class="jt-divider"></div>
-    <div class="jt-row"><span class="jt-label">Amount</span><span class="jt-val" style="font-size:16px;font-weight:700">₱${Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></div>
-    <div class="jt-row"><span class="jt-label">Payment</span><span class="jt-val">${payment}</span></div>
     <div class="jt-status-row">
-      ${['Pending','In progress','Done'].map(s=>`<div class="jt-status-box" style="${s===status?'background:#000;color:#fff':''}">${s}</div>`).join('')}
+      ${['Pending','In progress','Done'].map(s =>
+        `<div class="jt-status-box" style="${s===status?'background:#000;color:#fff':''}">${s}</div>`
+      ).join('')}
     </div>
-    <div class="jt-footer">Arroyo Suite · Keep this ticket until order is claimed.</div>
-  `;
+    <div class="jt-footer">Arroyo Suite · 09063964052 · Keep this slip until order is claimed.</div>`;
+}
+
+function triggerPrint(html) {
+  const area = document.getElementById('job-ticket-area');
+  area.innerHTML = html;
   area.style.display = 'block';
-  window.print();
-  area.style.display = 'none';
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { area.style.display = 'none'; }, 500);
+  }, 100);
 }
 
 async function printReqTicket(id) {
@@ -1927,40 +1949,27 @@ async function printReqTicket(id) {
     }
     details = parts.join(' · ') || '—';
   }
-  const area = document.getElementById('job-ticket-area');
-  area.innerHTML = `
-    <div class="jt-header">
-      <div>
-        <div class="jt-shop">Arroyo Suite${r.rush ? ' &nbsp;⚡ RUSH' : ''}</div>
-        <div class="jt-ref">Order Slip · Printed: ${now}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:#1a6ef5">${r.ref || '—'}</div>
-        <div style="font-size:12px;color:#555">Reference #</div>
-      </div>
-    </div>
-    <div class="jt-row"><span class="jt-label">Customer</span><span class="jt-val">${r.name}</span></div>
-    <div class="jt-row"><span class="jt-label">Contact</span><span class="jt-val">${r.phone}</span></div>
-    ${r.email ? `<div class="jt-row"><span class="jt-label">Email</span><span class="jt-val">${r.email}</span></div>` : ''}
-    <div class="jt-divider"></div>
-    <div class="jt-row"><span class="jt-label">Job type</span><span class="jt-val">${r.jobtype}</span></div>
-    <div class="jt-row"><span class="jt-label">Details</span><span class="jt-val">${details}</span></div>
-    ${r.qty && !r.pkgLabel ? `<div class="jt-row"><span class="jt-label">Quantity</span><span class="jt-val">${r.qty} pcs</span></div>` : ''}
-    <div class="jt-row"><span class="jt-label">Date needed</span><span class="jt-val">${r.due || '—'}</span></div>
-    ${r.print_file  ? `<div class="jt-row"><span class="jt-label">Print file</span><span class="jt-val">📄 ${r.print_file}</span></div>` : ''}
-    ${r.design_file ? `<div class="jt-row"><span class="jt-label">Design file</span><span class="jt-val">🎨 ${r.design_file}</span></div>` : ''}
-    ${r.notes ? `<div class="jt-divider"></div><div class="jt-row"><span class="jt-label">Notes</span><span class="jt-val" style="white-space:pre-wrap">${r.notes}</span></div>` : ''}
-    <div class="jt-divider"></div>
-    <div class="jt-status-row">
-      ${['Pending','In progress','Done'].map(s =>
-        `<div class="jt-status-box" style="${s===r.status?'background:#000;color:#fff':''}">${s}</div>`
-      ).join('')}
-    </div>
-    <div class="jt-footer">Arroyo Suite · Keep this slip until your order is claimed. · Ref: ${r.ref || '—'}</div>
-  `;
-  area.style.display = 'block';
-  window.print();
-  area.style.display = 'none';
+  const html = buildTicketHTML({
+    title: 'Order Slip',
+    ref: r.ref || '—',
+    refLabel: 'Reference #',
+    rush: r.rush, now,
+    rows: [
+      ['Customer',    r.name],
+      ['Contact',     r.phone],
+      r.email ? ['Email', r.email] : null,
+      null,
+      ['Job type',    r.jobtype],
+      ['Details',     details],
+      r.qty && !r.pkgLabel ? ['Quantity', r.qty + ' pcs'] : null,
+      ['Date needed', r.due || '—'],
+      r.print_file  ? ['Print file',  '📄 ' + r.print_file]  : null,
+      r.design_file ? ['Design file', '🎨 ' + r.design_file] : null,
+      r.notes ? ['Notes', r.notes] : null,
+    ],
+    status: r.status
+  });
+  triggerPrint(html);
 }
 
 function downloadOrderFile() {
