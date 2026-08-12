@@ -236,7 +236,8 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="exportData()"><i class="ti ti-download" aria-hidden="true"></i><span>Export backup</span></button>
     <button class="nav-item" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload" aria-hidden="true"></i><span>Import backup</span></button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
-    <div class="sidebar-bottom">Data saved locally.<br>v2.1 — Arroyo Suite</div>
+    <button class="nav-item" onclick="logout()" style="color:var(--danger)"><i class="ti ti-logout" aria-hidden="true"></i><span>Log out</span></button>
+    <div class="sidebar-bottom">v2.1 — Arroyo Suite</div>
   </div>
 
   <div class="main">
@@ -2668,17 +2669,35 @@ const OWNER_PASSWORD = 'print2026';
 function checkPassword() {
   const val = document.getElementById('gate-pw').value;
   if (val === OWNER_PASSWORD) {
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('app-content').style.display = 'block';
-    loadAllData().then(() => {
-      renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
-    });
+    sessionStorage.setItem('arroyo_session', '1');
+    unlockDashboard();
   } else {
     document.getElementById('gate-err').style.display = 'block';
     document.getElementById('gate-pw').value = '';
     document.getElementById('gate-pw').focus();
   }
 }
+
+function unlockDashboard() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app-content').style.display = 'block';
+  loadAllData().then(() => {
+    renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
+  });
+}
+
+function logout() {
+  if (!confirm('Log out of Arroyo Suite?')) return;
+  sessionStorage.removeItem('arroyo_session');
+  location.reload();
+}
+
+// Auto-restore session on refresh (sessionStorage clears when tab is closed)
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('arroyo_session') === '1') {
+    unlockDashboard();
+  }
+});
 
 // ─── REAL-TIME POLLING & NOTIFICATIONS ───────────────────────────────────
 let _lastKnownReqId = 0;
