@@ -654,28 +654,29 @@ tbody tr:hover td{background:var(--surface-1)}
           </div>
         </div>
       </div>
+
+      <!-- Change PIN -->
+      <div class="card" style="margin-top:1rem;max-width:400px">
+        <div class="card-title"><i class="ti ti-lock"></i> Change Owner PIN</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Your PIN is saved to Supabase — syncs across all devices. Default is <strong>1234</strong>.</div>
+        <div class="form-group">
+          <label>Current PIN</label>
+          <input id="pin-current" type="password" inputmode="numeric" maxlength="6" placeholder="Current PIN" style="letter-spacing:4px;font-size:16px">
+        </div>
+        <div class="form-group">
+          <label>New PIN</label>
+          <input id="pin-new" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digits" style="letter-spacing:4px;font-size:16px">
+        </div>
+        <div class="form-group">
+          <label>Confirm new PIN</label>
+          <input id="pin-confirm" type="password" inputmode="numeric" maxlength="6" placeholder="Repeat new PIN" style="letter-spacing:4px;font-size:16px">
+        </div>
+        <div id="pin-change-msg" style="font-size:12px;margin-bottom:10px;display:none"></div>
+        <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="changePinFromSettings()"><i class="ti ti-check"></i> Save new PIN</button>
+      </div>
     </div>
 
-    <!-- Change PIN -->
-    <div class="card" style="margin-top:1rem;max-width:400px">
-      <div class="card-title"><i class="ti ti-lock"></i> Change Owner PIN</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Your PIN is saved to Supabase — syncs across all devices. Default is <strong>1234</strong>.</div>
-      <div class="form-group">
-        <label>Current PIN</label>
-        <input id="pin-current" type="password" inputmode="numeric" maxlength="6" placeholder="Current PIN" style="letter-spacing:4px;font-size:16px">
-      </div>
-      <div class="form-group">
-        <label>New PIN</label>
-        <input id="pin-new" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digits" style="letter-spacing:4px;font-size:16px">
-      </div>
-      <div class="form-group">
-        <label>Confirm new PIN</label>
-        <input id="pin-confirm" type="password" inputmode="numeric" maxlength="6" placeholder="Repeat new PIN" style="letter-spacing:4px;font-size:16px">
-      </div>
-      <div id="pin-change-msg" style="font-size:12px;margin-bottom:10px;display:none"></div>
-      <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="changePinFromSettings()"><i class="ti ti-check"></i> Save new PIN</button>
-    </div>
-  </div>
+    <!-- ID PHOTOS PAGE -->
     <div class="page" id="page-idphotos">
       <div class="page-header">
         <div class="page-title">ID Photo Orders</div>
@@ -1185,17 +1186,70 @@ tbody tr:hover td{background:var(--surface-1)}
 <div class="toast" id="toast"></div>
 
 <script>
-let orders = JSON.parse(localStorage.getItem('po_orders') || '[]');
-let customers = JSON.parse(localStorage.getItem('po_customers') || '[]');
-let invoices = JSON.parse(localStorage.getItem('po_invoices') || '[]');
+// ── In-memory cache (populated from Supabase on load) ─────────────────────
+let orders = [];
+let customers = [];
+let invoices = [];
 let editOrderId = null;
 let revenueChart = null;
 
-function persist() {
-  localStorage.setItem('po_orders', JSON.stringify(orders));
-  localStorage.setItem('po_customers', JSON.stringify(customers));
-  localStorage.setItem('po_invoices', JSON.stringify(invoices));
+// ── Supabase config ────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
+
+async function sbFetch(path, options = {}) {
+  const headers = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'x-app-source': 'arroyo-dashboard',
+    ...(options.prefer ? {'Prefer': options.prefer} : {}),
+    ...(options.extraHeaders || {})
+  };
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body || undefined
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error('Supabase: ' + text);
+  return text ? JSON.parse(text) : null;
 }
+
+// ── Load all data from Supabase into memory ───────────────────────────────
+async function loadAllData() {
+  try {
+    const [c, o, i] = await Promise.all([
+      sbFetch('customers?order=id.asc'),
+      sbFetch('orders?order=id.asc'),
+      sbFetch('invoices?order=id.asc')
+    ]);
+    customers = (c || []).map(r => ({
+      id: r.id, name: r.name, phone: r.phone||'', email: r.email||'',
+      address: r.address||'', createdAt: r.created_at
+    }));
+    orders = (o || []).map(r => ({
+      id: r.id, customerId: r.customer_id, jobtype: r.jobtype||'',
+      size: r.size||'', qty: r.qty||1, amount: r.amount||0,
+      payment: r.payment||'', status: r.status||'Pending',
+      due: r.due||'', notes: r.notes||'', rush: r.rush||false,
+      createdAt: r.created_at
+    }));
+    invoices = (i || []).map(r => ({
+      id: r.id, customerId: r.customer_id, orderId: r.order_id||null,
+      amount: r.amount||0, due: r.due||'', notes: r.notes||'',
+      status: r.status||'Unpaid', createdAt: r.created_at
+    }));
+  } catch(e) {
+    console.warn('Could not load from Supabase, falling back to localStorage:', e.message);
+    orders    = JSON.parse(localStorage.getItem('po_orders')    || '[]');
+    customers = JSON.parse(localStorage.getItem('po_customers') || '[]');
+    invoices  = JSON.parse(localStorage.getItem('po_invoices')  || '[]');
+  }
+}
+
+// ── persist: no-op (we save directly to Supabase per operation) ───────────
+function persist() { /* data saved directly to Supabase per operation */ }
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -1393,36 +1447,52 @@ function openOrderModal(id) {
   document.getElementById('order-modal').classList.add('open');
 }
 
-function saveOrder() {
+async function saveOrder() {
   const custId = Number(document.getElementById('o-customer').value);
   if (!custId) { alert('Please select a customer.'); return; }
   const existing = editOrderId ? orders.find(o => o.id === editOrderId) : null;
-  const data = {
-    id: editOrderId || nextId(orders), customerId: custId,
-    jobtype: document.getElementById('o-jobtype').value,
-    size: document.getElementById('o-size').value,
-    qty: document.getElementById('o-qty').value,
-    amount: document.getElementById('o-amount').value,
-    due: document.getElementById('o-due').value,
-    notes: document.getElementById('o-notes').value,
-    status: document.getElementById('o-status').value,
-    payment: document.getElementById('o-payment').value,
-    // preserve rush/file data from existing or carried-over
-    rush: existing ? existing.rush : false,
-    printFile: existing ? existing.printFile : null,
-    designFile: existing ? existing.designFile : null,
-    printFileData: existing ? existing.printFileData : null,
-    designFileData: existing ? existing.designFileData : null,
-    createdAt: existing ? existing.createdAt : new Date().toISOString()
+  const payload = {
+    customer_id: custId,
+    jobtype:  document.getElementById('o-jobtype').value,
+    size:     document.getElementById('o-size').value,
+    qty:      Number(document.getElementById('o-qty').value) || 1,
+    amount:   Number(document.getElementById('o-amount').value) || 0,
+    due:      document.getElementById('o-due').value || null,
+    notes:    document.getElementById('o-notes').value,
+    status:   document.getElementById('o-status').value,
+    payment:  document.getElementById('o-payment').value,
+    rush:     existing ? existing.rush : false,
   };
-  orders = editOrderId ? orders.map(o => o.id === editOrderId ? data : o) : [...orders, data];
-  persist(); closeModal('order-modal'); renderOrders();
-  toast(editOrderId ? 'Order updated.' : 'Order saved.');
+  try {
+    if (editOrderId) {
+      await sbFetch('orders?id=eq.' + editOrderId, {
+        method: 'PATCH', prefer: 'return=minimal',
+        body: JSON.stringify(payload)
+      });
+      toast('Order updated.');
+    } else {
+      await sbFetch('orders', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify(payload)
+      });
+      toast('Order saved.');
+    }
+    closeModal('order-modal');
+    await loadAllData();
+    renderOrders();
+    logActivity(editOrderId ? 'Order updated' : 'Order created', payload.jobtype + ' for ' + custName(custId));
+  } catch(e) { alert('Could not save order: ' + e.message); }
 }
 
 function editOrder(id) { openOrderModal(id); }
 function editThenTicket(id) { openOrderModal(id); setTimeout(()=>{ printJobTicket(); }, 300); }
-function deleteOrder(id) { if (!confirm('Delete this order?')) return; orders = orders.filter(o => o.id !== id); persist(); renderOrders(); toast('Order deleted.'); }
+async function deleteOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  try {
+    await sbFetch('orders?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    await loadAllData(); renderOrders(); toast('Order deleted.');
+  } catch(e) { toast('⚠️ Could not delete order.'); }
+}
 
 // Customers
 function renderCustomers() {
@@ -1467,14 +1537,32 @@ function openCustModal() {
   document.getElementById('cust-modal').classList.add('open');
 }
 
-function saveCustomer() {
+async function saveCustomer() {
   const name = document.getElementById('c-name').value.trim();
   if (!name) { alert('Please enter a name.'); return; }
-  customers.push({ id: nextId(customers), name, phone: document.getElementById('c-phone').value, email: document.getElementById('c-email').value, address: document.getElementById('c-address').value });
-  persist(); closeModal('cust-modal'); renderCustomers(); toast('Customer saved.');
+  try {
+    await sbFetch('customers', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        name, phone: document.getElementById('c-phone').value,
+        email: document.getElementById('c-email').value,
+        address: document.getElementById('c-address').value,
+        created_at: new Date().toISOString()
+      })
+    });
+    await loadAllData();
+    closeModal('cust-modal'); renderCustomers();
+    toast('Customer saved.');
+  } catch(e) { alert('Could not save customer: ' + e.message); }
 }
 
-function deleteCust(id) { if (!confirm('Delete this customer?')) return; customers = customers.filter(c => c.id !== id); persist(); renderCustomers(); toast('Customer deleted.'); }
+async function deleteCust(id) {
+  if (!confirm('Delete this customer?')) return;
+  try {
+    await sbFetch('customers?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    await loadAllData(); renderCustomers(); toast('Customer deleted.');
+  } catch(e) { toast('⚠️ Could not delete customer.'); }
+}
 
 // Invoices
 function renderInvoices() {
@@ -1513,7 +1601,7 @@ function printInvoice(id) {
   document.getElementById('print-content').innerHTML = `
     <div style="padding:1rem 0">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">
-        <div><div style="font-size:20px;font-weight:700">PrintOps</div><div style="font-size:12px;color:var(--text-secondary)">Print Business</div></div>
+        <div><div style="font-size:20px;font-weight:700">Arroyo Suite</div><div style="font-size:12px;color:var(--text-secondary)">Print Shop</div></div>
         <div style="text-align:right"><div style="font-size:18px;font-weight:600">INVOICE</div><div style="font-size:13px;color:var(--text-secondary)">INV-${String(i.id).padStart(4,'0')}</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;font-size:13px">
@@ -1549,40 +1637,46 @@ function openInvModal() {
   document.getElementById('inv-modal').classList.add('open');
 }
 
-function saveInvoice() {
+async function saveInvoice() {
   const custId = Number(document.getElementById('i-customer').value);
   if (!custId) { alert('Please select a customer.'); return; }
-  invoices.push({ id: nextId(invoices), customerId: custId, orderId: Number(document.getElementById('i-order').value)||null, amount: document.getElementById('i-amount').value, due: document.getElementById('i-due').value, notes: document.getElementById('i-notes').value, status: 'Unpaid', createdAt: new Date().toISOString() });
-  persist(); closeModal('inv-modal'); renderInvoices(); toast('Invoice saved.');
+  try {
+    await sbFetch('invoices', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        customer_id: custId,
+        order_id: Number(document.getElementById('i-order').value) || null,
+        amount: Number(document.getElementById('i-amount').value) || 0,
+        due: document.getElementById('i-due').value || null,
+        notes: document.getElementById('i-notes').value,
+        status: 'Unpaid',
+        created_at: new Date().toISOString()
+      })
+    });
+    await loadAllData();
+    closeModal('inv-modal'); renderInvoices(); toast('Invoice saved.');
+  } catch(e) { alert('Could not save invoice: ' + e.message); }
 }
 
-function markPaid(id) { invoices = invoices.map(i => i.id === id ? {...i, status:'Paid'} : i); persist(); renderInvoices(); toast('Marked as paid.'); }
-function deleteInv(id) { if (!confirm('Delete this invoice?')) return; invoices = invoices.filter(i => i.id !== id); persist(); renderInvoices(); toast('Invoice deleted.'); }
-
-// ── Supabase config ────────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
-
-async function sbFetch(path, options = {}) {
-  const headers = {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-    'x-app-source': 'arroyo-dashboard',
-    ...(options.prefer ? {'Prefer': options.prefer} : {}),
-    ...(options.extraHeaders || {})
-  };
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method: options.method || 'GET',
-    headers,
-    body: options.body || undefined
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error('Supabase: ' + text);
-  return text ? JSON.parse(text) : null;
+async function markPaid(id) {
+  try {
+    await sbFetch('invoices?id=eq.' + id, {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: JSON.stringify({ status: 'Paid' })
+    });
+    await loadAllData(); renderInvoices(); toast('Marked as paid.');
+  } catch(e) { toast('⚠️ Could not update invoice.'); }
 }
 
-// Requests — read/write from Supabase
+async function deleteInv(id) {
+  if (!confirm('Delete this invoice?')) return;
+  try {
+    await sbFetch('invoices?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    await loadAllData(); renderInvoices(); toast('Invoice deleted.');
+  } catch(e) { toast('⚠️ Could not delete invoice.'); }
+}
+
+// ── Requests — read/write from Supabase ──────────────────────────────────
 async function getRequestsFromDB() {
   try {
     const rows = await sbFetch('requests?order=id.desc');
@@ -1844,12 +1938,17 @@ async function convertReqToOrder(id) {
   const allReqs = await getRequestsFromDB();
   const r = allReqs.find(x => x.id === id);
   if (!r) return;
-  // Find or create customer
+  // Find or create customer in Supabase
   let cust = customers.find(c => c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone);
   if (!cust) {
-    cust = { id: nextId(customers), name: r.name, phone: r.phone, email: r.email||'', address: '', createdAt: new Date().toISOString() };
-    customers = [...customers, cust];
-    persist();
+    try {
+      await sbFetch('customers', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify({ name: r.name, phone: r.phone, email: r.email||'', address: '', created_at: new Date().toISOString() })
+      });
+      await loadAllData();
+      cust = customers.find(c => c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone);
+    } catch(e) { toast('⚠️ Could not create customer.'); return; }
   }
   // Build extras string
   const extraParts = [];
@@ -1897,19 +1996,16 @@ async function convertReqToOrder(id) {
     toast('Customer details loaded — set amount and save. An invoice draft will be created automatically.');
     // Auto-mark request as In Progress
     updateReqStatusDB(id, 'In progress').catch(() => {});
-    // Auto-create a ₱0 draft invoice linked to this customer so the owner only needs to fill in the amount
-    const draftInv = {
-      id: nextId(invoices),
-      customerId: cust.id,
-      orderId: null, // will be linked properly once the order is saved
-      amount: 0,
-      due: r.due || '',
-      notes: `Auto-created from request ${r.ref || '#' + id}. Update amount after saving the order.`,
-      status: 'Unpaid',
-      createdAt: new Date().toISOString()
-    };
-    invoices = [...invoices, draftInv];
-    persist();
+    // Auto-create a ₱0 draft invoice in Supabase
+    sbFetch('invoices', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        customer_id: cust.id, order_id: null, amount: 0,
+        due: r.due || null,
+        notes: `Auto-created from request ${r.ref || '#' + id}. Update amount after saving the order.`,
+        status: 'Unpaid', created_at: new Date().toISOString()
+      })
+    }).then(() => loadAllData()).catch(() => {});
   }, 150);
 }
 
@@ -2465,17 +2561,17 @@ function importData(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!confirm('This will replace all current data. Continue?')) return;
-      if (data.orders) { orders = data.orders; localStorage.setItem('po_orders', JSON.stringify(orders)); }
-      if (data.customers) { customers = data.customers; localStorage.setItem('po_customers', JSON.stringify(customers)); }
-      if (data.invoices) { invoices = data.invoices; localStorage.setItem('po_invoices', JSON.stringify(invoices)); }
+      if (!confirm('This will import backup data. Existing records in Supabase are NOT deleted — items are added on top. Continue?')) return;
+      // Just reload from Supabase after import note
+      toast('Import note: use Supabase dashboard to bulk import data. Local backup loaded for reference.');
       if (data.requests) { saveRequests(data.requests); }
+      await loadAllData();
       renderDash(); updateReqBadge(); updatePhotoBadge();
-      toast('Backup imported successfully.');
-        } catch { alert('Invalid backup file.'); }
+      toast('Backup data loaded.');
+    } catch { alert('Invalid backup file.'); }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -2574,7 +2670,9 @@ function checkPassword() {
   if (val === OWNER_PASSWORD) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app-content').style.display = 'block';
-    renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
+    loadAllData().then(() => {
+      renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
+    });
   } else {
     document.getElementById('gate-err').style.display = 'block';
     document.getElementById('gate-pw').value = '';
@@ -3833,7 +3931,7 @@ function applyPresetToInvoice(price) {
   document.getElementById('qi-amount').focus();
 }
 
-function saveQuickInvoice() {
+async function saveQuickInvoice() {
   const amount = Number(document.getElementById('qi-amount').value);
   if (!amount || amount <= 0) { alert('Please enter the invoice amount.'); return; }
   if (!_qiReq) return;
@@ -3842,46 +3940,44 @@ function saveQuickInvoice() {
   const due   = document.getElementById('qi-due').value;
   const notes = document.getElementById('qi-notes').value.trim();
 
-  // Find or auto-create customer
+  // Find or auto-create customer in Supabase
   let cust = customers.find(c =>
     c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone
   );
   if (!cust) {
-    cust = {
-      id: nextId(customers),
-      name: r.name, phone: r.phone, email: r.email || '',
-      address: '', createdAt: new Date().toISOString()
-    };
-    customers = [...customers, cust];
-    persist();
-    toast('Customer auto-created: ' + cust.name);
+    try {
+      await sbFetch('customers', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify({ name: r.name, phone: r.phone, email: r.email||'', address: '', created_at: new Date().toISOString() })
+      });
+      await loadAllData();
+      cust = customers.find(c => c.name.toLowerCase() === r.name.toLowerCase() && c.phone === r.phone);
+      toast('Customer auto-created: ' + r.name);
+    } catch(e) { toast('⚠️ Could not create customer.'); return; }
   }
 
-  // Build invoice notes
   const autoNote = [
     'From request: ' + (r.ref || '#' + r.id),
-    r.jobtype,
-    r.pkgLabel || r.size || '',
-    r.rush ? '⚡ RUSH' : '',
-    notes
+    r.jobtype, r.pkgLabel || r.size || '',
+    r.rush ? '⚡ RUSH' : '', notes
   ].filter(Boolean).join(' · ');
 
-  invoices.push({
-    id: nextId(invoices),
-    customerId: cust.id,
-    orderId: null,
-    amount,
-    due,
-    notes: autoNote,
-    status: 'Unpaid',
-    createdAt: new Date().toISOString()
-  });
-  persist();
-  logActivity('Quick invoice created', (r.ref || 'Request #' + r.id) + ' — ₱' + amount.toLocaleString('en-PH'));
-  closeModal('quick-inv-modal');
-  renderInvoices();
-  toast('✅ Invoice created — ₱' + amount.toLocaleString('en-PH') + ' for ' + r.name);
-  _qiReq = null;
+  try {
+    await sbFetch('invoices', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        customer_id: cust.id, order_id: null,
+        amount, due: due || null, notes: autoNote,
+        status: 'Unpaid', created_at: new Date().toISOString()
+      })
+    });
+    await loadAllData();
+    logActivity('Quick invoice created', (r.ref || 'Request #' + r.id) + ' — ₱' + amount.toLocaleString('en-PH'));
+    closeModal('quick-inv-modal');
+    renderInvoices();
+    toast('✅ Invoice created — ₱' + amount.toLocaleString('en-PH') + ' for ' + r.name);
+    _qiReq = null;
+  } catch(e) { alert('Could not create invoice: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
