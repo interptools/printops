@@ -228,19 +228,27 @@ tbody tr:hover td{background:var(--surface-1)}
   body { background:#fff }
 
   /* Job ticket print — when ticket area is visible, hide EVERYTHING else */
+  body:has(#job-ticket-area.printing) > *:not(#job-ticket-area),
   body:has(#job-ticket-area[style*="block"]) > *:not(#job-ticket-area) { display:none!important }
-  #job-ticket-area { font-family:sans-serif; padding:10mm; }
-  .jt-header { border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; }
-  .jt-shop { font-size:18px; font-weight:700; }
-  .jt-ref { font-size:13px; color:#555; }
-  .jt-row { display:flex; gap:6px; font-size:13px; margin-bottom:6px; }
-  .jt-label { font-weight:600; min-width:110px; color:#333; }
-  .jt-val { flex:1; }
-  .jt-divider { border-top:1px dashed #ccc; margin:10px 0; }
-  .jt-status-row { display:flex; gap:16px; margin-top:12px; }
-  .jt-status-box { border:1.5px solid #000; border-radius:6px; padding:8px 16px; text-align:center; font-size:11px; font-weight:600; text-transform:uppercase; min-width:70px; }
-  .jt-footer { margin-top:16px; font-size:11px; color:#888; border-top:1px solid #eee; padding-top:8px; }
+  #job-ticket-area { position:static!important; padding:0!important; overflow:visible!important; }
+  .jt-status-box, .jt-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page { margin:12mm; }
 }
+
+/* Job ticket styles — OUTSIDE @media print so the on-screen overlay renders
+   correctly too (they used to be print-only, which is why the on-screen ticket
+   showed as unstyled run-together text like "CustomerReymar Arroyo"). */
+#job-ticket-area { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#000; }
+.jt-header { border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.jt-shop { font-size:18px; font-weight:700; }
+.jt-ref { font-size:13px; color:#555; }
+.jt-row { display:flex; gap:6px; font-size:13px; margin-bottom:6px; align-items:baseline; }
+.jt-label { font-weight:600; min-width:110px; flex:0 0 110px; color:#333; }
+.jt-val { flex:1; }
+.jt-divider { border-top:1px dashed #ccc; margin:10px 0; }
+.jt-status-row { display:flex; gap:16px; margin-top:12px; }
+.jt-status-box { border:1.5px solid #000; border-radius:6px; padding:8px 16px; text-align:center; font-size:11px; font-weight:600; text-transform:uppercase; min-width:70px; }
+.jt-footer { margin-top:16px; font-size:11px; color:#888; border-top:1px solid #eee; padding-top:8px; }
   /* Templates */
   .tpl-card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;transition:border-color 0.12s}
   .tpl-card:hover{border-color:var(--accent)}
@@ -811,8 +819,12 @@ tbody tr:hover td{background:var(--surface-1)}
 
       <style>
         @media print{
-          body *{visibility:hidden}
+          /* Scoped: only blank the page when the ID-photo preview is actually open.
+             Previously this was an unscoped `body *{visibility:hidden}` which also
+             hid #job-ticket-area, making job tickets print as a blank page. */
+          body:has(#print-preview-area[style*="block"]) *{visibility:hidden}
           #print-preview-area,#print-preview-area *{visibility:visible}
+          #job-ticket-area,#job-ticket-area *{visibility:visible!important}
           #print-preview-area{position:fixed;inset:0;background:#fff;overflow:auto;padding:0;z-index:9999}
           .no-print,.no-print-wrapper{display:none!important}
           #print-sheets-wrap > div { display:block !important; }
@@ -2185,14 +2197,14 @@ function printJobTicket() {
     rows: [
       ['Customer', custName],
       ['Contact',  custPhone],
-      null,
+      '---',
       ['Job type',    jobtype],
       ['Size / specs', size],
       ['Quantity',    qty + ' pcs'],
       ['Date needed', due],
       fname ? ['File', fname] : null,
       notes ? ['Notes', notes] : null,
-      null,
+      '---',
       ['Amount',  '₱' + Number(amount).toLocaleString('en-PH', {minimumFractionDigits:2})],
       ['Payment', payment],
     ],
@@ -2203,8 +2215,9 @@ function printJobTicket() {
 
 // ── Shared ticket builder & print trigger ─────────────────────────────────
 function buildTicketHTML({ title, ref, refLabel, rush, now, rows, status }) {
+  // '---' = divider, null/undefined = omitted row.
   const rowsHtml = rows.filter(r => r !== null && r !== undefined).map(r => {
-    if (r === null) return '<div class="jt-divider"></div>';
+    if (r === '---') return '<div class="jt-divider"></div>';
     return `<div class="jt-row"><span class="jt-label">${r[0]}</span><span class="jt-val">${r[1]}</span></div>`;
   }).join('');
   return `
@@ -2230,12 +2243,22 @@ function buildTicketHTML({ title, ref, refLabel, rush, now, rows, status }) {
 
 function triggerPrint(html) {
   const area = document.getElementById('job-ticket-area');
+  const preview = document.getElementById('print-preview-area');
+  if (preview) preview.style.display = 'none';   // never let both print areas be open
   area.innerHTML = html;
   area.style.display = 'block';
-  setTimeout(() => {
+  area.classList.add('printing');
+  const cleanup = () => {
+    area.style.display = 'none';
+    area.classList.remove('printing');
+    area.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
     window.print();
-    setTimeout(() => { area.style.display = 'none'; }, 500);
-  }, 100);
+    setTimeout(cleanup, 1000);   // fallback for browsers without afterprint
+  }));
 }
 
 async function printReqTicket(id) {
@@ -2272,7 +2295,7 @@ async function printReqTicket(id) {
       ['Customer',    r.name],
       ['Contact',     r.phone],
       r.email ? ['Email', r.email] : null,
-      null,
+      '---',
       ['Job type',    r.jobtype],
       ['Details',     details],
       r.qty && !r.pkgLabel ? ['Quantity', r.qty + ' pcs'] : null,
