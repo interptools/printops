@@ -294,15 +294,15 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('services')" id="nav-services"><i class="ti ti-settings-2" aria-hidden="true"></i><span>Services</span></button>
     <button class="nav-item" onclick="nav('inventory')" id="nav-inventory"><i class="ti ti-box" aria-hidden="true"></i><span>Inventory <span id="stock-alert-badge" style="display:none;background:var(--danger);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">!</span></span></button>
-    <button class="nav-item" onclick="nav('activitylog')" id="nav-activitylog"><i class="ti ti-history" aria-hidden="true"></i><span>Activity Log</span></button>
-    <button class="nav-item" onclick="nav('employees')" id="nav-employees"><i class="ti ti-users-group" aria-hidden="true"></i><span>Employees</span></button>
+    <button class="nav-item" onclick="nav('activitylog')" id="nav-activitylog"><i class="ti ti-history" aria-hidden="true"></i><span>Activity Log</span><i class="ti ti-lock" style="margin-left:auto;font-size:12px;opacity:.45" title="Owner PIN required"></i></button>
+    <button class="nav-item" onclick="nav('employees')" id="nav-employees"><i class="ti ti-users-group" aria-hidden="true"></i><span>Employees</span><i class="ti ti-lock" style="margin-left:auto;font-size:12px;opacity:.45" title="Owner PIN required"></i></button>
     <div class="section-label">Tools</div>
     <button class="nav-item" onclick="nav('calculator')" id="nav-calculator"><i class="ti ti-calculator" aria-hidden="true"></i><span>Price calculator</span></button>
     <button class="nav-item" onclick="nav('pricepresets')" id="nav-pricepresets"><i class="ti ti-tags" aria-hidden="true"></i><span>Price Presets</span></button>
     <button class="nav-item" onclick="nav('pricelist')" id="nav-pricelist"><i class="ti ti-currency-peso" aria-hidden="true"></i><span>Price List</span></button>
     <button class="nav-item" onclick="nav('templates')" id="nav-templates"><i class="ti ti-template" aria-hidden="true"></i><span>Templates</span></button>
     <button class="nav-item" onclick="nav('freetools')" id="nav-freetools"><i class="ti ti-tools" aria-hidden="true"></i><span>Free tools</span></button>
-    <button class="nav-item" onclick="nav('sync')" id="nav-sync"><i class="ti ti-cloud" aria-hidden="true"></i><span>Sync setup</span></button>
+    <button class="nav-item" onclick="nav('sync')" id="nav-sync"><i class="ti ti-cloud" aria-hidden="true"></i><span>Sync setup</span><i class="ti ti-lock" style="margin-left:auto;font-size:12px;opacity:.45" title="Owner PIN required"></i></button>
     <div class="section-label">Data</div>
     <button class="nav-item" onclick="exportData()"><i class="ti ti-download" aria-hidden="true"></i><span>Export backup</span></button>
     <button class="nav-item" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload" aria-hidden="true"></i><span>Import backup</span></button>
@@ -1147,7 +1147,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px" id="pin-modal-desc">Enter your PIN to save this change.</div>
 
     <!-- Owner / Employee login switch -->
-    <div style="display:flex;gap:4px;padding:4px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px">
+    <div id="pin-mode-tabs" style="display:flex;gap:4px;padding:4px;background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px">
       <button type="button" id="pin-tab-owner" class="pin-tab" onclick="setPinMode('owner')"><i class="ti ti-crown"></i> Owner</button>
       <button type="button" id="pin-tab-employee" class="pin-tab" onclick="setPinMode('employee')"><i class="ti ti-user"></i> Employee</button>
     </div>
@@ -3934,17 +3934,26 @@ let _pinResolve  = null;
 let _pinReject   = null;
 let _pinMode     = 'owner';
 let _pinDescBase = '';
+let _pinOwnerOnly = false;
 
-function requirePin(description = '') {
+// opts.ownerOnly = true  →  only the owner PIN is accepted (employee tab hidden)
+function requirePin(description = '', opts = {}) {
   return new Promise((resolve, reject) => {
     _pinResolve  = resolve;
     _pinReject   = reject;
     _pinDescBase = description || 'Confirm this action.';
+    _pinOwnerOnly = !!opts.ownerOnly;
     document.getElementById('pin-input').value = '';
     document.getElementById('pin-error').style.display = 'none';
+    document.getElementById('pin-modal-title').textContent = opts.title || 'Confirm action';
+
+    // Hide the Owner/Employee switch when only the owner PIN will do
+    const tabs = document.getElementById('pin-mode-tabs');
+    if (tabs) tabs.style.display = _pinOwnerOnly ? 'none' : 'flex';
+
     // Default to whoever is signed in: employees get the employee tab
     const isEmployee = _currentUser && _currentUser.role !== 'Owner';
-    setPinMode(isEmployee ? 'employee' : 'owner');
+    setPinMode((!_pinOwnerOnly && isEmployee) ? 'employee' : 'owner');
     document.getElementById('pin-modal').classList.add('open');
     setTimeout(() => document.getElementById('pin-input').focus(), 120);
   });
@@ -3952,6 +3961,7 @@ function requirePin(description = '') {
 
 // Switch the PIN prompt between Owner PIN and Employee PIN
 async function setPinMode(mode) {
+  if (_pinOwnerOnly) mode = 'owner';
   _pinMode = mode;
   const tabO  = document.getElementById('pin-tab-owner');
   const tabE  = document.getElementById('pin-tab-employee');
@@ -4028,6 +4038,7 @@ async function confirmPin() {
       const prev = getCurrentUserName();
       _currentUser = { name: emp.name, role: emp.role };
       sessionStorage.setItem('arroyo_user', JSON.stringify(_currentUser));
+      revokeOwnerAccess();
       updateUserBadge();
       logActivity('Shift started', emp.name + ' signed in (was: ' + prev + ')', emp.name);
       toast('👤 Signed in as ' + emp.name);
@@ -4998,12 +5009,59 @@ async function empConfirmSwitch() {
     const prev = _currentUser.name;
     _currentUser = { name: emp.name, role: emp.role };
     sessionStorage.setItem('arroyo_user', JSON.stringify(_currentUser));
+    revokeOwnerAccess();
     closeModal('emp-switch-modal');
     updateUserBadge();
     logActivity('Shift started', emp.name + ' signed in (was: ' + prev + ')', emp.name);
     toast('👤 Signed in as ' + emp.name);
   } catch(e) { err.textContent = '⚠️ Error: ' + e.message; err.style.display = 'block'; }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── OWNER-ONLY PAGES (Activity Log / Employees / Sync setup) ─────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// These three tabs ask for the OWNER PIN — an employee's own PIN will not open
+// them. After a correct PIN you get a short grace window so you can move
+// between the three without retyping. Set GRACE_MS = 0 to prompt every time.
+const OWNER_ONLY_PAGES = {
+  activitylog: 'Activity Log',
+  employees:   'Employees',
+  sync:        'Sync setup'
+};
+const OWNER_GRACE_MS = 3 * 60 * 1000;   // 3 minutes
+let _ownerUnlockedAt = 0;
+
+function ownerAccessValid() {
+  return OWNER_GRACE_MS > 0 && (Date.now() - _ownerUnlockedAt) < OWNER_GRACE_MS;
+}
+
+// Must wrap the LAST nav assignment so the guard runs before any page renders
+const _navBeforeOwnerGuard = nav;
+nav = function(p) {
+  const label = OWNER_ONLY_PAGES[p];
+  if (!label || ownerAccessValid()) { _navBeforeOwnerGuard(p); return; }
+
+  requirePin('Owner PIN required to open ' + label + '.', {
+    ownerOnly: true,
+    title: 'Owner access'
+  }).then(() => {
+    _ownerUnlockedAt = Date.now();
+    _navBeforeOwnerGuard(p);
+    logActivity('Owner area opened', label);
+  }).catch(() => {
+    // Cancelled or wrong PIN — stay put and keep the sidebar honest
+    const active = document.querySelector('.page.active');
+    if (active) {
+      const cur = active.id.replace(/^page-/, '');
+      document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+      const nb = document.getElementById('nav-' + cur);
+      if (nb) nb.classList.add('active');
+    }
+  });
+};
+
+// Signing in as somebody else drops any owner grace window
+function revokeOwnerAccess() { _ownerUnlockedAt = 0; }
 
 // Log startup + load Supabase-backed data
 window.addEventListener('load', () => {
