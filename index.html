@@ -3335,6 +3335,7 @@ async function toggleSvc(id, isOn) {
   if (badge) { badge.className = isOn ? 'svc-badge-on' : 'svc-badge-off'; badge.textContent = isOn ? 'On' : 'Off'; }
   try {
     await sbFetch('services?id=eq.' + id, { method:'PATCH', prefer:'return=minimal', body: JSON.stringify({ status }) });
+    refreshPriceViews();   // turning a service off should remove it from Price List
     toast(isOn ? 'Service enabled — visible to customers.' : 'Service disabled — hidden from customers.');
   } catch(e) {
     toast('⚠️ Could not update. Check Supabase connection.');
@@ -3432,6 +3433,7 @@ async function saveService() {
     }
     closeModal('svc-modal');
     renderServices();
+    refreshPriceViews();   // Price List reflects the change straight away
   } catch(e) {
     toast('⚠️ Could not save — check Supabase connection.');
   }
@@ -3443,7 +3445,7 @@ async function deleteSvc(id, name) {
   } catch { return; }
   try {
     await sbFetch('services?id=eq.' + id, { method:'DELETE' });
-    toast('Service deleted.'); renderServices();
+    toast('Service deleted.'); renderServices(); refreshPriceViews();
   } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
@@ -4681,8 +4683,22 @@ async function savePreset() {
     await loadPresetsFromDB();
     closeModal('preset-modal');
     renderPresets();
+    refreshPriceViews();
     toast('Preset saved.');
   } catch(e) { toast('⚠️ Could not save preset.'); }
+}
+
+// Prices appear in more than one place — keep them in step after any edit.
+function refreshPriceViews() {
+  const pl = document.getElementById('page-pricelist');
+  if (pl && pl.classList.contains('active')) {
+    const q = document.getElementById('dash-price-search')?.value || '';
+    renderDashPriceList(q);
+  }
+  if (typeof calcPrice === 'function') {
+    const calc = document.getElementById('page-calculator');
+    if (calc && calc.classList.contains('active')) { try { calcPrice(); } catch(e) {} }
+  }
 }
 
 async function deletePreset(id) {
@@ -4691,7 +4707,7 @@ async function deletePreset(id) {
   } catch { return; }
   try {
     await sbFetch('price_presets?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
-    await loadPresetsFromDB(); renderPresets(); toast('Preset deleted.');
+    await loadPresetsFromDB(); renderPresets(); refreshPriceViews(); toast('Preset deleted.');
   } catch(e) { toast('⚠️ Could not delete.'); }
 }
 
@@ -4922,22 +4938,83 @@ async function renderDashPriceList(filter='') {
   const grid = document.getElementById('dash-price-list-grid');
   if (!grid) return;
 
-  // Load custom services from Supabase
+  // Presets are the source of truth for prices. The list below used to be a
+  // hardcoded copy, so editing "A4 Black & White" in Price Presets changed
+  // nothing here — the same item simply existed twice.
+  if (!_presetsCache || !_presetsCache.length) {
+    try { await loadPresetsFromDB(); } catch(e) {}
+  }
+  const presets = getPresets() || [];
+  const norm = v => String(v == null ? '' : v).trim().toLowerCase();
+  const peso = v => '₱' + Number(v).toLocaleString('en-PH',
+    { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const presetByLabel = new Map();
+  presets.forEach(p => presetByLabel.set(norm(p.label), p));
+
+  const livePriceList = DASH_PRICE_LIST.map(cat => {
+    // 1. overwrite any default whose label matches a preset
+    const items = cat.items.map(item => {
+      const p = presetByLabel.get(norm(item.label));
+      return p ? { ...item, price: peso(p.price) } : item;
+    });
+    // 2. add presets filed under this category that aren't in the defaults
+    const known = new Set(cat.items.map(i => norm(i.label)));
+    presets
+      .filter(p => norm(p.jobtype) === norm(cat.service) && !known.has(norm(p.label)))
+      .forEach(p => items.push({ label: p.label, price: peso(p.price), note: '' }));
+    return { ...cat, items };
+  });
+
+  // Load custom services from Supabase.
+  // Three things used to make a service you added vanish from this page:
+  //   1. `.filter(r => r.items.length > 0)` silently dropped any service with
+  //      no price rows filled in — the most common case.
+  //   2. A service named the same as a built-in category (e.g. "Flyers") was
+  //      excluded outright, so its price rows were thrown away instead of
+  //      being added to that category.
+  //   3. Nothing re-rendered this page after saving, so even a valid service
+  //      only appeared after navigating away and back.
   let customServices = [];
   try {
     const rows = await sbFetch('services?status=eq.on&order=sort_order.asc,id.asc');
-    const defaultNames = new Set(DASH_PRICE_LIST.map(c => c.service.toLowerCase()));
-    customServices = (rows || [])
-      .filter(r => !defaultNames.has(r.name.toLowerCase()) && r.name.toLowerCase() !== 'other')
-      .map(r => {
-        let items = [];
-        try { items = JSON.parse(r.price_items || '[]'); } catch(e) {}
-        return { service: r.name, icon: 'ti-tag', color: '#6b7280', items, custom: true, desc: r.description };
-      })
-      .filter(r => r.items.length > 0);
+    const catByName = new Map(livePriceList.map(c => [norm(c.service), c]));
+
+    (rows || []).forEach(r => {
+      if (norm(r.name) === 'other') return;   // "Other" is a form option, not a service
+      let items = [];
+      try { items = JSON.parse(r.price_items || '[]'); } catch(e) {}
+      // Prices are typed free-form in the service form — tidy them for display
+      items = items
+        .filter(it => it && it.label)
+        .map(it => ({
+          label: it.label,
+          price: (it.price === '' || it.price == null)
+            ? '—'
+            : (/^₱/.test(String(it.price).trim()) ? String(it.price).trim() : peso(it.price)),
+          note: it.note || ''
+        }));
+
+      const existing = catByName.get(norm(r.name));
+      if (existing) {
+        // Same name as a built-in category → merge instead of discarding
+        const known = new Set(existing.items.map(i => norm(i.label)));
+        items.forEach(it => { if (!known.has(norm(it.label))) existing.items.push(it); });
+        if (r.description && !existing.desc) existing.desc = r.description;
+        return;
+      }
+
+      // No price rows yet? Still list the service so you can see it exists.
+      if (!items.length) {
+        items = [{ label: 'Price on request', price: '—', note: 'no prices set yet' }];
+      }
+      customServices.push({
+        service: r.name, icon: 'ti-tag', color: '#6b7280',
+        items, custom: true, desc: r.description
+      });
+    });
   } catch(e) {}
 
-  const allCategories = [...DASH_PRICE_LIST, ...customServices];
+  const allCategories = [...livePriceList, ...customServices];
   const q = filter.toLowerCase();
   const filtered = allCategories.map(cat => ({
     ...cat,
