@@ -706,9 +706,9 @@ tbody tr:hover td{background:var(--surface-1)}
           <div class="step-body">
             <div class="step-title">Create the database tables</div>
             <div class="step-desc">In your Supabase dashboard, go to <strong>SQL Editor</strong> and run this query:<br><br>
-            <code>create table po_orders (id serial primary key, data jsonb);</code><br>
-            <code>create table po_customers (id serial primary key, data jsonb);</code><br>
-            <code>create table po_invoices (id serial primary key, data jsonb);</code><br>
+            <code>create table customers (id serial primary key, name text, phone text, email text, address text, created_at timestamptz default now());</code><br>
+            <code>create table orders (id serial primary key, customer_id int, jobtype text, size text, qty int default 1, amount numeric default 0, payment text, status text default 'Pending', due date, notes text, rush boolean default false, created_at timestamptz default now());</code><br>
+            <code>create table invoices (id serial primary key, customer_id int, order_id int, amount numeric default 0, due date, notes text, status text default 'Unpaid', created_at timestamptz default now());</code><br>
             <code>create table settings (key text primary key, value text);</code>
             </div>
           </div>
@@ -2863,13 +2863,13 @@ async function testSupabase() {
   const res = document.getElementById('sb-result');
   res.textContent = 'Testing...';
   try {
-    const r = await sbFetch('/po_orders?limit=1');
-    if (r.ok) {
-      res.style.color = 'var(--success)';
-      res.textContent = 'Connected successfully.';
-      document.getElementById('sync-status-bar').className = 'sync-status ok';
-      document.getElementById('sync-status-bar').innerHTML = '<i class="ti ti-cloud-check"></i> Connected to Supabase';
-    } else { throw new Error('HTTP ' + r.status); }
+    // sbFetch returns PARSED JSON (or null) and throws on HTTP errors —
+    // it is not a fetch Response, so r.ok / r.status were always undefined.
+    await sbFetch('orders?select=id&limit=1');
+    res.style.color = 'var(--success)';
+    res.textContent = 'Connected successfully.';
+    document.getElementById('sync-status-bar').className = 'sync-status ok';
+    document.getElementById('sync-status-bar').innerHTML = '<i class="ti ti-cloud-check"></i> Connected to Supabase';
   } catch(e) {
     res.style.color = 'var(--danger)';
     res.textContent = 'Connection failed: ' + e.message;
@@ -2881,9 +2881,18 @@ async function pushToSupabase() {
   res.style.color = 'var(--text-secondary)';
   res.textContent = 'Pushing data...';
   try {
-    for (const [table, arr] of [['po_orders', orders], ['po_customers', customers], ['po_invoices', invoices]]) {
-      await sbFetch('/' + table, 'DELETE');
-      if (arr.length) await sbFetch('/' + table, 'POST', arr.map(item => ({id: item.id, data: item})));
+    // Was passing 'DELETE' / 'POST' as the OPTIONS OBJECT, so options.method
+    // came back undefined and every call silently ran as a GET — nothing was
+    // ever pushed. Also targeted po_* tables the app never reads from.
+    for (const [table, arr] of [['orders', orders], ['customers', customers], ['invoices', invoices]]) {
+      await sbFetch(table + '?id=gt.0', { method: 'DELETE', prefer: 'return=minimal' });
+      if (arr.length) {
+        await sbFetch(table, {
+          method: 'POST',
+          prefer: 'return=minimal',
+          body: JSON.stringify(arr)
+        });
+      }
     }
     res.style.color = 'var(--success)';
     res.textContent = 'Data pushed to cloud successfully.';
@@ -2899,15 +2908,13 @@ async function pullFromSupabase() {
   res.style.color = 'var(--text-secondary)';
   res.textContent = 'Pulling data...';
   try {
-    for (const [table, setter] of [
-      ['po_orders', d => { orders = d; localStorage.setItem('po_orders', JSON.stringify(orders)); }],
-      ['po_customers', d => { customers = d; localStorage.setItem('po_customers', JSON.stringify(customers)); }],
-      ['po_invoices', d => { invoices = d; localStorage.setItem('po_invoices', JSON.stringify(invoices)); }]
-    ]) {
-      const r = await sbFetch('/' + table + '?select=data');
-      const rows = await r.json();
-      setter(rows.map(row => row.data));
-    }
+    // sbFetch already returns parsed JSON — the old `await r.json()` threw
+    // "r.json is not a function" every single time this button was pressed.
+    // Reuse loadAllData so the column mapping stays in one place.
+    await loadAllData();
+    localStorage.setItem('po_orders',    JSON.stringify(orders));
+    localStorage.setItem('po_customers', JSON.stringify(customers));
+    localStorage.setItem('po_invoices',  JSON.stringify(invoices));
     res.style.color = 'var(--success)';
     res.textContent = 'Data pulled from cloud successfully.';
     renderDash(); toast('Pulled from Supabase.');
@@ -3889,30 +3896,72 @@ function exportCustomersCSV() {
 // ═══════════════════════════════════════════════════════════════════════════
 // ── PIN PROTECTION ───────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-let _cachedPin = null;
+let _cachedPin   = null;
+let _pinFetchedAt = 0;
+const PIN_CACHE_MS = 20 * 1000;   // re-check Supabase at most every 20s
 
-async function getOwnerPin() {
-  if (_cachedPin) return _cachedPin;
+// force = true  →  ignore the cache and always ask Supabase.
+// Used before every PIN verification so a PIN changed on ANOTHER device
+// takes effect here immediately (and the old PIN stops working).
+async function getOwnerPin(force = false) {
+  const fresh = _cachedPin !== null && (Date.now() - _pinFetchedAt) < PIN_CACHE_MS;
+  if (!force && fresh) return _cachedPin;
   try {
     const rows = await sbFetch('settings?key=eq.owner_pin');
-    if (rows && rows.length) { _cachedPin = rows[0].value; return _cachedPin; }
-  } catch(e) {}
-  return '1234'; // default
+    if (rows && rows.length) {
+      _cachedPin    = String(rows[0].value).trim();
+      _pinFetchedAt = Date.now();
+      return _cachedPin;
+    }
+    // Row genuinely missing → fall back to the factory PIN and cache it,
+    // so we don't hammer the network on every keystroke.
+    _cachedPin    = '1234';
+    _pinFetchedAt = Date.now();
+    return _cachedPin;
+  } catch(e) {
+    // Offline / server error: keep using the last known PIN rather than
+    // silently dropping back to 1234, which would be a security hole.
+    if (_cachedPin !== null) return _cachedPin;
+    return '1234';
+  }
 }
 
+// Throws on failure so callers can report honestly instead of always
+// showing "success". Uses a single upsert — the old DELETE-then-POST could
+// wipe the row and leave the shop on the default 1234 if the POST failed.
 async function setOwnerPin(pin) {
+  const clean = String(pin).trim();
+  const row   = JSON.stringify({ key: 'owner_pin', value: clean });
+
   try {
-    await sbFetch('settings?key=eq.owner_pin', {
-      method: 'DELETE', prefer: 'return=minimal'
+    // Preferred: single atomic upsert (needs a UNIQUE index on settings.key).
+    await sbFetch('settings?on_conflict=key', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: row
     });
-  } catch(e) {}
-  try {
-    await sbFetch('settings', {
-      method: 'POST', prefer: 'return=minimal',
-      body: JSON.stringify({ key: 'owner_pin', value: pin })
-    });
-    _cachedPin = pin;
-  } catch(e) { toast('⚠️ Could not save PIN.'); }
+  } catch(e) {
+    // Fallback for schemas without that unique index: PATCH the existing row,
+    // and only INSERT if there was nothing to update.
+    const existing = await sbFetch('settings?key=eq.owner_pin&select=key');
+    if (existing && existing.length) {
+      await sbFetch('settings?key=eq.owner_pin', {
+        method: 'PATCH', prefer: 'return=minimal',
+        body: JSON.stringify({ value: clean })
+      });
+    } else {
+      await sbFetch('settings', { method: 'POST', prefer: 'return=minimal', body: row });
+    }
+  }
+
+  // Read back and confirm — never report success on an unverified write.
+  _cachedPin = null; _pinFetchedAt = 0;
+  const saved = await getOwnerPin(true);
+  if (String(saved).trim() !== clean) {
+    throw new Error('PIN did not save correctly on the server.');
+  }
+  revokeOwnerAccess();   // changing the PIN closes any open grace window
+  return true;
 }
 
 // ── Employee list cache (shared by the PIN gate + switch-user modal) ──────
@@ -3939,6 +3988,9 @@ let _pinOwnerOnly = false;
 // opts.ownerOnly = true  →  only the owner PIN is accepted (employee tab hidden)
 function requirePin(description = '', opts = {}) {
   return new Promise((resolve, reject) => {
+    // If a prompt was already open, reject its promise first — otherwise the
+    // earlier caller hangs forever waiting on a handler we're about to drop.
+    if (_pinReject) { try { _pinReject(new Error('cancelled')); } catch(e) {} }
     _pinResolve  = resolve;
     _pinReject   = reject;
     _pinDescBase = description || 'Confirm this action.';
@@ -4044,8 +4096,12 @@ async function confirmPin() {
       toast('👤 Signed in as ' + emp.name);
     }
   } else {
-    const correct = await getOwnerPin();
-    if (entered !== correct) { pinErr('Incorrect owner PIN. Try again.'); return; }
+    // force = true → always revalidate against Supabase, so a PIN changed
+    // on another device works here right away and the old one is rejected.
+    const correct = await getOwnerPin(true);
+    if (String(entered) !== String(correct).trim()) {
+      pinErr('Incorrect owner PIN. Try again.'); return;
+    }
   }
 
   document.getElementById('pin-modal').classList.remove('open');
@@ -4399,24 +4455,38 @@ async function changePinFromSettings() {
   const newPin   = document.getElementById('pin-new').value;
   const confirm  = document.getElementById('pin-confirm').value;
   const msg      = document.getElementById('pin-change-msg');
-  const correct  = await getOwnerPin();
+  const correct  = await getOwnerPin(true);   // fresh, not the stale cache
   msg.style.display = 'block';
-  if (current !== correct) {
+  if (String(current).trim() !== String(correct).trim()) {
     msg.style.color = 'var(--danger)';
     msg.textContent = '✕ Current PIN is incorrect.';
     return;
   }
-  if (!newPin || newPin.length < 4) {
+  const clean = String(newPin).trim();
+  if (!/^\d{4,6}$/.test(clean)) {
     msg.style.color = 'var(--danger)';
-    msg.textContent = '✕ New PIN must be at least 4 digits.';
+    msg.textContent = '✕ New PIN must be 4–6 digits (numbers only).';
     return;
   }
-  if (newPin !== confirm) {
+  if (clean !== String(confirm).trim()) {
     msg.style.color = 'var(--danger)';
     msg.textContent = '✕ PINs do not match.';
     return;
   }
-  await setOwnerPin(newPin);
+  if (clean === String(correct).trim()) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✕ New PIN is the same as the current one.';
+    return;
+  }
+  // Only claim success if Supabase actually accepted it.
+  try {
+    await setOwnerPin(clean);
+  } catch(err) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✕ Could not save — PIN unchanged. ' + err.message;
+    toast('⚠️ PIN not saved. Check your connection.');
+    return;
+  }
   msg.style.color = 'var(--success)';
   msg.textContent = '✓ PIN changed successfully — synced to all devices.';
   document.getElementById('pin-current').value = '';
