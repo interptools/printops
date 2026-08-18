@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#f0eeea"><style>@media(prefers-color-scheme:dark){html{background:#1a1a18}}</style>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Queue — Arroyo Print Shop</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --accent:#1a6ef5;--accent-bg:#eaf0fe;--accent-text:#1a4db5;
+    --success:#18794e;--success-bg:#e8f5ee;
+    --warning:#9e6a00;--warning-bg:#fef5e0;
+    --danger:#c02b2b;--danger-bg:#fdeaea;
+    --surface-0:#f0eeea;--surface-1:#f8f7f5;--surface-2:#ffffff;
+    --text-primary:#1a1a18;--text-secondary:#6b6b67;--text-muted:#9e9e9a;
+    --border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.18);
+    --radius:8px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --surface-0:#1a1a18;--surface-1:#222220;--surface-2:#2c2c29;
+      --text-primary:#f0eeea;--text-secondary:#a0a09c;--text-muted:#686864;
+      --border:rgba(255,255,255,0.1);--border-strong:rgba(255,255,255,0.18);
+      --accent:#4d8ef7;--accent-bg:#1a2a4a;--accent-text:#7aadfa;
+      --success:#4caf82;--success-bg:#0d2e1e;
+      --warning:#f0b429;--warning-bg:#2e2200;
+      --danger:#f07070;--danger-bg:#2e0d0d;
+    }
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface-0);color:var(--text-primary);min-height:100vh;-webkit-text-size-adjust:100%}
+
+  .header{background:var(--surface-2);border-bottom:0.5px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:10}
+  .header-logo{font-size:15px;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
+  .header-actions{display:flex;align-items:center;gap:8px}
+  .icon-btn{width:34px;height:34px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface-1);color:var(--text-secondary);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .icon-btn:hover{background:var(--surface-0);color:var(--text-primary)}
+  .icon-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-text)}
+
+  .container{max-width:1200px;margin:0 auto;padding:1.5rem 1rem 3rem}
+  @media(min-width:600px){.container{padding:2rem 1.5rem 4rem}}
+
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
+  .hero h1{font-size:22px;font-weight:600;letter-spacing:-0.5px}
+  .hero p{font-size:13px;color:var(--text-secondary);margin-top:5px}
+
+  .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:500;padding:6px 11px;border-radius:99px;border:0.5px solid var(--border);background:var(--surface-2);color:var(--text-secondary);white-space:nowrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex:none}
+  .live.on .dot{background:var(--success);animation:pulse 2s ease-in-out infinite}
+  .live.warn .dot{background:var(--warning)}
+  .live.off .dot{background:var(--danger)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+  @media(prefers-reduced-motion:reduce){.live.on .dot{animation:none}}
+
+  .lookup{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+  .lookup input{flex:1;min-width:200px;padding:11px 13px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none}
+  .lookup input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+  .lookup button{padding:11px 18px;border-radius:var(--radius);border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
+  .lookup button.ghost{background:var(--surface-2);border:0.5px solid var(--border-strong);color:var(--text-secondary)}
+
+  .mine{display:none;background:var(--accent-bg);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:1.5rem}
+  .mine h3{font-size:14px;font-weight:600;color:var(--accent-text);margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .mine p{font-size:13px;color:var(--accent-text);line-height:1.6}
+
+  .board{display:grid;gap:1rem;grid-template-columns:1fr}
+  @media(min-width:800px){.board{grid-template-columns:repeat(3,1fr)}}
+
+  .col{background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .col-head{padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .col-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .col-count{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--surface-0);color:var(--text-secondary);min-width:26px;text-align:center}
+  .col-body{padding:12px;display:flex;flex-direction:column;gap:8px;min-height:110px}
+  .col-rule{height:3px}
+  .col.ready .col-rule{background:var(--success)}
+  .col.prog  .col-rule{background:var(--accent)}
+  .col.wait  .col-rule{background:var(--warning)}
+  .col.ready .col-count{background:var(--success-bg);color:var(--success)}
+  .col.prog  .col-count{background:var(--accent-bg);color:var(--accent-text)}
+  .col.wait  .col-count{background:var(--warning-bg);color:var(--warning)}
+
+  .job{background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:11px;transition:box-shadow .15s,border-color .15s}
+  .job.hit{border:1.5px solid var(--accent);background:var(--accent-bg);box-shadow:0 0 0 3px var(--accent-bg)}
+  .job-pos{font-size:11px;font-weight:600;color:var(--text-muted);width:20px;flex:none;text-align:center;font-variant-numeric:tabular-nums}
+  .job-main{flex:1;min-width:0}
+  .job-ref{font-size:14px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums}
+  .job-meta{font-size:12px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .job-side{font-size:11px;color:var(--text-muted);flex:none;text-align:right;line-height:1.5}
+  .rush{color:var(--warning);font-weight:600}
+
+  .empty{font-size:12px;color:var(--text-muted);text-align:center;padding:1.5rem 0.5rem;line-height:1.6}
+  .skel{height:44px;border-radius:10px;background:var(--surface-1);animation:sk 1.4s ease-in-out infinite}
+  @keyframes sk{0%,100%{opacity:.5}50%{opacity:.9}}
+
+  .notice{display:none;background:var(--danger-bg);border:1px solid var(--danger);border-radius:12px;padding:14px 16px;margin-bottom:1.25rem}
+  .notice h3{font-size:14px;font-weight:600;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:7px}
+  .notice p{font-size:13px;color:var(--text-secondary);line-height:1.65}
+  .notice code{background:var(--surface-2);border:0.5px solid var(--border);padding:1px 5px;border-radius:4px;font-size:12px}
+
+  .foot{margin-top:1.75rem;font-size:12px;color:var(--text-muted);text-align:center;line-height:1.7}
+  .foot a{color:var(--accent-text)}
+
+  /* Board mode — for the shop's wall display */
+  body.tv .container{max-width:none;padding:1.5rem 2rem}
+  body.tv .hero h1{font-size:34px}
+  body.tv .lookup,body.tv .foot,body.tv .hero p{display:none}
+  body.tv .col-title{font-size:20px}
+  body.tv .col-count{font-size:18px;padding:4px 13px}
+  body.tv .job-ref{font-size:24px}
+  body.tv .job-meta{font-size:16px}
+  body.tv .job-side{font-size:14px}
+  body.tv .job-pos{font-size:15px;width:28px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><i class="ti ti-printer" style="color:var(--accent)"></i> Arroyo Print Shop <span style="color:var(--text-secondary);font-weight:400;font-size:12px">Order queue</span></div>
+  <div class="header-actions">
+    <button class="icon-btn" id="btn-sound" onclick="toggleSound()" title="Chime when your order is ready"><i class="ti ti-bell-off"></i></button>
+    <button class="icon-btn" id="btn-tv" onclick="toggleTv()" title="Board mode for wall display"><i class="ti ti-device-tv"></i></button>
+    <button class="icon-btn" onclick="load(true)" title="Refresh now"><i class="ti ti-refresh"></i></button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <div>
+      <h1>What's happening in the shop</h1>
+      <p>This board updates by itself the moment we move your job along. No need to refresh.</p>
+    </div>
+    <div class="live" id="live"><span class="dot"></span><span id="live-text">Connecting…</span></div>
+  </div>
+
+  <div class="notice" id="notice">
+    <h3><i class="ti ti-alert-circle"></i> <span id="notice-title">Can't reach the queue</span></h3>
+    <p id="notice-body"></p>
+  </div>
+
+  <div class="lookup">
+    <input id="ref-in" placeholder="Find your reference number, e.g. REQ-0012" autocomplete="off"
+           onkeydown="if(event.key==='Enter')findRef()">
+    <button onclick="findRef()"><i class="ti ti-search"></i> Find my order</button>
+    <button class="ghost" id="btn-clear" onclick="clearRef()" style="display:none">Clear</button>
+  </div>
+
+  <div class="mine" id="mine">
+    <h3><i class="ti ti-user-check"></i> <span id="mine-ref"></span></h3>
+    <p id="mine-body"></p>
+  </div>
+
+  <div class="board">
+    <div class="col ready">
+      <div class="col-rule"></div>
+      <div class="col-head">
+        <div class="col-title"><i class="ti ti-circle-check" style="color:var(--success)"></i> Ready to claim</div>
+        <div class="col-count" id="c-ready">–</div>
+      </div>
+      <div class="col-body" id="b-ready"><div class="skel"></div><div class="skel"></div></div>
+    </div>
+
+    <div class="col prog">
+      <div class="col-rule"></div>
+      <div class="col-head">
+        <div class="col-title"><i class="ti ti-player-play" style="color:var(--accent)"></i> Being worked on</div>
+        <div class="col-count" id="c-prog">–</div>
+      </div>
+      <div class="col-body" id="b-prog"><div class="skel"></div><div class="skel"></div></div>
+    </div>
+
+    <div class="col wait">
+      <div class="col-rule"></div>
+      <div class="col-head">
+        <div class="col-title"><i class="ti ti-hourglass" style="color:var(--warning)"></i> In the queue</div>
+        <div class="col-count" id="c-wait">–</div>
+      </div>
+      <div class="col-body" id="b-wait"><div class="skel"></div><div class="skel"></div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Names are shortened for privacy — look for your reference number.<br>
+    Updated <span id="stamp">just now</span> · <a href="order-form.html">Place a new order</a>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Arroyo Print Shop — public order queue (standalone page)
+
+   SETUP (one time, in Supabase):
+
+   1. Let visitors READ the queue — Database → SQL Editor:
+
+        alter table requests enable row level security;
+
+        create policy "public can read queue"
+          on requests for select
+          using (true);
+
+   2. Turn ON realtime for the table — Database → Publications →
+      supabase_realtime → toggle `requests` on.
+      (Without this the page still works: it falls back to polling.)
+
+   That's all. This page never writes to the database, and it only ever
+   displays ref / first name / job type / date. Phone, email, notes and files
+   are never requested.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
+
+// Only these columns are ever pulled — keeps customer contact details off the board.
+const SELECT = 'id,ref,name,jobtype,rush,status,due,submitted_at';
+const READY_DAYS = 7;     // hide finished jobs older than this
+const MAX_CARDS  = 14;    // per column
+const POLL_MS    = 15000; // fallback / safety-net refresh
+
+let rows = [], myRef = '', lastStatus = {}, sound = false, realtime = false, failures = 0;
+
+/* ── data ─────────────────────────────────────────────────────────────── */
+async function fetchQueue(){
+  const url = SUPABASE_URL + '/rest/v1/requests'
+            + '?select=' + SELECT
+            + '&status=in.(Pending,"In progress",Done)'
+            + '&order=id.asc';
+  const res = await fetch(url, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+  });
+  if(!res.ok){
+    const body = await res.text();
+    const err = new Error(body || ('HTTP ' + res.status));
+    err.http = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+async function load(manual){
+  try {
+    rows = await fetchQueue();
+    failures = 0;
+    hideNotice();
+    render();
+    setLive(realtime ? 'on' : 'warn', realtime ? 'Live' : 'Checking every 15s');
+    if(manual) stampNow();
+  } catch(e){
+    failures++;
+    console.error('Queue load failed:', e);
+    if(failures >= 2 || !rows.length) showNotice(e);
+    setLive('off', 'Offline');
+  }
+}
+
+/* ── render ───────────────────────────────────────────────────────────── */
+function shortName(n){
+  const parts = String(n || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return 'Customer';
+  const first = parts[0];
+  return parts.length > 1 ? first + ' ' + parts[1][0].toUpperCase() + '.' : first;
+}
+
+function waited(iso){
+  if(!iso) return '';
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if(isNaN(mins) || mins < 0) return '';
+  if(mins < 60)   return mins + 'm in queue';
+  const h = Math.floor(mins / 60);
+  if(h < 24)      return h + 'h in queue';
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'since yesterday' : d + ' days in queue';
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function card(r, pos, showWait){
+  const hit = myRef && r.ref === myRef;
+  return `<div class="job${hit?' hit':''}" data-ref="${esc(r.ref)}">
+    ${pos ? `<div class="job-pos">${pos}</div>` : ''}
+    <div class="job-main">
+      <div class="job-ref">${esc(r.ref || 'REQ-????')}</div>
+      <div class="job-meta">${esc(shortName(r.name))} · ${esc(r.jobtype || 'Print job')}${r.rush?' · <span class="rush">Urgent</span>':''}</div>
+    </div>
+    <div class="job-side">${showWait ? esc(waited(r.submitted_at)) : 'Claim at counter'}</div>
+  </div>`;
+}
+
+function fill(id, list, opts){
+  const el = document.getElementById(id);
+  if(!list.length){ el.innerHTML = `<div class="empty">${opts.empty}</div>`; return; }
+  el.innerHTML = list.slice(0, MAX_CARDS)
+      .map((r,i) => card(r, opts.numbered ? i+1 : 0, opts.showWait)).join('')
+    + (list.length > MAX_CARDS
+        ? `<div class="empty">+ ${list.length - MAX_CARDS} more</div>` : '');
+}
+
+function render(){
+  const cutoff = Date.now() - READY_DAYS * 864e5;
+
+  const wait  = rows.filter(r => r.status === 'Pending');
+  const prog  = rows.filter(r => r.status === 'In progress');
+  const ready = rows.filter(r => r.status === 'Done'
+                  && (!r.submitted_at || new Date(r.submitted_at).getTime() > cutoff))
+                .reverse();
+
+  document.getElementById('c-ready').textContent = ready.length;
+  document.getElementById('c-prog').textContent  = prog.length;
+  document.getElementById('c-wait').textContent  = wait.length;
+
+  fill('b-ready', ready, {empty:'Nothing waiting for pickup right now.', showWait:false});
+  fill('b-prog',  prog,  {empty:'The team is between jobs.', showWait:true});
+  fill('b-wait',  wait,  {empty:'Queue is clear — new orders start right away.', numbered:true, showWait:true});
+
+  renderMine(wait, prog, ready);
+  watchMyStatus();
+  stampNow();
+}
+
+function renderMine(wait, prog, ready){
+  const box = document.getElementById('mine');
+  if(!myRef){ box.style.display = 'none'; return; }
+
+  const r = rows.find(x => x.ref === myRef);
+  box.style.display = 'block';
+  document.getElementById('mine-ref').textContent = myRef;
+  const body = document.getElementById('mine-body');
+
+  if(!r){
+    body.innerHTML = 'Not on the board. Either it hasn\'t been logged yet, or it was already claimed. '
+      + 'Check the full details on the <a href="order-form.html" style="color:inherit;text-decoration:underline">Track my order</a> page.';
+    return;
+  }
+  if(r.status === 'Done'){
+    body.innerHTML = '<strong>Ready to claim.</strong> Bring your reference number to the counter.';
+  } else if(r.status === 'In progress'){
+    body.innerHTML = '<strong>Being worked on now.</strong> We\'ll move it to “Ready to claim” when it\'s done.';
+  } else {
+    const pos = wait.findIndex(x => x.ref === myRef) + 1;
+    body.innerHTML = `<strong>Number ${pos} in the queue</strong>`
+      + (pos > 1 ? ` — ${pos-1} job${pos-1>1?'s':''} ahead of yours.` : ' — yours is up next.')
+      + (prog.length ? ` ${prog.length} job${prog.length>1?'s':''} in progress.` : '');
+  }
+  const hit = document.querySelector('.job.hit');
+  if(hit && !document.body.classList.contains('tv')) hit.scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+function stampNow(){
+  document.getElementById('stamp').textContent =
+    new Date().toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+/* ── my order: chime + notification on “Ready” ───────────────────────── */
+function watchMyStatus(){
+  rows.forEach(r => {
+    const prev = lastStatus[r.ref];
+    if(prev && prev !== r.status && r.ref === myRef && r.status === 'Done'){
+      chime();
+      if('Notification' in window && Notification.permission === 'granted'){
+        new Notification('Your order is ready', {body: r.ref + ' — claim it at the counter.'});
+      }
+    }
+    lastStatus[r.ref] = r.status;
+  });
+}
+
+function chime(){
+  if(!sound) return;
+  try{
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1320].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime + i * 0.18;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.start(t); o.stop(t + 0.4);
+    });
+  }catch(e){}
+}
+
+function toggleSound(){
+  sound = !sound;
+  const b = document.getElementById('btn-sound');
+  b.classList.toggle('on', sound);
+  b.innerHTML = `<i class="ti ti-bell${sound?'':'-off'}"></i>`;
+  if(sound){
+    chime();
+    if('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  }
+}
+
+/* ── reference lookup ─────────────────────────────────────────────────── */
+function normRef(v){
+  const s = String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+  if(!s) return '';
+  const digits = s.replace(/^REQ-?/, '');
+  return /^\d+$/.test(digits) ? 'REQ-' + digits.padStart(4, '0') : s;
+}
+
+function findRef(){
+  myRef = normRef(document.getElementById('ref-in').value);
+  document.getElementById('ref-in').value = myRef;
+  document.getElementById('btn-clear').style.display = myRef ? 'inline-block' : 'none';
+  try{ myRef ? localStorage.setItem('arroyo_ref', myRef) : localStorage.removeItem('arroyo_ref'); }catch(e){}
+  render();
+}
+
+function clearRef(){
+  myRef = '';
+  document.getElementById('ref-in').value = '';
+  document.getElementById('btn-clear').style.display = 'none';
+  try{ localStorage.removeItem('arroyo_ref'); }catch(e){}
+  render();
+}
+
+/* ── board mode ───────────────────────────────────────────────────────── */
+function toggleTv(){
+  const on = document.body.classList.toggle('tv');
+  document.getElementById('btn-tv').classList.toggle('on', on);
+  if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+}
+
+/* ── connection status + errors ───────────────────────────────────────── */
+function setLive(state, text){
+  const el = document.getElementById('live');
+  el.className = 'live ' + state;
+  document.getElementById('live-text').textContent = text;
+}
+
+function showNotice(e){
+  const msg = String(e && e.message || '');
+  const t = document.getElementById('notice-title');
+  const b = document.getElementById('notice-body');
+  if(/permission|policy|row-level|RLS|42501/i.test(msg)){
+    t.textContent = 'The queue is locked to the public';
+    b.innerHTML = 'Supabase is blocking reads on the <code>requests</code> table. In the SQL editor run: '
+      + '<code>create policy "public can read queue" on requests for select using (true);</code>';
+  } else if(/Failed to fetch|NetworkError|Load failed/i.test(msg)){
+    t.textContent = 'Can\'t reach the queue';
+    b.innerHTML = 'The connection to Supabase didn\'t go through. Check your internet, and make sure this page '
+      + 'is opened over <code>https://</code> (or a local server) rather than straight from a file — browsers block '
+      + 'cross-origin requests from <code>file://</code> pages.';
+  } else {
+    t.textContent = 'Queue didn\'t load';
+    b.textContent = msg || 'Unknown error. Try Refresh.';
+  }
+  document.getElementById('notice').style.display = 'block';
+}
+
+function hideNotice(){ document.getElementById('notice').style.display = 'none'; }
+
+/* ── realtime: push updates the second a status changes ──────────────── */
+function startRealtime(){
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  s.onload = () => {
+    try{
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: { params: { eventsPerSecond: 5 } }
+      });
+      client.channel('arroyo-queue')
+        .on('postgres_changes', {event:'*', schema:'public', table:'requests'}, () => load())
+        .subscribe(status => {
+          if(status === 'SUBSCRIBED'){ realtime = true; setLive('on','Live'); }
+          else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+            realtime = false;
+            setLive('warn','Checking every 15s');
+          }
+        });
+    }catch(e){ console.warn('Realtime unavailable, polling instead:', e); }
+  };
+  s.onerror = () => { console.warn('Realtime script blocked, polling instead.'); setLive('warn','Checking every 15s'); };
+  document.head.appendChild(s);
+}
+
+/* ── boot ─────────────────────────────────────────────────────────────── */
+(function init(){
+  try{
+    const saved = localStorage.getItem('arroyo_ref');
+    if(saved){ myRef = saved; document.getElementById('ref-in').value = saved; document.getElementById('btn-clear').style.display = 'inline-block'; }
+  }catch(e){}
+
+  // ?ref=REQ-0012 in the link wins, so you can text a customer a direct link
+  const q = new URLSearchParams(location.search).get('ref');
+  if(q){ myRef = normRef(q); document.getElementById('ref-in').value = myRef; document.getElementById('btn-clear').style.display = 'inline-block'; }
+
+  load();
+  startRealtime();
+  setInterval(load, POLL_MS);
+  setInterval(() => { if(rows.length) render(); }, 60000); // refresh "in queue" times
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+})();
+</script>
+</body>
+</html>
