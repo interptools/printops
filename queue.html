@@ -132,6 +132,31 @@
   body.kiosk .clock{font-size:19px}
   body.kiosk .list{padding:20px 26px}
   body.kiosk.idle{cursor:none}
+
+  /* ── sound self-test (hidden unless ?test=1 or the T key) ─────────────── */
+  .test{display:none;position:fixed;right:14px;bottom:14px;width:min(340px,calc(100vw - 28px));
+        background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+        padding:14px 15px;z-index:50;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  .test.show{display:block}
+  .test-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .test-x{background:none;border:none;color:var(--ink-faint);cursor:pointer;font:inherit;font-size:11px;
+          letter-spacing:.06em;text-transform:uppercase}
+  .test-x:hover{color:var(--ink)}
+  .test-line{font-size:12px;color:var(--ink-dim);line-height:1.7;display:flex;gap:7px;align-items:baseline}
+  .test-line b{color:var(--ink);font-weight:600}
+  .test-line .ok{color:var(--ready)}
+  .test-line .no{color:var(--alert)}
+  .test-line .hm{color:var(--serving)}
+  .test-row{display:flex;gap:6px;margin:11px 0 8px}
+  .test-row input{flex:1;min-width:0;background:var(--board);border:1px solid var(--line-strong);
+                  border-radius:7px;color:var(--ink);padding:7px 9px;font:inherit;font-size:13px}
+  .test-btns{display:flex;flex-wrap:wrap;gap:6px}
+  .test-btns button{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:7px;
+                    color:var(--ink);padding:7px 10px;font:inherit;font-size:12px;cursor:pointer}
+  .test-btns button:hover{background:var(--line-strong)}
+  .test-out{margin-top:10px;max-height:132px;overflow-y:auto;font-size:11px;line-height:1.65;
+            color:var(--ink-faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+            white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
 <body>
@@ -173,6 +198,28 @@
       <div class="list-body wait" id="b-wait"><div class="skel"></div><div class="skel"></div></div>
     </div>
   </div>
+</div>
+
+<div class="test" id="test">
+  <div class="test-head">
+    <span class="eyebrow">Sound self-test</span>
+    <button class="test-x" onclick="toggleTest()">Close</button>
+  </div>
+  <div class="test-line" id="t-speech"></div>
+  <div class="test-line" id="t-voice"></div>
+  <div class="test-line" id="t-audio"></div>
+  <div class="test-line" id="t-board"></div>
+  <div class="test-row">
+    <input id="t-ref" value="REQ-001042" aria-label="Reference to test">
+  </div>
+  <div class="test-btns">
+    <button onclick="testChime()">Chime</button>
+    <button onclick="testCall()">Call it out</button>
+    <button onclick="testRef()">Check digits</button>
+    <button onclick="testVoices()">List voices</button>
+    <button onclick="testSimulate()">Simulate a call</button>
+  </div>
+  <div class="test-out" id="t-out">Tap a button. The first one also turns the bell on.</div>
 </div>
 
 <div class="fault" id="fault"></div>
@@ -515,6 +562,7 @@ document.addEventListener('keydown', e => {
   if(e.target && e.target.tagName === 'INPUT') return;
   if(e.key === 'f' || e.key === 'F') toggleFull();
   if(e.key === 'r' || e.key === 'R') load();
+  if(e.key === 't' || e.key === 'T') toggleTest();
 });
 
 /* ── status + errors ──────────────────────────────────────────────────── */
@@ -558,12 +606,112 @@ function startRealtime(){
   document.head.appendChild(s);
 }
 
+/* ── sound self-test ──────────────────────────────────────────────────────
+   Open with ?test=1 or the T key. Staff-facing, hidden from customers.
+   Answers the three questions that actually matter when the board goes quiet:
+   does this device have speech at all, which voice will it use, and does a
+   status change reach the announcer.                                       */
+function toggleTest(){
+  const el = document.getElementById('test');
+  el.classList.toggle('show');
+  if(el.classList.contains('show')){ diag(); _diagTimer = setInterval(diag, 1000); }
+  else { clearInterval(_diagTimer); }
+}
+let _diagTimer = null;
+
+function tlog(msg){
+  const el = document.getElementById('t-out');
+  const t = new Date().toLocaleTimeString('en-PH', {hour12:false});
+  el.textContent = t + '  ' + msg + '\n' + el.textContent;
+}
+
+function diag(){
+  const has = 'speechSynthesis' in window;
+  const vs  = has ? speechSynthesis.getVoices() : [];
+  const en  = vs.filter(v => /^en(-|_|$)/i.test(v.lang));
+  const v   = pickVoice();
+
+  set('t-speech', 'Speech engine', has
+    ? (vs.length ? cls('ok', 'available, ' + vs.length + ' voices')
+                 : cls('hm', 'present, voices still loading'))
+    : cls('no', 'not supported on this browser'));
+
+  set('t-voice', 'Voice in use', v
+    ? cls(/^en[-_](US|GB)/i.test(v.lang) ? 'ok' : 'hm', v.name + ' · ' + v.lang)
+    : (en.length ? cls('hm', 'English found, not picked yet')
+                 : cls('no', 'no English voice installed')));
+
+  set('t-audio', 'Chime', _ac
+    ? cls(_ac.state === 'running' ? 'ok' : 'hm', 'context ' + _ac.state)
+    : cls('hm', 'not started — tap the bell'));
+
+  const prog = rows.filter(r => r.status === 'In progress').length;
+  set('t-board', 'Board', cls(sound ? 'ok' : 'hm', (sound ? 'bell on' : 'bell OFF — silent'))
+    + ' · ' + rows.length + ' rows, ' + prog + ' in progress · ' + (live ? 'live' : 'polling'));
+}
+function cls(k, txt){ return '<span class="' + k + '">' + esc(txt) + '</span>'; }
+function set(id, label, html){
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = '<b>' + label + '</b>' + html;
+}
+
+function ensureSound(){ if(!sound) toggleSound(); }   // this click is the gesture
+
+function testChime(){
+  ensureSound();
+  chime();
+  tlog('Chime played. Nothing audible means system volume, or the tab is muted.');
+}
+
+function testCall(){
+  ensureSound();
+  const ref = document.getElementById('t-ref').value.trim() || 'REQ-001042';
+  announce(ref, 'Counter 1');
+  tlog('Calling ' + ref + ' → "Number ' + speakableRef(ref) + ', counter Counter 1."');
+}
+
+function testRef(){
+  const custom = document.getElementById('t-ref').value.trim();
+  const refs = [custom || 'REQ-001042', 'REQ-000007', 'ARR-2026-0042', '1042'];
+  tlog('Spoken digits (no prefix, no dash):\n' + refs
+    .map(r => '  ' + r + '  →  "' + (speakableRef(r) || '(nothing)') + '"').join('\n'));
+}
+
+function testVoices(){
+  if(!('speechSynthesis' in window)){ tlog('No speech engine on this browser.'); return; }
+  const vs = speechSynthesis.getVoices();
+  if(!vs.length){ tlog('No voices yet. Wait a second and tap again.'); return; }
+  tlog(vs.length + ' voices:\n' + vs
+    .map(v => '  ' + v.lang + '  ' + v.name + (v.default ? '  (device default)' : '')).join('\n'));
+}
+
+/* Injects a fake In-progress row so the whole path gets exercised: bay layout,
+   flash, calledRefs bookkeeping, chime, voice. Clears itself after 10s.     */
+function testSimulate(){
+  ensureSound();
+  if(rows.some(r => r.id === -1)){ tlog('Test row is already on the board.'); return; }
+  rows = rows.concat([{
+    id:-1, ref:'REQ-009999', name:'Test Customer', jobtype:'Self-test',
+    rush:false, status:'In progress', submitted_at:new Date().toISOString(),
+    served_by:'Test counter'
+  }]);
+  render();
+  tlog('REQ-009999 pushed to In progress. Board and voice should react now.');
+  setTimeout(() => {
+    rows = rows.filter(r => r.id !== -1);
+    render();
+    tlog('Test row removed.');
+  }, 10000);
+}
+
 /* ── boot ─────────────────────────────────────────────────────────────── */
 (function init(){
   // ?board=1 opens straight into the wall layout
-  if(new URLSearchParams(location.search).get('board') === '1'){
+  const q = new URLSearchParams(location.search);
+  if(q.get('board') === '1'){
     document.body.classList.add('kiosk'); syncFullBtn();
   }
+  if(q.get('test') === '1') toggleTest();
 
   load();
   startRealtime();
