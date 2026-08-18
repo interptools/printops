@@ -816,6 +816,21 @@ function cfToast(msg, type = 'error') {
   t._timer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
+// ── Escaping ──────────────────────────────────────────────────────────────
+// Everything shown on this page came from a form somebody filled in, so it is
+// text, never markup. These two helpers keep it that way.
+function esc(v){
+  return (v === null || v === undefined) ? '' : String(v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// For dropping JSON into an HTML attribute: & first, then the quote chars,
+// otherwise the entities produced by the later passes get mangled.
+function escAttr(v){
+  return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 // ── Supabase config ────────────────────────────────────────────────────────
 // STEP 1: Replace these two values with your own Supabase project details.
 // Get them from: https://supabase.com → your project → Settings → API
@@ -945,7 +960,7 @@ async function loadServices() {
     if (rows && rows.length) {
       const sel = document.getElementById('f-jobtype');
       sel.innerHTML = '<option value="">Select job type...</option>' +
-        rows.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+        rows.map(r => `<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
     }
     // If empty or null — keep the fallback already shown, no action needed
   } catch(e) {
@@ -1466,17 +1481,17 @@ function renderPriceList(filter=''){
         <div style="width:36px;height:36px;border-radius:9px;background:${cat.color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="ti ${cat.icon}" style="font-size:18px;color:${cat.color}"></i>
         </div>
-        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${cat.service}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${esc(cat.service)}</div>
         <button onclick="switchTab('order')" style="margin-left:auto;padding:5px 12px;border-radius:20px;border:1px solid ${cat.color};background:transparent;color:${cat.color};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Order →</button>
       </div>
       <!-- Items -->
       ${cat.items.map((item, i) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;${i < cat.items.length-1 ? 'border-bottom:0.5px solid var(--border)' : ''}">
           <div>
-            <div style="font-size:13px;color:var(--text-primary)">${item.label}</div>
-            ${item.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${item.note}</div>` : ''}
+            <div style="font-size:13px;color:var(--text-primary)">${esc(item.label)}</div>
+            ${item.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(item.note)}</div>` : ''}
           </div>
-          <div style="font-size:15px;font-weight:700;color:${cat.color};white-space:nowrap;margin-left:12px">${item.price}</div>
+          <div style="font-size:15px;font-weight:700;color:${cat.color};white-space:nowrap;margin-left:12px">${esc(item.price)}</div>
         </div>
       `).join('')}
     </div>
@@ -1584,34 +1599,34 @@ async function trackOrder(){
     const bc = req.status==='In progress'?'badge-In':'badge-'+req.status;
     const sub = new Date(req.submitted_at||req.submittedAt).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
     let extrasHtml='';
-    if(extras.colorMode) extrasHtml+=`<div class="status-row"><span class="label">Color mode</span><span class="value">${extras.colorMode}</span></div>`;
-    if(extras.finish)    extrasHtml+=`<div class="status-row"><span class="label">Finish</span><span class="value">${extras.finish}</span></div>`;
-    if(extras.material)  extrasHtml+=`<div class="status-row"><span class="label">Material</span><span class="value">${extras.material}</span></div>`;
-    if(extras.fold)      extrasHtml+=`<div class="status-row"><span class="label">Fold type</span><span class="value">${extras.fold}</span></div>`;
-    if(extras.printType) extrasHtml+=`<div class="status-row"><span class="label">Print type</span><span class="value">${extras.printType}</span></div>`;
-    if(extras.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${extras.shape}</span></div>`;
-    if(extras.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${extras.idType}</span></div>`;
-    if(extras.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${extras.sizes}</span></div>`;
-    if(extras.mugType)   extrasHtml+=`<div class="status-row"><span class="label">Mug type</span><span class="value">${extras.mugType}</span></div>`;
-    if(extras.mugSide)   extrasHtml+=`<div class="status-row"><span class="label">Print side</span><span class="value">${extras.mugSide}</span></div>`;
+    if(extras.colorMode) extrasHtml+=`<div class="status-row"><span class="label">Color mode</span><span class="value">${esc(extras.colorMode)}</span></div>`;
+    if(extras.finish)    extrasHtml+=`<div class="status-row"><span class="label">Finish</span><span class="value">${esc(extras.finish)}</span></div>`;
+    if(extras.material)  extrasHtml+=`<div class="status-row"><span class="label">Material</span><span class="value">${esc(extras.material)}</span></div>`;
+    if(extras.fold)      extrasHtml+=`<div class="status-row"><span class="label">Fold type</span><span class="value">${esc(extras.fold)}</span></div>`;
+    if(extras.printType) extrasHtml+=`<div class="status-row"><span class="label">Print type</span><span class="value">${esc(extras.printType)}</span></div>`;
+    if(extras.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${esc(extras.shape)}</span></div>`;
+    if(extras.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${esc(extras.idType)}</span></div>`;
+    if(extras.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${esc(extras.sizes)}</span></div>`;
+    if(extras.mugType)   extrasHtml+=`<div class="status-row"><span class="label">Mug type</span><span class="value">${esc(extras.mugType)}</span></div>`;
+    if(extras.mugSide)   extrasHtml+=`<div class="status-row"><span class="label">Print side</span><span class="value">${esc(extras.mugSide)}</span></div>`;
     result.className='status-card found';
     result.innerHTML=`
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Order — ${req.ref}</div>
-      <div class="status-row"><span class="label">Name</span><span class="value">${req.name}</span></div>
-      <div class="status-row"><span class="label">Job type</span><span class="value">${req.jobtype}${req.rush?'&nbsp;<span style="color:#d97706;font-size:11px">⚡ Urgent</span>':''}</span></div>
-      ${req.pkg_label?`<div class="status-row"><span class="label">Package</span><span class="value">${req.pkg_label}</span></div>`
-      :`<div class="status-row"><span class="label">Size / specs</span><span class="value">${req.size||'—'}</span></div>
-        <div class="status-row"><span class="label">Quantity</span><span class="value">${req.qty}</span></div>`}
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Order — ${esc(req.ref)}</div>
+      <div class="status-row"><span class="label">Name</span><span class="value">${esc(req.name)}</span></div>
+      <div class="status-row"><span class="label">Job type</span><span class="value">${esc(req.jobtype)}${req.rush?'&nbsp;<span style="color:#d97706;font-size:11px">⚡ Urgent</span>':''}</span></div>
+      ${req.pkg_label?`<div class="status-row"><span class="label">Package</span><span class="value">${esc(req.pkg_label)}</span></div>`
+      :`<div class="status-row"><span class="label">Size / specs</span><span class="value">${esc(req.size||'—')}</span></div>
+        <div class="status-row"><span class="label">Quantity</span><span class="value">${Number(req.qty)||1}</span></div>`}
       ${extrasHtml}
-      ${req.print_file?`<div class="status-row"><span class="label">Print file</span><span class="value">📄 ${req.print_file}</span></div>`:''}
-      ${req.design_file?`<div class="status-row"><span class="label">Design file</span><span class="value">🎨 ${req.design_file}</span></div>`:''}
-      <div class="status-row"><span class="label">Date needed</span><span class="value">${req.due||'—'}</span></div>
-      <div class="status-row"><span class="label">Submitted</span><span class="value">${sub}</span></div>
-      <div class="status-row"><span class="label">Status</span><span class="value"><span class="badge ${bc}">${req.status}</span></span></div>
-      ${req.notes?`<div style="margin-top:10px;padding:10px;background:var(--surface-0);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)"><strong>Notes:</strong> ${req.notes}</div>`:''}
+      ${req.print_file?`<div class="status-row"><span class="label">Print file</span><span class="value">📄 ${esc(req.print_file)}</span></div>`:''}
+      ${req.design_file?`<div class="status-row"><span class="label">Design file</span><span class="value">🎨 ${esc(req.design_file)}</span></div>`:''}
+      <div class="status-row"><span class="label">Date needed</span><span class="value">${esc(req.due||'—')}</span></div>
+      <div class="status-row"><span class="label">Submitted</span><span class="value">${esc(sub)}</span></div>
+      <div class="status-row"><span class="label">Status</span><span class="value"><span class="badge ${bc}">${esc(req.status)}</span></span></div>
+      ${req.notes?`<div style="margin-top:10px;padding:10px;background:var(--surface-0);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)"><strong>Notes:</strong> ${esc(req.notes)}</div>`:''}
       ${req.status==='Pending'?`
       <div style="margin-top:14px;padding-top:12px;border-top:0.5px solid var(--border)">
-        <button onclick="showAmendPanel(${JSON.stringify(req).replace(/"/g,'&quot;')})"
+        <button onclick="showAmendPanel(${escAttr(JSON.stringify(req))})"
           style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--accent);background:var(--accent-bg);color:var(--accent-text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit">
           <i class="ti ti-edit"></i> Edit this request
         </button>

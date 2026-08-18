@@ -1881,18 +1881,18 @@ function renderDash() {
     const color = o.days <= 0 ? 'var(--danger)' : 'var(--warning)';
     const bg = o.days <= 0 ? 'var(--danger-bg)' : 'var(--warning-bg)';
     return `<div style="background:${bg};border-radius:var(--radius);padding:9px 14px;margin-bottom:8px;font-size:13px;color:${color};display:flex;align-items:center;gap:8px">
-      <i class="ti ti-alert-triangle"></i> <strong>#${String(o.id).padStart(4,'0')} ${o.jobtype}</strong> for ${c} — ${msg}
+      <i class="ti ti-alert-triangle"></i> <strong>#${String(o.id).padStart(4,'0')} ${esc(o.jobtype)}</strong> for ${esc(c)} — ${msg}
     </div>`;
   }).join('') : '';
 
   const recentOrders = [...orders].reverse().slice(0, 5);
   document.getElementById('dash-orders').innerHTML = recentOrders.length
-    ? recentOrders.map(o => `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${custName(o.customerId)}</td><td>${o.jobtype}</td><td>${statusBadge(o.status)}</td><td>₱${Number(o.amount).toLocaleString()}</td></tr>`).join('')
+    ? recentOrders.map(o => `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${esc(custName(o.customerId))}</td><td>${esc(o.jobtype)}</td><td>${statusBadge(o.status)}</td><td>₱${Number(o.amount).toLocaleString('en-PH')}</td></tr>`).join('')
     : '<tr><td colspan="5" class="empty">No orders yet.</td></tr>';
 
   const unpaid = invoices.filter(i => i.status === 'Unpaid').slice(0, 5);
   document.getElementById('dash-invoices').innerHTML = unpaid.length
-    ? unpaid.map(i => `<tr><td>INV-${String(i.id).padStart(4,'0')}</td><td>${custName(i.customerId)}</td><td>₱${Number(i.amount).toLocaleString()}</td><td>${i.due || '—'}</td></tr>`).join('')
+    ? unpaid.map(i => `<tr><td>INV-${String(i.id).padStart(4,'0')}</td><td>${esc(custName(i.customerId))}</td><td>₱${Number(i.amount).toLocaleString('en-PH')}</td><td>${esc(i.due || '—')}</td></tr>`).join('')
     : '<tr><td colspan="4" class="empty">No unpaid invoices.</td></tr>';
 
   renderRevenueChart();
@@ -2052,7 +2052,7 @@ function renderTodayCard() {
     ${tile('Due today', today.length, today.length ? 'var(--warning)' : 'var(--text-muted)', 'today')}
     ${tomorrow.length ? tile('Due tomorrow', tomorrow.length, 'var(--accent)',  'tomorrow') : ''}
     ${toCollect.length ? tile('Ready to collect', toCollect.length, 'var(--success)', 'balance',
-        '₱' + collectTotal.toLocaleString() + ' to collect') : ''}
+        '₱' + collectTotal.toLocaleString('en-PH') + ' to collect') : ''}
   </div>`;
 }
 
@@ -2090,7 +2090,7 @@ function renderRevenueChart() {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: v => '₱' + v.toLocaleString() }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { beginAtZero: true, ticks: { callback: v => '₱' + v.toLocaleString('en-PH') }, grid: { color: 'rgba(0,0,0,0.05)' } },
         x: { grid: { display: false } }
       }
     }
@@ -2177,17 +2177,17 @@ function renderOrders() {
     const payBadge = o.payment === 'Paid'
       ? `<span style="font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:2px 7px;border-radius:20px">✓ Paid</span>`
       : o.payment === 'Downpayment'
-      ? `<span style="font-size:11px;font-weight:600;color:var(--warning);background:var(--warning-bg);padding:2px 7px;border-radius:20px" title="Deposit received">↓ ₱${Number(o.paidAmount||0).toLocaleString()}</span>`
+      ? `<span style="font-size:11px;font-weight:600;color:var(--warning);background:var(--warning-bg);padding:2px 7px;border-radius:20px" title="Deposit received">↓ ₱${Number(o.paidAmount||0).toLocaleString('en-PH')}</span>`
       : `<span style="font-size:11px;color:var(--text-muted)">Unpaid</span>`;
     return `<tr class="row-expandable ${rowClass}" onclick="toggleNotes('notes-${o.id}')">
       <td class="m-hide" style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
-      <td class="m-head">#${String(o.id).padStart(4,'0')} · ${custName(o.customerId)}</td>
-      <td class="m-hide">${custName(o.customerId)}</td>
-      <td data-label="Job">${o.jobtype}${rushBadge}</td>
-      <td data-label="Size/Qty" style="font-size:12px;max-width:160px">${sizeQty}</td>
-      <td data-label="Due">${o.due || '—'}</td>
+      <td class="m-head">#${String(o.id).padStart(4,'0')} · ${esc(custName(o.customerId))}</td>
+      <td class="m-hide">${esc(custName(o.customerId))}</td>
+      <td data-label="Job">${esc(o.jobtype)}${rushBadge}</td>
+      <td data-label="Size/Qty" style="font-size:12px;max-width:160px">${esc(sizeQty)}</td>
+      <td data-label="Due">${esc(o.due || '—')}</td>
       <td data-label="Status">${statusBadge(o.status)}</td>
-      <td data-label="Amount">₱${Number(o.amount).toLocaleString()}${bal > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${bal.toLocaleString()} due</div>` : ''}</td>
+      <td data-label="Amount">₱${Number(o.amount).toLocaleString('en-PH')}${bal > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${bal.toLocaleString('en-PH')} due</div>` : ''}</td>
       <td data-label="Payment">${payBadge}</td>
       <td class="m-actions" onclick="event.stopPropagation()"><div class="actions">
         <button class="btn btn-sm" onclick="editOrder(${o.id})" title="Edit order" aria-label="Edit order ${String(o.id).padStart(4,'0')}"><i class="ti ti-edit" aria-hidden="true"></i></button>
@@ -2197,7 +2197,7 @@ function renderOrders() {
       </div></td>
     </tr>
     <tr class="row-notes" id="notes-${o.id}">
-      <td colspan="10"><strong>Notes:</strong> ${o.notes || '(no notes)'}</td>
+      <td colspan="10"><strong>Notes:</strong> ${esc(o.notes || '(no notes)')}</td>
     </tr>`;
   }).join('');
 }
@@ -2434,12 +2434,12 @@ function renderCustomers() {
         days < 365 ? Math.round(days/30) + ' months ago' : Math.round(days/365) + 'y ago'}</span>`;
     }
     return `<tr class="stack-row">
-      <td class="m-head">${c.name}${regular}</td>
-      <td data-label="Phone">${c.phone||'—'}</td>
-      <td data-label="Email">${c.email||'—'}</td>
+      <td class="m-head">${esc(c.name)}${regular}</td>
+      <td data-label="Phone">${esc(c.phone || '—')}</td>
+      <td data-label="Email">${esc(c.email || '—')}</td>
       <td data-label="Orders">${c.count}</td>
-      <td data-label="Paid">₱${c.spent.toLocaleString()}${c.owed > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${c.owed.toLocaleString()} owed</div>` : ''}</td>
-      <td data-label="Last order" style="font-size:12px">${lastTxt}</td>
+      <td data-label="Paid">₱${c.spent.toLocaleString('en-PH')}${c.owed > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${c.owed.toLocaleString('en-PH')} owed</div>` : ''}</td>
+      <td data-label="Last order" style="font-size:12px">${esc(lastTxt)}</td>
       <td class="m-actions"><div class="actions">
         <button class="btn btn-sm" onclick="showHistory(${c.id})"><i class="ti ti-history"></i> History</button>
         <button title="Delete customer" aria-label="Delete customer" class="btn btn-sm btn-danger" onclick="deleteCust(${c.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -2458,12 +2458,12 @@ function showHistory(custId) {
   document.getElementById('hist-content').innerHTML = `
     <div style="display:flex;gap:12px;margin-bottom:1rem">
       <div class="metric" style="flex:1"><div class="metric-label">Total orders</div><div class="metric-value accent">${custOrders.length}</div></div>
-      <div class="metric" style="flex:1"><div class="metric-label">Total paid</div><div class="metric-value success">₱${totalSpent.toLocaleString()}</div></div>
-      <div class="metric" style="flex:1"><div class="metric-label">Still owed</div><div class="metric-value ${totalOwed > 0 ? 'warning' : ''}">₱${totalOwed.toLocaleString()}</div></div>
+      <div class="metric" style="flex:1"><div class="metric-label">Total paid</div><div class="metric-value success">₱${totalSpent.toLocaleString('en-PH')}</div></div>
+      <div class="metric" style="flex:1"><div class="metric-label">Still owed</div><div class="metric-value ${totalOwed > 0 ? 'warning' : ''}">₱${totalOwed.toLocaleString('en-PH')}</div></div>
     </div>
     ${custOrders.length ? `<table><thead><tr><th>Order #</th><th>Job type</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead><tbody>
     ${custOrders.map(o => { const b = Math.max(0, Number(o.amount) - Number(o.paidAmount||0));
-      return `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${o.jobtype}</td><td>₱${Number(o.amount).toLocaleString()}${b > 0 ? `<div style="font-size:11px;color:var(--warning)">₱${b.toLocaleString()} due</div>` : ''}</td><td>${o.due||'—'}</td><td>${statusBadge(o.status)}</td></tr>`; }).join('')}
+      return `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${esc(o.jobtype)}</td><td>₱${Number(o.amount).toLocaleString('en-PH')}${b > 0 ? `<div style="font-size:11px;color:var(--warning)">₱${b.toLocaleString('en-PH')} due</div>` : ''}</td><td>${esc(o.due || '—')}</td><td>${statusBadge(o.status)}</td></tr>`; }).join('')}
     </tbody></table>` : '<div class="empty">No orders yet for this customer.</div>'}`;
   document.getElementById('hist-modal').classList.add('open');
 }
@@ -2493,8 +2493,21 @@ async function saveCustomer() {
 }
 
 async function deleteCust(id) {
+  // Say what will actually be left behind. Orders keep pointing at an id that
+  // no longer exists, so their customer column falls back to a dash and the
+  // name is gone for good — the owner should know that before confirming.
+  const co = orders.filter(o => o.customerId === id);
+  const ci = invoices.filter(i => i.customerId === id);
+  const owed = co.reduce((a,o) => a + Math.max(0, Number(o.amount) - Number(o.paidAmount||0)), 0);
+  let msg = 'This customer will be permanently removed.';
+  if (co.length || ci.length) {
+    msg += ' ' + co.length + ' order' + (co.length===1?'':'s') +
+           ' and ' + ci.length + ' invoice' + (ci.length===1?'':'s') +
+           ' will stay in your records but will no longer show a customer name.';
+  }
+  if (owed > 0) msg += ' ₱' + owed.toLocaleString('en-PH') + ' is still owed on those orders.';
   try {
-    await showConfirm({ title:'Delete customer?', msg:'This customer will be permanently removed. Their orders will remain.', okLabel:'Delete customer' });
+    await showConfirm({ title:'Delete customer?', msg, okLabel:'Delete customer' });
   } catch { return; }
   try {
     await sbFetch('customers?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
@@ -2516,11 +2529,11 @@ function renderInvoices() {
   tbody.innerHTML = filtered.map(i => {
     const o = orders.find(x => x.id === i.orderId);
     return `<tr class="stack-row">
-      <td class="m-head">INV-${String(i.id).padStart(4,'0')} · ${custName(i.customerId)}</td>
-      <td class="m-hide">${custName(i.customerId)}</td>
+      <td class="m-head">INV-${String(i.id).padStart(4,'0')} · ${esc(custName(i.customerId))}</td>
+      <td class="m-hide">${esc(custName(i.customerId))}</td>
       <td data-label="Order">${o ? '#' + String(o.id).padStart(4,'0') + ' ' + o.jobtype : '—'}</td>
-      <td data-label="Amount">₱${Number(i.amount).toLocaleString()}</td>
-      <td data-label="Due">${i.due || '—'}</td>
+      <td data-label="Amount">₱${Number(i.amount).toLocaleString('en-PH')}</td>
+      <td data-label="Due">${esc(i.due || '—')}</td>
       <td data-label="Status">${statusBadge(i.status)}</td>
       <td class="m-actions"><div class="actions">
         ${i.status === 'Unpaid' ? `<button class="btn btn-sm btn-success" onclick="markPaid(${i.id})"><i class="ti ti-check"></i> Paid</button>` : ''}
@@ -2544,21 +2557,21 @@ function printInvoice(id) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;font-size:13px">
         <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">BILL TO</div><strong>${c ? c.name : '—'}</strong><br>${c ? c.phone||'' : ''}<br>${c ? c.email||'' : ''}</div>
-        <div style="text-align:right"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">DETAILS</div>Issued: ${issued}<br>Due: ${i.due || '—'}<br>Status: ${i.status}</div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">DETAILS</div>Issued: ${issued}<br>Due: ${esc(i.due || '—')}<br>Status: ${i.status}</div>
       </div>
-      ${o ? `<table style="margin-bottom:1rem"><thead><tr><th>Description</th><th>Qty</th><th>Amount</th></tr></thead><tbody><tr><td>${o.jobtype} ${o.size ? '('+o.size+')' : ''}</td><td>${o.qty}</td><td>₱${Number(o.amount).toLocaleString()}</td></tr></tbody></table>` : ''}
+      ${o ? `<table style="margin-bottom:1rem"><thead><tr><th>Description</th><th>Qty</th><th>Amount</th></tr></thead><tbody><tr><td>${esc(o.jobtype)} ${o.size ? '('+o.size+')' : ''}</td><td>${o.qty}</td><td>₱${Number(o.amount).toLocaleString('en-PH')}</td></tr></tbody></table>` : ''}
       <div style="text-align:right;margin-top:1rem;padding-top:1rem;border-top:0.5px solid var(--border)">
         <div style="font-size:12px;color:var(--text-secondary)">Total amount</div>
-        <div style="font-size:24px;font-weight:700">₱${Number(i.amount).toLocaleString()}</div>
+        <div style="font-size:24px;font-weight:700">₱${Number(i.amount).toLocaleString('en-PH')}</div>
       </div>
-      ${i.notes ? `<div style="margin-top:1rem;padding:10px;background:var(--surface-1);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)">${i.notes}</div>` : ''}
+      ${i.notes ? `<div style="margin-top:1rem;padding:10px;background:var(--surface-1);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)">${esc(i.notes)}</div>` : ''}
     </div>`;
   document.getElementById('print-modal').classList.add('open');
 }
 
 function populateCustSelect(selId, val) {
   document.getElementById(selId).innerHTML = customers.length
-    ? customers.map(c => `<option value="${c.id}"${c.id == val ? ' selected' : ''}>${c.name}</option>`).join('')
+    ? customers.map(c => `<option value="${c.id}"${c.id == val ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
     : '<option value="">No customers yet</option>';
 }
 
@@ -2730,12 +2743,12 @@ async function renderRequests() {
     const submitted = new Date(r.submittedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
     return `<tr class="row-expandable" onclick="toggleNotes('rownotes-${r.id}')">
       <td class="m-hide" style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
-      <td class="m-head">${r.ref} · ${r.name}${rushBadge}</td>
-      <td data-label="Contact">${r.name}<br><span style="font-size:11px;color:var(--text-muted)">${r.phone}</span></td>
-      <td data-label="Job">${r.jobtype}</td>
-      <td data-label="Details" style="font-size:12px;max-width:180px">${details}</td>
+      <td class="m-head">${esc(r.ref)} · ${esc(r.name)}${rushBadge}</td>
+      <td data-label="Contact">${esc(r.name)}<br><span style="font-size:11px;color:var(--text-muted)">${esc(r.phone)}</span></td>
+      <td data-label="Job">${esc(r.jobtype)}</td>
+      <td data-label="Details" style="font-size:12px;max-width:180px">${esc(details)}</td>
       <td data-label="Files">${fileHtml}</td>
-      <td data-label="Needed" style="font-size:12px">${r.due || '—'}<br><span style="font-size:11px;color:var(--text-muted)">sub: ${submitted}</span></td>
+      <td data-label="Needed" style="font-size:12px">${esc(r.due || '—')}<br><span style="font-size:11px;color:var(--text-muted)">sub: ${submitted}</span></td>
       <td data-label="Status">${statusBadge(r.status)}</td>
       <td class="m-actions" onclick="event.stopPropagation()"><div class="actions">
         <select class="btn btn-sm" style="padding:4px 6px" onchange="updateReqStatus(${r.id},this.value)">
@@ -2756,8 +2769,8 @@ async function renderRequests() {
     <tr class="row-notes" id="rownotes-${r.id}">
       <td colspan="9">
         <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
-          ${r.email ? `<span><strong>Email:</strong> ${r.email}</span>` : ''}
-          ${r.notes ? `<span><strong>Notes:</strong> ${r.notes}</span>` : '<span style="color:var(--text-muted)">No notes</span>'}
+          ${r.email ? `<span><strong>Email:</strong> ${esc(r.email)}</span>` : ''}
+          ${r.notes ? `<span><strong>Notes:</strong> ${esc(r.notes)}</span>` : '<span style="color:var(--text-muted)">No notes</span>'}
         </div>
       </td>
     </tr>`;
@@ -3219,10 +3232,10 @@ function renderPhotoOrders() {
       ? `<img src="${o.photoDataUrl}" style="width:28px;height:36px;object-fit:cover;border-radius:3px;border:0.5px solid var(--border);margin-right:6px;vertical-align:middle">`
       : `<span style="width:28px;height:36px;display:inline-block;background:var(--surface-1);border-radius:3px;border:0.5px dashed var(--border-strong);margin-right:6px;vertical-align:middle"></span>`;
     return `<tr>
-      <td><strong>${o.ref}</strong></td>
-      <td style="display:flex;align-items:center">${thumb}<span>${o.name}<br><span style="font-size:11px;color:var(--text-muted)">${o.phone}</span></span></td>
+      <td><strong>${esc(o.ref)}</strong></td>
+      <td style="display:flex;align-items:center">${thumb}<span>${esc(o.name)}<br><span style="font-size:11px;color:var(--text-muted)">${esc(o.phone)}</span></span></td>
       <td>${o.pkgName || o.pkgLabel}<br><span style="font-size:11px;color:var(--text-muted)">₱${o.pkgPrice || '—'}</span></td>
-      <td style="font-size:11px">${o.pkgLabel}</td>
+      <td style="font-size:11px">${esc(o.pkgLabel)}</td>
       <td style="font-size:12px">${date}</td>
       <td>
         <select class="badge ${bc}" onchange="updatePhotoStatus(${o.id}, this.value)"
@@ -3758,11 +3771,21 @@ async function pullFromSupabase() {
 // ═══════════════════════════════════════════════════════════════════════════
 const _inFlight = new Set();
 
+// The offline banner said changes wouldn't be saved, but nothing actually
+// stopped a save from being attempted — it just failed after the fact and
+// the typed-in work was lost. Now the attempt is refused up front.
+function blockedOffline(what) {
+  if (!_isOffline) return false;
+  toast('⚠️ Offline — ' + (what || 'this change') + ' cannot be saved yet. Tap Retry in the red bar.');
+  return true;
+}
+
 function guardSave(name, busyLabel) {
   const original = window[name];
   if (typeof original !== 'function') return;
   window[name] = async function(...args) {
     if (_inFlight.has(name)) return;          // already saving — ignore the click
+    if (blockedOffline()) return;             // and nothing is written while offline
     _inFlight.add(name);
 
     // Find the button that triggered this, so it can show progress
@@ -3897,6 +3920,7 @@ async function checkPassword() {
     // Sign in as this employee — their PIN then covers every PIN prompt
     _currentUser = { name: emp.name, role: emp.role };
     sessionStorage.setItem('arroyo_user', JSON.stringify(_currentUser));
+    refreshUserLabels();
     sessionStorage.setItem('arroyo_session', '1');
     unlockDashboard();
     logActivity('Shift started', emp.name + ' signed in at login', emp.name);
@@ -3907,6 +3931,7 @@ async function checkPassword() {
   if (val === OWNER_PASSWORD) {
     _currentUser = { name: 'Owner', role: 'Owner' };
     sessionStorage.setItem('arroyo_user', JSON.stringify(_currentUser));
+    refreshUserLabels();
     sessionStorage.setItem('arroyo_session', '1');
     unlockDashboard();
   } else {
@@ -3919,7 +3944,7 @@ function unlockDashboard() {
   document.getElementById('app-content').style.display = 'block';
   if (typeof updateUserBadge === 'function') updateUserBadge();
   loadAllData().then(() => {
-    renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling();
+    renderDash(); updateReqBadge(); updatePhotoBadge(); startPolling(); refreshUserLabels();
   });
 }
 
@@ -4096,7 +4121,13 @@ function renderServiceRows(rows) {
     </div>`).join('');
 }
 
+let _seedingServices = false;
 async function seedDefaultServices() {
+  if (_seedingServices) return;   // a second tab must not seed the same rows again
+  _seedingServices = true;
+  try { return await _seedDefaultServices(); } finally { _seedingServices = false; }
+}
+async function _seedDefaultServices() {
   for (let i = 0; i < DEFAULT_SERVICES.length; i++) {
     const s = DEFAULT_SERVICES[i];
     try {
@@ -4640,6 +4671,10 @@ function buildHtmlEmail(title, body, tag) {
 </html>`;
 }
 
+// Short alias — used inline in the render templates below. Anything that
+// reaches innerHTML and originated outside this file goes through it.
+function esc(v) { return (v === null || v === undefined) ? '' : escHtml(v); }
+
 function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;')
@@ -5085,9 +5120,9 @@ async function renderActivityLog() {
       });
       return `<tr>
         <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${t}</td>
-        <td style="font-weight:500;font-size:13px">${entry.action}</td>
-        <td style="font-size:12px;color:var(--text-secondary)">${entry.details}</td>
-        <td style="font-size:12px">${entry.by}</td>
+        <td style="font-weight:500;font-size:13px">${esc(entry.action)}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${esc(entry.details)}</td>
+        <td style="font-size:12px">${esc(entry.by)}</td>
       </tr>`;
     }).join('');
   } catch(e) {
@@ -5217,8 +5252,8 @@ async function renderInventory() {
         ? new Date(item.updated_at).toLocaleDateString('en-PH', {month:'short', day:'numeric'})
         : '—';
       return `<tr style="${isLow ? 'background:var(--danger-bg)' : ''}">
-        <td style="font-weight:500">${item.name}${isLow ? ' <span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px;font-weight:600">LOW</span>' : ''}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${item.category || '—'}</td>
+        <td style="font-weight:500">${esc(item.name)}${isLow ? ' <span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px;font-weight:600">LOW</span>' : ''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${esc(item.category || '—')}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="btn btn-sm" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700">−</button>
@@ -5226,8 +5261,8 @@ async function renderInventory() {
             <button class="btn btn-sm" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700">+</button>
           </div>
         </td>
-        <td style="font-size:12px;color:var(--text-muted)">${item.low} ${item.unit}</td>
-        <td style="font-size:12px">${item.unit}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${item.low} ${esc(item.unit)}</td>
+        <td style="font-size:12px">${esc(item.unit)}</td>
         <td style="font-size:12px;color:var(--text-muted)">${updated}</td>
         <td>
           <div class="actions">
@@ -5283,9 +5318,9 @@ async function renderCostLog() {
     tbody.innerHTML = log.map(e => {
       const t = new Date(e.logged_at).toLocaleDateString('en-PH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
       return `<tr>
-        <td style="font-weight:500">${e.ref}</td>
+        <td style="font-weight:500">${esc(e.ref)}</td>
         <td style="color:var(--danger);font-weight:600">₱${Number(e.amount).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${e.note || '—'}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${esc(e.note || '—')}</td>
         <td style="font-size:12px;color:var(--text-muted)">${t}</td>
         <td><button title="Delete cost entry" aria-label="Delete cost entry" class="btn btn-sm btn-danger" onclick="deleteCostLog(${e.id})"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
       </tr>`;
@@ -5424,7 +5459,13 @@ async function changePinFromSettings() {
 function getPresets() { return _presetsCache; }
 let _presetsCache = [];
 
+let _loadingPresets = false;
 async function loadPresetsFromDB() {
+  if (_loadingPresets) return;    // seeding is not idempotent, so serialise it
+  _loadingPresets = true;
+  try { return await _loadPresetsFromDB(); } finally { _loadingPresets = false; }
+}
+async function _loadPresetsFromDB() {
   try {
     const rows = await sbFetch('price_presets?order=id.asc') || [];
     if (rows.length) { _presetsCache = rows; return; }
@@ -5541,16 +5582,16 @@ async function quickInvoiceFromReq(id) {
   document.getElementById('qi-summary').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
       <div>
-        <div style="font-weight:600;font-size:14px">${r.name}</div>
-        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">${r.phone}${r.email ? ' · ' + r.email : ''}</div>
+        <div style="font-weight:600;font-size:14px">${esc(r.name)}</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-top:2px">${esc(r.phone)}${r.email ? ' · ' + r.email : ''}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-weight:600">${r.jobtype}${r.rush ? ' <span style="color:#d97706;font-size:11px">⚡ RUSH</span>' : ''}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${details}</div>
+        <div style="font-weight:600">${esc(r.jobtype)}${r.rush ? ' <span style="color:#d97706;font-size:11px">⚡ RUSH</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${esc(details)}</div>
       </div>
     </div>
-    ${r.due ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)"><i class="ti ti-calendar"></i> Needed by: <strong>${r.due}</strong></div>` : ''}
-    ${r.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted)">Notes: ${r.notes}</div>` : ''}
+    ${r.due ? `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)"><i class="ti ti-calendar"></i> Needed by: <strong>${esc(r.due)}</strong></div>` : ''}
+    ${r.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted)">Notes: ${esc(r.notes)}</div>` : ''}
   `;
 
   // Populate presets strip — show all, highlight matching job type
@@ -5920,11 +5961,15 @@ let _currentUser = JSON.parse(sessionStorage.getItem('arroyo_user') || 'null') |
 
 function getCurrentUserName() { return _currentUser ? _currentUser.name : 'Owner'; }
 
-// Keep the mobile top-bar name in step with whoever is on duty
-function syncMobileUser() {
-  const el = document.getElementById('mt-user');
-  if (el) el.textContent = getCurrentUserName();
+// Keep every place that names the current user in step
+function refreshUserLabels() {
+  const name = getCurrentUserName();
+  const m = document.getElementById('mt-user');
+  if (m) m.textContent = name;
+  const d = document.getElementById('duty-badge');
+  if (d) d.textContent = '👤 ' + name;
 }
+
 
 // ── ROLE PERMISSIONS ──────────────────────────────────────────────────────
 // The Owner / Manager / Staff badges used to be decoration only — role was
@@ -6125,6 +6170,7 @@ async function empConfirmSwitch() {
     const prev = _currentUser.name;
     _currentUser = { name: emp.name, role: emp.role };
     sessionStorage.setItem('arroyo_user', JSON.stringify(_currentUser));
+    refreshUserLabels();
     revokeOwnerAccess();
     closeModal('emp-switch-modal');
     updateUserBadge();
