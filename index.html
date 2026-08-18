@@ -336,13 +336,18 @@ tbody tr:hover td{background:var(--surface-1)}
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header"><div class="page-title">Dashboard</div></div>
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <button class="btn" onclick="openDaySummary()"><i class="ti ti-report"></i> Day summary</button>
+      </div>
       <div class="grid-4">
         <div class="metric"><div class="metric-label">Total orders</div><div class="metric-value accent" id="m-orders">0</div></div>
         <div class="metric"><div class="metric-label">In progress</div><div class="metric-value warning" id="m-inprogress">0</div></div>
         <div class="metric"><div class="metric-label">Completed</div><div class="metric-value success" id="m-done">0</div></div>
         <div class="metric"><div class="metric-label">Unpaid invoices</div><div class="metric-value danger" id="m-unpaid">₱0</div></div>
         <div class="metric"><div class="metric-label">Total revenue (paid)</div><div class="metric-value success" id="m-revenue">₱0</div></div>
+        <div class="metric" onclick="nav('orders');setDueFilter('balance')" style="cursor:pointer" title="Orders with money still owed">
+          <div class="metric-label">Balance due on pickup</div><div class="metric-value warning" id="m-balance">₱0</div></div>
       </div>
       <!-- Services quick links -->
       <div style="margin-bottom:1.25rem;display:flex;gap:10px;flex-wrap:wrap">
@@ -368,6 +373,8 @@ tbody tr:hover td{background:var(--surface-1)}
           </div>
         </div>
       </div>
+      <!-- Today at a glance -->
+      <div id="today-card"></div>
       <!-- Deadline alerts -->
       <div id="deadline-alerts"></div>
       <div class="grid-2">
@@ -404,6 +411,7 @@ tbody tr:hover td{background:var(--surface-1)}
           <option>Pending</option><option>In progress</option><option>Done</option><option>Cancelled</option>
         </select>
       </div>
+      <div id="due-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin:-0.5rem 0 1rem"></div>
       <div class="card">
         <table>
           <thead><tr><th></th><th>Order #</th><th>Customer</th><th>Job type</th><th>Size / Qty</th><th>Due date</th><th>Status</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead>
@@ -424,10 +432,16 @@ tbody tr:hover td{background:var(--surface-1)}
       </div>
       <div class="search-bar">
         <input id="cust-search" placeholder="Search customers..." oninput="renderCustomers()">
+        <select id="cust-sort" onchange="renderCustomers()" aria-label="Sort customers">
+          <option value="name">Sort: name</option>
+          <option value="spent">Sort: biggest spenders</option>
+          <option value="recent">Sort: most recent</option>
+          <option value="orders">Sort: most orders</option>
+        </select>
       </div>
       <div class="card">
         <table>
-          <thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Address</th><th>Orders</th><th>Total spent</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Orders</th><th>Total paid</th><th>Last order</th><th>Actions</th></tr></thead>
           <tbody id="cust-table"></tbody>
         </table>
         <div class="empty" id="cust-empty" style="display:none">No customers yet.</div>
@@ -1357,8 +1371,15 @@ tbody tr:hover td{background:var(--surface-1)}
       <div class="form-group"><label>Quantity</label><input id="o-qty" type="number" min="1" value="1"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Amount (₱)</label><input id="o-amount" type="number" min="0" value="0" step="0.01"></div>
+      <div class="form-group"><label>Total amount (₱)</label><input id="o-amount" type="number" min="0" value="0" step="0.01" oninput="updateBalanceHint()"></div>
+      <div class="form-group"><label>Paid so far (₱)</label><input id="o-paid" type="number" min="0" value="0" step="0.01" oninput="updateBalanceHint()" placeholder="Deposit or full payment"></div>
+    </div>
+    <div id="o-balance-hint" style="display:none;margin:-6px 0 12px;padding:9px 12px;border-radius:var(--radius);font-size:13px;font-weight:500"></div>
+    <div class="form-row">
       <div class="form-group"><label>Due date</label><input id="o-due" type="date"></div>
+      <div class="form-group"><label>&nbsp;</label>
+        <button class="btn" style="width:100%" onclick="markOrderFullyPaid()"><i class="ti ti-cash"></i> Mark fully paid</button>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Status</label>
@@ -1370,7 +1391,7 @@ tbody tr:hover td{background:var(--surface-1)}
         </select>
       </div>
       <div class="form-group"><label>Payment</label>
-        <select id="o-payment">
+        <select id="o-payment" disabled title="Set automatically from the amounts above">
           <option value="">Unpaid</option>
           <option value="Downpayment">Downpayment received</option>
           <option value="Paid">Fully paid</option>
@@ -1451,6 +1472,23 @@ tbody tr:hover td{background:var(--surface-1)}
   </div>
 </div>
 
+<div class="modal-overlay" id="day-modal" onclick="bgClose(event,'day-modal')">
+  <div class="modal" style="width:620px">
+    <div class="modal-title"><span>Day summary</span><button class="modal-close" onclick="closeModal('day-modal')"><i class="ti ti-x"></i></button></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date</label><input id="day-date" type="date" onchange="renderDaySummary()"></div>
+      <div class="form-group"><label>&nbsp;</label>
+        <button class="btn" style="width:100%" onclick="shiftDaySummary(-1)"><i class="ti ti-chevron-left"></i> Previous day</button>
+      </div>
+    </div>
+    <div id="day-content"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="printDaySummary()"><i class="ti ti-printer"></i> Print</button>
+      <button class="btn" onclick="closeModal('day-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1499,6 +1537,7 @@ async function loadAllData() {
     orders = (o || []).map(r => ({
       id: r.id, customerId: r.customer_id, jobtype: r.jobtype||'',
       size: r.size||'', qty: r.qty||1, amount: r.amount||0,
+      paidAmount: Number(r.paid_amount||0),
       payment: r.payment||'', status: r.status||'Pending',
       due: r.due||'', notes: r.notes||'', rush: r.rush||false,
       createdAt: r.created_at
@@ -1606,6 +1645,14 @@ function renderDash() {
   const paidOrdTotal  = orders.filter(o => o.payment === 'Paid' && !_linkedIds.has(o.id)).reduce((a, o) => a + Number(o.amount), 0);
   document.getElementById('m-revenue').textContent = '₱' + (paidInvTotal + paidOrdTotal).toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:2});
 
+  // Money still owed across open jobs — deposits taken, balance outstanding
+  const balanceDue = orders
+    .filter(o => o.status !== 'Cancelled')
+    .reduce((a, o) => a + Math.max(0, Number(o.amount) - Number(o.paidAmount||0)), 0);
+  document.getElementById('m-balance').textContent = '₱' + balanceDue.toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:2});
+
+  renderTodayCard();
+
   // Deadline alerts
   const alerts = orders.filter(o => o.status !== 'Done' && o.status !== 'Cancelled' && o.due).map(o => ({...o, days: daysUntil(o.due)})).filter(o => o.days !== null && o.days <= 1);
   const alertBox = document.getElementById('deadline-alerts');
@@ -1630,6 +1677,164 @@ function renderDash() {
     : '<tr><td colspan="4" class="empty">No unpaid invoices.</td></tr>';
 
   renderRevenueChart();
+}
+
+// ── End-of-day summary ────────────────────────────────────────────────────
+// Pulls together the day's finished work, money in, and material spend, so
+// there's a single record to check the cash drawer against.
+function openDaySummary() {
+  const d = new Date();
+  document.getElementById('day-date').value =
+    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+  document.getElementById('day-modal').classList.add('open');
+  renderDaySummary();
+}
+
+function shiftDaySummary(days) {
+  const el = document.getElementById('day-date');
+  const d = new Date(el.value || Date.now());
+  d.setDate(d.getDate() + days);
+  el.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+  renderDaySummary();
+}
+
+function _sameDay(iso, ymd) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+  return local === ymd;
+}
+
+const peso = n => '₱' + Number(n||0).toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:2});
+
+async function renderDaySummary() {
+  const ymd = document.getElementById('day-date').value;
+  const box = document.getElementById('day-content');
+  if (!ymd) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="empty">Working it out…</div>';
+
+  // Material costs and finished requests come straight from the database
+  let costs = [], reqs = [];
+  try { costs = await sbFetch('cost_log?order=logged_at.desc') || []; } catch(e) {}
+  try { reqs  = await sbFetch('requests?select=ref,jobtype,finished_at,started_at') || []; } catch(e) {}
+
+  const newOrders   = orders.filter(o => _sameDay(o.createdAt, ymd));
+  const paidInvs    = invoices.filter(i => i.status === 'Paid' && _sameDay(i.createdAt, ymd));
+  const dayCosts    = costs.filter(c => _sameDay(c.logged_at, ymd));
+  const dayFinished = reqs.filter(r => _sameDay(r.finished_at, ymd));
+
+  // Money in = deposits and payments recorded against orders raised today,
+  // plus any invoice settled today.
+  const orderCash = newOrders.reduce((a,o) => a + Number(o.paidAmount||0), 0);
+  const invCash   = paidInvs.reduce((a,i) => a + Number(i.amount), 0);
+  const cashIn    = orderCash + invCash;
+  const costOut   = dayCosts.reduce((a,c) => a + Number(c.amount||0), 0);
+  const booked    = newOrders.reduce((a,o) => a + Number(o.amount||0), 0);
+  const stillDue  = newOrders.reduce((a,o) => a + Math.max(0, Number(o.amount) - Number(o.paidAmount||0)), 0);
+
+  // Breakdown by job type, busiest first
+  const byType = {};
+  newOrders.forEach(o => {
+    const k = o.jobtype || 'Other';
+    byType[k] = byType[k] || {count:0, value:0};
+    byType[k].count++; byType[k].value += Number(o.amount||0);
+  });
+  const typeRows = Object.entries(byType).sort((a,b) => b[1].value - a[1].value);
+
+  const metric = (label, value, colour) => `
+    <div class="metric" style="flex:1;min-width:120px">
+      <div class="metric-label">${label}</div>
+      <div class="metric-value ${colour}" style="font-size:20px">${value}</div>
+    </div>`;
+
+  box.innerHTML = `
+    <div id="day-print-area">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">
+        ${new Date(ymd + 'T00:00:00').toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        ${metric('Cash in', peso(cashIn), 'success')}
+        ${metric('Material cost', peso(costOut), 'danger')}
+        ${metric('Net', peso(cashIn - costOut), (cashIn - costOut) >= 0 ? 'success' : 'danger')}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        ${metric('New orders', newOrders.length, 'accent')}
+        ${metric('Jobs finished', dayFinished.length, 'accent')}
+        ${metric('Booked value', peso(booked), '')}
+        ${metric('Still owed', peso(stillDue), 'warning')}
+      </div>
+
+      ${typeRows.length ? `<div class="card-title" style="margin-top:4px">By job type</div>
+      <table><thead><tr><th>Job type</th><th>Orders</th><th>Value</th></tr></thead><tbody>
+        ${typeRows.map(([k,v]) => `<tr><td>${k}</td><td>${v.count}</td><td>${peso(v.value)}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="empty">No orders raised on this date.</div>'}
+
+      ${dayCosts.length ? `<div class="card-title" style="margin-top:14px">Material costs logged</div>
+      <table><thead><tr><th>Ref</th><th>Note</th><th>Amount</th></tr></thead><tbody>
+        ${dayCosts.map(c => `<tr><td>${c.ref||'—'}</td><td>${c.note||'—'}</td><td>${peso(c.amount)}</td></tr>`).join('')}
+      </tbody></table>` : ''}
+    </div>`;
+}
+
+function printDaySummary() {
+  const html = document.getElementById('day-print-area');
+  if (!html) return;
+  const w = window.open('', '_blank', 'width=800,height=900');
+  w.document.write(`<html><head><title>Day summary</title>
+    <style>body{font-family:-apple-system,Segoe UI,sans-serif;padding:24px;color:#111}
+    table{width:100%;border-collapse:collapse;margin-bottom:14px}
+    th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;font-size:13px}
+    th{color:#666;font-weight:600;font-size:11px;text-transform:uppercase}
+    .metric{display:inline-block;border:1px solid #ddd;border-radius:8px;padding:8px 14px;margin:0 6px 8px 0}
+    .metric-label{font-size:10px;color:#666;text-transform:uppercase}
+    .metric-value{font-size:18px;font-weight:700}
+    .card-title{font-size:13px;font-weight:700;margin:14px 0 6px}
+    .empty{color:#888;font-size:13px;padding:8px 0}</style></head>
+    <body><h2 style="margin:0 0 4px">Arroyo Print Shop — Day summary</h2>
+    ${html.innerHTML}</body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 350);
+}
+
+// ── Today at a glance ─────────────────────────────────────────────────────
+// The first thing worth knowing each morning: what's promised today, what's
+// already late, and what's waiting to be collected.
+function renderTodayCard() {
+  const box = document.getElementById('today-card');
+  if (!box) return;
+
+  const open = orders.filter(o => o.status !== 'Done' && o.status !== 'Cancelled');
+  const withDays = open.map(o => ({...o, days: daysUntil(o.due)})).filter(o => o.days !== null);
+  const overdue  = withDays.filter(o => o.days < 0);
+  const today    = withDays.filter(o => o.days === 0);
+  const tomorrow = withDays.filter(o => o.days === 1);
+  const toCollect = orders.filter(o => o.status === 'Done' &&
+                      Number(o.amount) - Number(o.paidAmount||0) > 0.001);
+
+  const tile = (label, count, colour, filter, sub) => `
+    <div onclick="nav('orders');setDueFilter('${filter}')" style="flex:1;min-width:130px;cursor:pointer;
+         background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid ${colour};
+         border-radius:10px;padding:12px 14px" title="Show these orders">
+      <div style="font-size:11px;color:var(--text-secondary);font-weight:500">${label}</div>
+      <div style="font-size:22px;font-weight:700;color:${colour};line-height:1.2">${count}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--text-muted)">${sub}</div>` : ''}
+    </div>`;
+
+  if (!overdue.length && !today.length && !tomorrow.length && !toCollect.length) {
+    box.innerHTML = `<div style="background:var(--success-bg);color:var(--success);border-radius:10px;
+      padding:11px 14px;margin-bottom:1.25rem;font-size:13px;font-weight:500">
+      <i class="ti ti-check"></i> Nothing due today and nothing waiting to be collected.</div>`;
+    return;
+  }
+
+  const collectTotal = toCollect.reduce((a,o) => a + (Number(o.amount) - Number(o.paidAmount||0)), 0);
+  box.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem">
+    ${overdue.length  ? tile('Overdue',      overdue.length,  'var(--danger)',  'overdue') : ''}
+    ${tile('Due today', today.length, today.length ? 'var(--warning)' : 'var(--text-muted)', 'today')}
+    ${tomorrow.length ? tile('Due tomorrow', tomorrow.length, 'var(--accent)',  'tomorrow') : ''}
+    ${toCollect.length ? tile('Ready to collect', toCollect.length, 'var(--success)', 'balance',
+        '₱' + collectTotal.toLocaleString() + ' to collect') : ''}
+  </div>`;
 }
 
 function renderRevenueChart() {
@@ -1681,12 +1886,55 @@ let _ordersPage = 1;
 
 function setOrdersPage(n) { _ordersPage = n; renderOrders(); }
 
+// Deadline / money filters, driven by the dashboard tiles as well as the chips
+let _dueFilter = '';
+
+function setDueFilter(f) {
+  _dueFilter = (_dueFilter === f) ? '' : f;   // clicking the active chip clears it
+  _ordersPage = 1;
+  renderOrders();
+}
+
+function renderDueChips() {
+  const box = document.getElementById('due-chips');
+  if (!box) return;
+  const chips = [
+    ['overdue',  'Overdue',          'var(--danger)'],
+    ['today',    'Due today',        'var(--warning)'],
+    ['tomorrow', 'Due tomorrow',     'var(--accent)'],
+    ['balance',  'Money owed',       'var(--success)'],
+  ];
+  box.innerHTML = chips.map(([key, label, colour]) => {
+    const on = _dueFilter === key;
+    return `<button class="btn btn-sm" onclick="setDueFilter('${key}')" style="width:auto;padding:5px 11px;font-size:12px;
+      ${on ? `background:${colour};color:#fff;border-color:${colour}` : `color:${colour};border-color:${colour}`}">
+      ${on ? '<i class="ti ti-x"></i> ' : ''}${label}</button>`;
+  }).join('');
+}
+
 function renderOrders() {
   const search = (document.getElementById('order-search')?.value || '').toLowerCase();
   const filter = document.getElementById('order-filter')?.value || '';
   let filtered = [...orders].reverse();
   if (search) filtered = filtered.filter(o => custName(o.customerId).toLowerCase().includes(search) || o.jobtype.toLowerCase().includes(search) || (o.notes||'').toLowerCase().includes(search) || (o.size||'').toLowerCase().includes(search));
   if (filter) filtered = filtered.filter(o => o.status === filter);
+
+  if (_dueFilter === 'balance') {
+    filtered = filtered.filter(o => o.status !== 'Cancelled' &&
+                 Number(o.amount) - Number(o.paidAmount||0) > 0.001);
+  } else if (_dueFilter) {
+    filtered = filtered.filter(o => {
+      if (o.status === 'Done' || o.status === 'Cancelled') return false;
+      const d = daysUntil(o.due);
+      if (d === null) return false;
+      if (_dueFilter === 'overdue')  return d < 0;
+      if (_dueFilter === 'today')    return d === 0;
+      if (_dueFilter === 'tomorrow') return d === 1;
+      return true;
+    });
+  }
+  renderDueChips();
+
   const tbody = document.getElementById('orders-table');
   const empty = document.getElementById('orders-empty');
   renderOrdersPager(0, 0, 0);
@@ -1706,10 +1954,11 @@ function renderOrders() {
     const rowClass = (days !== null && o.status !== 'Done' && o.status !== 'Cancelled') ? (days <= 0 ? 'alert-today' : days === 1 ? 'alert-soon' : '') : '';
     const rushBadge = o.rush ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef9ed;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">⚡</span>' : '';
     const sizeQty = [o.size ? o.size : null, o.qty ? 'Qty '+o.qty : null].filter(Boolean).join(' · ') || '—';
+    const bal = Math.max(0, Math.round((Number(o.amount) - Number(o.paidAmount||0)) * 100) / 100);
     const payBadge = o.payment === 'Paid'
       ? `<span style="font-size:11px;font-weight:600;color:var(--success);background:var(--success-bg);padding:2px 7px;border-radius:20px">✓ Paid</span>`
       : o.payment === 'Downpayment'
-      ? `<span style="font-size:11px;font-weight:600;color:var(--warning);background:var(--warning-bg);padding:2px 7px;border-radius:20px">↓ DP</span>`
+      ? `<span style="font-size:11px;font-weight:600;color:var(--warning);background:var(--warning-bg);padding:2px 7px;border-radius:20px" title="Deposit received">↓ ₱${Number(o.paidAmount||0).toLocaleString()}</span>`
       : `<span style="font-size:11px;color:var(--text-muted)">Unpaid</span>`;
     return `<tr class="row-expandable ${rowClass}" onclick="toggleNotes('notes-${o.id}')">
       <td style="color:var(--text-muted);font-size:12px"><i class="ti ti-chevron-down"></i></td>
@@ -1719,10 +1968,11 @@ function renderOrders() {
       <td style="font-size:12px;max-width:160px">${sizeQty}</td>
       <td>${o.due || '—'}</td>
       <td>${statusBadge(o.status)}</td>
-      <td>₱${Number(o.amount).toLocaleString()}</td>
+      <td>₱${Number(o.amount).toLocaleString()}${bal > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${bal.toLocaleString()} due</div>` : ''}</td>
       <td>${payBadge}</td>
       <td onclick="event.stopPropagation()"><div class="actions">
         <button class="btn btn-sm" onclick="editOrder(${o.id})" title="Edit order" aria-label="Edit order ${String(o.id).padStart(4,'0')}"><i class="ti ti-edit" aria-hidden="true"></i></button>
+        <button class="btn btn-sm" onclick="repeatOrder(${o.id})" title="Repeat this order" aria-label="Repeat order ${String(o.id).padStart(4,'0')}"><i class="ti ti-copy" aria-hidden="true"></i></button>
         <button class="btn btn-sm btn-success" onclick="editThenTicket(${o.id})" title="Print job ticket" aria-label="Print job ticket for order ${String(o.id).padStart(4,'0')}"><i class="ti ti-printer" aria-hidden="true"></i></button>
         <button class="btn btn-sm btn-danger" onclick="deleteOrder(${o.id})" title="Delete order" aria-label="Delete order ${String(o.id).padStart(4,'0')}"><i class="ti ti-trash" aria-hidden="true"></i></button>
       </div></td>
@@ -1779,6 +2029,43 @@ function toggleNotes(id) {
   if (row) row.style.display = row.style.display === 'table-row' ? 'none' : 'table-row';
 }
 
+// Payment state is worked out from the numbers rather than set by hand, so the
+// badge on the orders table can never disagree with the money recorded.
+function paymentStateFor(total, paid) {
+  if (paid <= 0) return '';
+  return (paid + 0.001 >= total) ? 'Paid' : 'Downpayment';
+}
+
+function updateBalanceHint() {
+  const total = Number(document.getElementById('o-amount').value) || 0;
+  const paid  = Number(document.getElementById('o-paid').value) || 0;
+  const bal   = Math.round((total - paid) * 100) / 100;
+  const hint  = document.getElementById('o-balance-hint');
+  const sel   = document.getElementById('o-payment');
+  if (sel) sel.value = paymentStateFor(total, paid);
+
+  if (!total && !paid) { hint.style.display = 'none'; return; }
+  hint.style.display = 'block';
+  if (bal > 0) {
+    hint.style.background = 'var(--warning-bg)';
+    hint.style.color = 'var(--warning)';
+    hint.innerHTML = `<i class="ti ti-wallet"></i> Balance due on pickup: <strong>₱${bal.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>`;
+  } else if (bal < 0) {
+    hint.style.background = 'var(--danger-bg)';
+    hint.style.color = 'var(--danger)';
+    hint.innerHTML = `<i class="ti ti-alert-triangle"></i> Paid ₱${Math.abs(bal).toLocaleString('en-PH',{minimumFractionDigits:2})} more than the total — check the figures.`;
+  } else {
+    hint.style.background = 'var(--success-bg)';
+    hint.style.color = 'var(--success)';
+    hint.innerHTML = '<i class="ti ti-check"></i> Fully paid — nothing due on pickup.';
+  }
+}
+
+function markOrderFullyPaid() {
+  document.getElementById('o-paid').value = document.getElementById('o-amount').value || 0;
+  updateBalanceHint();
+}
+
 function openOrderModal(id) {
   editOrderId = id || null;
   const o = id ? orders.find(x => x.id === id) : null;
@@ -1791,7 +2078,8 @@ function openOrderModal(id) {
   document.getElementById('o-due').value = o ? o.due : '';
   document.getElementById('o-notes').value = o ? o.notes : '';
   document.getElementById('o-status').value = o ? o.status : 'Pending';
-  document.getElementById('o-payment').value = o ? (o.payment||'') : '';
+  document.getElementById('o-paid').value = o ? (o.paidAmount || 0) : 0;
+  updateBalanceHint();
   // Rush badge
   const rushBadge = document.getElementById('o-rush-badge');
   if (rushBadge) rushBadge.style.display = (o && o.rush) ? 'block' : 'none';
@@ -1818,10 +2106,12 @@ async function saveOrder() {
     size:     document.getElementById('o-size').value,
     qty:      Number(document.getElementById('o-qty').value) || 1,
     amount:   Number(document.getElementById('o-amount').value) || 0,
+    paid_amount: Number(document.getElementById('o-paid').value) || 0,
     due:      document.getElementById('o-due').value || null,
     notes:    document.getElementById('o-notes').value,
     status:   document.getElementById('o-status').value,
-    payment:  document.getElementById('o-payment').value,
+    payment:  paymentStateFor(Number(document.getElementById('o-amount').value) || 0,
+                             Number(document.getElementById('o-paid').value) || 0),
     rush:     existing ? existing.rush : false,
   };
   try {
@@ -1846,6 +2136,27 @@ async function saveOrder() {
 }
 
 function editOrder(id) { openOrderModal(id); }
+
+// Regulars reorder the same job — copy the specs onto a fresh order and leave
+// the money and dates blank, since those are what change.
+function repeatOrder(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) { toast('⚠️ Order not found.'); return; }
+  openOrderModal();                       // fresh order, no editOrderId
+  populateCustSelect('o-customer', o.customerId);
+  document.getElementById('o-jobtype').value = o.jobtype;
+  document.getElementById('o-size').value    = o.size || '';
+  document.getElementById('o-qty').value     = o.qty || 1;
+  document.getElementById('o-amount').value  = o.amount || 0;
+  document.getElementById('o-paid').value    = 0;
+  document.getElementById('o-notes').value   = o.notes || '';
+  document.getElementById('o-status').value  = 'Pending';
+  document.getElementById('o-due').value     = '';
+  updateBalanceHint();
+  document.getElementById('order-modal-title').textContent =
+    'Repeat order — #' + String(o.id).padStart(4,'0');
+  toast('Copied. Set the due date, then save.');
+}
 function editThenTicket(id) { openOrderModal(id); setTimeout(()=>{ printJobTicket(); }, 300); }
 async function deleteOrder(id) {
   try {
@@ -1860,17 +2171,54 @@ async function deleteOrder(id) {
 // Customers
 function renderCustomers() {
   const search = (document.getElementById('cust-search')?.value || '').toLowerCase();
-  let filtered = customers.filter(c => !search || c.name.toLowerCase().includes(search) || (c.phone||'').includes(search) || (c.email||'').toLowerCase().includes(search));
+  const sort   = document.getElementById('cust-sort')?.value || 'name';
+
+  // Work out each customer's worth once, then sort on it
+  const rows = customers
+    .filter(c => !search || c.name.toLowerCase().includes(search) ||
+                 (c.phone||'').includes(search) || (c.email||'').toLowerCase().includes(search))
+    .map(c => {
+      const co = orders.filter(o => o.customerId === c.id && o.status !== 'Cancelled');
+      const spent  = co.reduce((a,o) => a + Number(o.paidAmount || 0), 0);
+      const billed = co.reduce((a,o) => a + Number(o.amount || 0), 0);
+      const owed   = Math.max(0, billed - spent);
+      const dates  = co.map(o => o.createdAt).filter(Boolean).sort();
+      return {...c, count: co.length, spent, owed, last: dates.length ? dates[dates.length-1] : null};
+    });
+
+  rows.sort((a,b) => {
+    if (sort === 'spent')  return b.spent - a.spent;
+    if (sort === 'orders') return b.count - a.count;
+    if (sort === 'recent') return (b.last || '').localeCompare(a.last || '');
+    return a.name.localeCompare(b.name);
+  });
+
   const tbody = document.getElementById('cust-table');
   const empty = document.getElementById('cust-empty');
-  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (!rows.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = filtered.map(c => {
-    const custOrders = orders.filter(o => o.customerId === c.id);
-    const totalSpent = custOrders.reduce((a, o) => a + Number(o.amount), 0);
+
+  const now = Date.now();
+  tbody.innerHTML = rows.map(c => {
+    // Three or more orders is a regular worth recognising at the counter
+    const regular = c.count >= 3
+      ? '<span style="font-size:10px;font-weight:700;color:var(--success);background:var(--success-bg);border-radius:4px;padding:1px 5px;margin-left:5px">REGULAR</span>' : '';
+    let lastTxt = '<span style="color:var(--text-muted)">never</span>';
+    if (c.last) {
+      const days = Math.floor((now - new Date(c.last).getTime()) / 864e5);
+      const stale = days > 90;
+      lastTxt = `<span style="${stale ? 'color:var(--text-muted)' : ''}">${
+        days === 0 ? 'today' : days === 1 ? 'yesterday' :
+        days < 30 ? days + ' days ago' :
+        days < 365 ? Math.round(days/30) + ' months ago' : Math.round(days/365) + 'y ago'}</span>`;
+    }
     return `<tr>
-      <td><strong>${c.name}</strong></td><td>${c.phone||'—'}</td><td>${c.email||'—'}</td><td>${c.address||'—'}</td>
-      <td>${custOrders.length}</td><td>₱${totalSpent.toLocaleString()}</td>
+      <td><strong>${c.name}</strong>${regular}</td>
+      <td>${c.phone||'—'}</td>
+      <td>${c.email||'—'}</td>
+      <td>${c.count}</td>
+      <td>₱${c.spent.toLocaleString()}${c.owed > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${c.owed.toLocaleString()} owed</div>` : ''}</td>
+      <td style="font-size:12px">${lastTxt}</td>
       <td><div class="actions">
         <button class="btn btn-sm" onclick="showHistory(${c.id})"><i class="ti ti-history"></i> History</button>
         <button title="Delete customer" aria-label="Delete customer" class="btn btn-sm btn-danger" onclick="deleteCust(${c.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -1882,15 +2230,19 @@ function renderCustomers() {
 function showHistory(custId) {
   const c = customers.find(x => x.id === custId);
   const custOrders = orders.filter(o => o.customerId === custId).reverse();
-  const totalSpent = custOrders.reduce((a, o) => a + Number(o.amount), 0);
+  const active = custOrders.filter(o => o.status !== 'Cancelled');
+  const totalSpent = active.reduce((a, o) => a + Number(o.paidAmount || 0), 0);
+  const totalOwed  = active.reduce((a, o) => a + Math.max(0, Number(o.amount) - Number(o.paidAmount||0)), 0);
   document.getElementById('hist-title').textContent = c.name + ' — Order history';
   document.getElementById('hist-content').innerHTML = `
     <div style="display:flex;gap:12px;margin-bottom:1rem">
       <div class="metric" style="flex:1"><div class="metric-label">Total orders</div><div class="metric-value accent">${custOrders.length}</div></div>
-      <div class="metric" style="flex:1"><div class="metric-label">Total spent</div><div class="metric-value success">₱${totalSpent.toLocaleString()}</div></div>
+      <div class="metric" style="flex:1"><div class="metric-label">Total paid</div><div class="metric-value success">₱${totalSpent.toLocaleString()}</div></div>
+      <div class="metric" style="flex:1"><div class="metric-label">Still owed</div><div class="metric-value ${totalOwed > 0 ? 'warning' : ''}">₱${totalOwed.toLocaleString()}</div></div>
     </div>
     ${custOrders.length ? `<table><thead><tr><th>Order #</th><th>Job type</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead><tbody>
-    ${custOrders.map(o => `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${o.jobtype}</td><td>₱${Number(o.amount).toLocaleString()}</td><td>${o.due||'—'}</td><td>${statusBadge(o.status)}</td></tr>`).join('')}
+    ${custOrders.map(o => { const b = Math.max(0, Number(o.amount) - Number(o.paidAmount||0));
+      return `<tr><td>#${String(o.id).padStart(4,'0')}</td><td>${o.jobtype}</td><td>₱${Number(o.amount).toLocaleString()}${b > 0 ? `<div style="font-size:11px;color:var(--warning)">₱${b.toLocaleString()} due</div>` : ''}</td><td>${o.due||'—'}</td><td>${statusBadge(o.status)}</td></tr>`; }).join('')}
     </tbody></table>` : '<div class="empty">No orders yet for this customer.</div>'}`;
   document.getElementById('hist-modal').classList.add('open');
 }
@@ -2203,7 +2555,8 @@ function printJobTicket() {
   const due      = document.getElementById('o-due').value || '—';
   const notes    = document.getElementById('o-notes').value || '';
   const status   = document.getElementById('o-status').value;
-  const payment  = document.getElementById('o-payment').value || 'Unpaid';
+  const paid     = Number(document.getElementById('o-paid').value) || 0;
+  const balance  = Math.max(0, Math.round((Number(amount) - paid) * 100) / 100);
   const rush     = document.getElementById('o-rush-badge').style.display !== 'none';
   const now      = new Date().toLocaleString('en-PH');
   const fileNameEl = document.getElementById('o-file-name');
@@ -2225,8 +2578,11 @@ function printJobTicket() {
       fname ? ['File', fname] : null,
       notes ? ['Notes', notes] : null,
       '---',
-      ['Amount',  '₱' + Number(amount).toLocaleString('en-PH', {minimumFractionDigits:2})],
-      ['Payment', payment],
+      ['Total',  '₱' + Number(amount).toLocaleString('en-PH', {minimumFractionDigits:2})],
+      paid > 0 ? ['Paid', '₱' + paid.toLocaleString('en-PH', {minimumFractionDigits:2})] : null,
+      ['Balance due', balance > 0
+        ? '<strong style="font-size:15px">₱' + balance.toLocaleString('en-PH', {minimumFractionDigits:2}) + '</strong>'
+        : 'None — fully paid'],
     ],
     status
   });
