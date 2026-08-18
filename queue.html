@@ -1,385 +1,409 @@
 <!DOCTYPE html>
-<html lang="en" style="background:#f0eeea"><style>@media(prefers-color-scheme:dark){html{background:#1a1a18}}</style>
+<html lang="en" style="background:#101014">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Order Queue — Arroyo Print Shop</title>
+<title>Now Serving — Arroyo Print Shop</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --accent:#1a6ef5;--accent-bg:#eaf0fe;--accent-text:#1a4db5;
-    --success:#18794e;--success-bg:#e8f5ee;
-    --warning:#9e6a00;--warning-bg:#fef5e0;
-    --danger:#c02b2b;--danger-bg:#fdeaea;
-    --surface-0:#f0eeea;--surface-1:#f8f7f5;--surface-2:#ffffff;
-    --text-primary:#1a1a18;--text-secondary:#6b6b67;--text-muted:#9e9e9a;
-    --border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.18);
-    --radius:8px;
+    --board:#101014;        /* call-board black */
+    --panel:#191920;
+    --panel-2:#22222c;
+    --line:rgba(255,255,255,.08);
+    --line-strong:rgba(255,255,255,.16);
+    --ink:#f4f4f6;
+    --ink-dim:#9a9aa6;
+    --ink-faint:#63636e;
+    --serving:#ffc233;      /* amber — the number being called */
+    --ready:#3ddc91;        /* green — claim it */
+    --waiting:#7aa2f7;      /* blue — still in line */
+    --alert:#ff6b6b;
   }
-  @media(prefers-color-scheme:dark){
-    :root{
-      --surface-0:#1a1a18;--surface-1:#222220;--surface-2:#2c2c29;
-      --text-primary:#f0eeea;--text-secondary:#a0a09c;--text-muted:#686864;
-      --border:rgba(255,255,255,0.1);--border-strong:rgba(255,255,255,0.18);
-      --accent:#4d8ef7;--accent-bg:#1a2a4a;--accent-text:#7aadfa;
-      --success:#4caf82;--success-bg:#0d2e1e;
-      --warning:#f0b429;--warning-bg:#2e2200;
-      --danger:#f07070;--danger-bg:#2e0d0d;
-    }
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--board);color:var(--ink);
+    display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface-0);color:var(--text-primary);min-height:100vh;-webkit-text-size-adjust:100%}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-weight:700}
 
-  .header{background:var(--surface-2);border-bottom:0.5px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:10}
-  .header-logo{font-size:15px;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:8px}
-  .header-actions{display:flex;align-items:center;gap:8px}
-  .icon-btn{width:34px;height:34px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface-1);color:var(--text-secondary);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:inherit}
-  .icon-btn:hover{background:var(--surface-0);color:var(--text-primary)}
-  .icon-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-text)}
+  /* ── top bar ─────────────────────────────────────────────────────────── */
+  .bar{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:14px 22px;border-bottom:1px solid var(--line);flex:none;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:.02em}
+  .brand i{color:var(--serving);font-size:19px}
+  .brand small{color:var(--ink-faint);font-weight:400;letter-spacing:.08em;text-transform:uppercase;font-size:11px;margin-left:4px}
+  .bar-right{display:flex;align-items:center;gap:9px}
+  .clock{font-size:15px;color:var(--ink-dim);font-weight:600;min-width:78px;text-align:right}
 
-  .container{max-width:1200px;margin:0 auto;padding:1.5rem 1rem 3rem}
-  @media(min-width:600px){.container{padding:2rem 1.5rem 4rem}}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.06em;
+        text-transform:uppercase;padding:6px 11px;border-radius:99px;border:1px solid var(--line-strong);color:var(--ink-dim)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+  .pill.on{color:var(--ready);border-color:rgba(61,220,145,.35)}
+  .pill.on .dot{background:var(--ready);animation:beat 2s ease-in-out infinite}
+  .pill.warn{color:var(--serving);border-color:rgba(255,194,51,.35)}
+  .pill.warn .dot{background:var(--serving)}
+  .pill.off{color:var(--alert);border-color:rgba(255,107,107,.35)}
+  .pill.off .dot{background:var(--alert)}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.35}}
 
-  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
-  .hero h1{font-size:22px;font-weight:600;letter-spacing:-0.5px}
-  .hero p{font-size:13px;color:var(--text-secondary);margin-top:5px}
+  .ib{width:36px;height:36px;border-radius:9px;border:1px solid var(--line-strong);background:var(--panel);
+      color:var(--ink-dim);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .ib:hover{background:var(--panel-2);color:var(--ink)}
+  .ib.on{background:rgba(255,194,51,.14);border-color:var(--serving);color:var(--serving)}
+  .ib:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--serving);outline-offset:2px}
 
-  .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:500;padding:6px 11px;border-radius:99px;border:0.5px solid var(--border);background:var(--surface-2);color:var(--text-secondary);white-space:nowrap}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex:none}
-  .live.on .dot{background:var(--success);animation:pulse 2s ease-in-out infinite}
-  .live.warn .dot{background:var(--warning)}
-  .live.off .dot{background:var(--danger)}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
-  @media(prefers-reduced-motion:reduce){.live.on .dot{animation:none}}
+  /* ── main split ──────────────────────────────────────────────────────── */
+  .stage{flex:1;display:grid;grid-template-columns:1.45fr 1fr;gap:1px;background:var(--line);min-height:0}
+  @media(max-width:860px){.stage{grid-template-columns:1fr;grid-template-rows:auto auto}}
 
-  .lookup{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
-  .lookup input{flex:1;min-width:200px;padding:11px 13px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none}
-  .lookup input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
-  .lookup button{padding:11px 18px;border-radius:var(--radius);border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
-  .lookup button.ghost{background:var(--surface-2);border:0.5px solid var(--border-strong);color:var(--text-secondary)}
+  .left{background:var(--board);display:flex;flex-direction:column;min-height:0}
+  .right{background:var(--board);display:grid;grid-template-rows:1fr 1fr;gap:1px;min-height:0}
 
-  .mine{display:none;background:var(--accent-bg);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:1.5rem}
-  .mine h3{font-size:14px;font-weight:600;color:var(--accent-text);margin-bottom:4px;display:flex;align-items:center;gap:7px}
-  .mine p{font-size:13px;color:var(--accent-text);line-height:1.6}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
 
-  .board{display:grid;gap:1rem;grid-template-columns:1fr}
-  @media(min-width:800px){.board{grid-template-columns:repeat(3,1fr)}}
+  /* now serving */
+  .serving{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+           padding:2rem 1.5rem;text-align:center;min-height:0;gap:6px}
+  .serving .eyebrow{color:var(--serving);opacity:.75}
+  .serving-num{
+    font-size:clamp(56px,13vw,168px);line-height:.94;color:var(--serving);
+    text-shadow:0 0 60px rgba(255,194,51,.22);
+  }
+  .serving-who{font-size:clamp(14px,2vw,22px);color:var(--ink-dim);font-weight:500}
+  .serving-none{font-size:clamp(20px,3.4vw,38px);color:var(--ink-faint);font-weight:600;line-height:1.3;letter-spacing:0}
+  .flash{animation:flash 1.1s ease-out 3}
+  @keyframes flash{0%,100%{opacity:1}50%{opacity:.25}}
+  @media(prefers-reduced-motion:reduce){.flash{animation:none}.pill.on .dot{animation:none}}
 
-  .col{background:var(--surface-2);border:0.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-  .col-head{padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .col-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
-  .col-count{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--surface-0);color:var(--text-secondary);min-width:26px;text-align:center}
-  .col-body{padding:12px;display:flex;flex-direction:column;gap:8px;min-height:110px}
-  .col-rule{height:3px}
-  .col.ready .col-rule{background:var(--success)}
-  .col.prog  .col-rule{background:var(--accent)}
-  .col.wait  .col-rule{background:var(--warning)}
-  .col.ready .col-count{background:var(--success-bg);color:var(--success)}
-  .col.prog  .col-count{background:var(--accent-bg);color:var(--accent-text)}
-  .col.wait  .col-count{background:var(--warning-bg);color:var(--warning)}
+  .also{border-top:1px solid var(--line);padding:14px 22px;flex:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-height:58px}
+  .chip{font-size:clamp(15px,1.8vw,22px);font-weight:700;color:var(--ink);background:var(--panel);
+        border:1px solid var(--line-strong);border-radius:8px;padding:5px 12px}
 
-  .job{background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:11px;transition:box-shadow .15s,border-color .15s}
-  .job.hit{border:1.5px solid var(--accent);background:var(--accent-bg);box-shadow:0 0 0 3px var(--accent-bg)}
-  .job-pos{font-size:11px;font-weight:600;color:var(--text-muted);width:20px;flex:none;text-align:center;font-variant-numeric:tabular-nums}
-  .job-main{flex:1;min-width:0}
-  .job-ref{font-size:14px;font-weight:600;letter-spacing:-0.2px;font-variant-numeric:tabular-nums}
-  .job-meta{font-size:12px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .job-side{font-size:11px;color:var(--text-muted);flex:none;text-align:right;line-height:1.5}
-  .rush{color:var(--warning);font-weight:600}
+  /* right-hand lists */
+  .list{padding:16px 20px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .list-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex:none}
+  .list-count{font-size:20px;font-weight:700;color:var(--ink)}
+  .list-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;min-height:0;scrollbar-width:thin}
+  .list-body::-webkit-scrollbar{width:6px}
+  .list-body::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:3px}
 
-  .empty{font-size:12px;color:var(--text-muted);text-align:center;padding:1.5rem 0.5rem;line-height:1.6}
-  .skel{height:44px;border-radius:10px;background:var(--surface-1);animation:sk 1.4s ease-in-out infinite}
-  @keyframes sk{0%,100%{opacity:.5}50%{opacity:.9}}
+  .row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:9px;background:var(--panel);border:1px solid transparent}
+  .row.hit{border-color:var(--serving);background:rgba(255,194,51,.1)}
+  .row-pos{font-size:12px;font-weight:700;color:var(--ink-faint);width:20px;text-align:center;flex:none}
+  .row-ref{font-size:clamp(16px,1.7vw,21px);font-weight:700;flex:none}
+  .row-meta{font-size:12px;color:var(--ink-faint);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row-tag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--serving);flex:none}
+  .row-tag.recall{color:var(--alert)}
+  .row.recalled{border-color:rgba(255,107,107,.3)}
+  .list-body.ready .row-ref{color:var(--ready)}
+  .list-body.wait  .row-pos{color:var(--waiting)}
+  .list.ready .list-count{color:var(--ready)}
+  .list.wait  .list-count{color:var(--waiting)}
+  .none{font-size:13px;color:var(--ink-faint);padding:1rem 0;text-align:center;line-height:1.6}
+  .skel{height:38px;border-radius:9px;background:var(--panel);animation:sk 1.4s ease-in-out infinite;flex:none}
+  @keyframes sk{0%,100%{opacity:.45}50%{opacity:.85}}
 
-  .notice{display:none;background:var(--danger-bg);border:1px solid var(--danger);border-radius:12px;padding:14px 16px;margin-bottom:1.25rem}
-  .notice h3{font-size:14px;font-weight:600;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:7px}
-  .notice p{font-size:13px;color:var(--text-secondary);line-height:1.65}
-  .notice code{background:var(--surface-2);border:0.5px solid var(--border);padding:1px 5px;border-radius:4px;font-size:12px}
+  /* ── your-turn strip (hidden on the wall display) ────────────────────── */
+  .mine{flex:none;border-top:1px solid var(--line);background:var(--panel);padding:14px 22px;
+        display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .mine input{flex:1;min-width:190px;padding:11px 13px;border-radius:9px;border:1px solid var(--line-strong);
+              background:var(--board);color:var(--ink);font-size:15px;font-family:inherit;outline:none}
+  .mine input::placeholder{color:var(--ink-faint)}
+  .mine button{padding:11px 18px;border-radius:9px;border:none;background:var(--serving);color:#241c00;
+               font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .mine button.ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-dim);font-weight:500}
+  .verdict{flex:1 1 100%;font-size:15px;line-height:1.55;color:var(--ink-dim);display:none}
+  .verdict b{color:var(--ink);font-weight:700}
+  .verdict .big{font-size:26px;font-weight:700;color:var(--serving);vertical-align:-2px}
 
-  .foot{margin-top:1.75rem;font-size:12px;color:var(--text-muted);text-align:center;line-height:1.7}
-  .foot a{color:var(--accent-text)}
+  .fault{display:none;flex:none;background:rgba(255,107,107,.1);border-top:1px solid rgba(255,107,107,.35);
+         padding:13px 22px;font-size:13px;line-height:1.6;color:#ffb3b3}
+  .fault b{color:#fff}
+  .fault code{background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px;font-size:12px}
 
-  /* Board mode — for the shop's wall display */
-  body.tv .container{max-width:none;padding:1.5rem 2rem}
-  body.tv .hero h1{font-size:34px}
-  body.tv .lookup,body.tv .foot,body.tv .hero p{display:none}
-  body.tv .col-title{font-size:20px}
-  body.tv .col-count{font-size:18px;padding:4px 13px}
-  body.tv .job-ref{font-size:24px}
-  body.tv .job-meta{font-size:16px}
-  body.tv .job-side{font-size:14px}
-  body.tv .job-pos{font-size:15px;width:28px}
+  /* ── fullscreen / kiosk ──────────────────────────────────────────────── */
+  body.kiosk .mine{display:none}
+  body.kiosk .bar{padding:16px 32px}
+  body.kiosk .brand{font-size:19px}
+  body.kiosk .clock{font-size:19px}
+  body.kiosk .list{padding:20px 26px}
+  body.kiosk .also{padding:16px 32px}
+  body.kiosk.idle{cursor:none}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-logo"><i class="ti ti-printer" style="color:var(--accent)"></i> Arroyo Print Shop <span style="color:var(--text-secondary);font-weight:400;font-size:12px">Order queue</span></div>
-  <div class="header-actions">
-    <button class="icon-btn" id="btn-sound" onclick="toggleSound()" title="Chime when your order is ready"><i class="ti ti-bell-off"></i></button>
-    <button class="icon-btn" id="btn-tv" onclick="toggleTv()" title="Board mode for wall display"><i class="ti ti-device-tv"></i></button>
-    <button class="icon-btn" onclick="load(true)" title="Refresh now"><i class="ti ti-refresh"></i></button>
+<div class="bar">
+  <div class="brand">
+    <i class="ti ti-printer"></i> Arroyo Print Shop <small>Now serving</small>
+  </div>
+  <div class="bar-right">
+    <div class="pill" id="pill"><span class="dot"></span><span id="pill-text">Connecting</span></div>
+    <div class="clock" id="clock">--:--</div>
+    <button class="ib" id="btn-sound" onclick="toggleSound()" title="Chime and call numbers out loud"><i class="ti ti-bell-off"></i></button>
+    <button class="ib" onclick="load(true)" title="Refresh now (R)"><i class="ti ti-refresh"></i></button>
+    <button class="ib" id="btn-full" onclick="toggleFull()" title="Fullscreen (F) — hides the address bar"><i class="ti ti-maximize"></i></button>
   </div>
 </div>
 
-<div class="container">
-
-  <div class="hero">
-    <div>
-      <h1>What's happening in the shop</h1>
-      <p>This board updates by itself the moment we move your job along. No need to refresh.</p>
+<div class="stage">
+  <div class="left">
+    <div class="serving">
+      <div class="eyebrow">Now serving</div>
+      <div class="serving-num num" id="serve-num">····</div>
+      <div class="serving-who" id="serve-who"></div>
     </div>
-    <div class="live" id="live"><span class="dot"></span><span id="live-text">Connecting…</span></div>
+    <div class="also" id="also-wrap" style="display:none">
+      <span class="eyebrow">Also in progress</span>
+      <span id="also-chips" style="display:flex;gap:9px;flex-wrap:wrap"></span>
+    </div>
   </div>
 
-  <div class="notice" id="notice">
-    <h3><i class="ti ti-alert-circle"></i> <span id="notice-title">Can't reach the queue</span></h3>
-    <p id="notice-body"></p>
-  </div>
-
-  <div class="lookup">
-    <input id="ref-in" placeholder="Find your reference number, e.g. REQ-0012" autocomplete="off"
-           onkeydown="if(event.key==='Enter')findRef()">
-    <button onclick="findRef()"><i class="ti ti-search"></i> Find my order</button>
-    <button class="ghost" id="btn-clear" onclick="clearRef()" style="display:none">Clear</button>
-  </div>
-
-  <div class="mine" id="mine">
-    <h3><i class="ti ti-user-check"></i> <span id="mine-ref"></span></h3>
-    <p id="mine-body"></p>
-  </div>
-
-  <div class="board">
-    <div class="col ready">
-      <div class="col-rule"></div>
-      <div class="col-head">
-        <div class="col-title"><i class="ti ti-circle-check" style="color:var(--success)"></i> Ready to claim</div>
-        <div class="col-count" id="c-ready">–</div>
+  <div class="right">
+    <div class="list ready">
+      <div class="list-head">
+        <span class="eyebrow" style="color:var(--ready)">Ready to claim</span>
+        <span class="list-count" id="c-ready">–</span>
       </div>
-      <div class="col-body" id="b-ready"><div class="skel"></div><div class="skel"></div></div>
+      <div class="list-body ready" id="b-ready"><div class="skel"></div><div class="skel"></div></div>
     </div>
-
-    <div class="col prog">
-      <div class="col-rule"></div>
-      <div class="col-head">
-        <div class="col-title"><i class="ti ti-player-play" style="color:var(--accent)"></i> Being worked on</div>
-        <div class="col-count" id="c-prog">–</div>
+    <div class="list wait" style="border-top:1px solid var(--line)">
+      <div class="list-head">
+        <span class="eyebrow" style="color:var(--waiting)">Waiting in line</span>
+        <span class="list-count" id="c-wait">–</span>
       </div>
-      <div class="col-body" id="b-prog"><div class="skel"></div><div class="skel"></div></div>
+      <div class="list-body wait" id="b-wait"><div class="skel"></div><div class="skel"></div></div>
     </div>
-
-    <div class="col wait">
-      <div class="col-rule"></div>
-      <div class="col-head">
-        <div class="col-title"><i class="ti ti-hourglass" style="color:var(--warning)"></i> In the queue</div>
-        <div class="col-count" id="c-wait">–</div>
-      </div>
-      <div class="col-body" id="b-wait"><div class="skel"></div><div class="skel"></div></div>
-    </div>
-  </div>
-
-  <div class="foot">
-    Names are shortened for privacy — look for your reference number.<br>
-    Updated <span id="stamp">just now</span> · <a href="order-form.html">Place a new order</a>
   </div>
 </div>
+
+<div class="mine">
+  <input id="ref-in" placeholder="Your reference number, e.g. REQ-0012" autocomplete="off"
+         onkeydown="if(event.key==='Enter')findRef()">
+  <button onclick="findRef()"><i class="ti ti-search"></i> Where am I?</button>
+  <button class="ghost" id="btn-clear" onclick="clearRef()" style="display:none">Clear</button>
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<div class="fault" id="fault"></div>
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   Arroyo Print Shop — public order queue (standalone page)
+   Arroyo Print Shop — public call board (standalone page)
 
-   SETUP (one time, in Supabase):
+   Reads three statuses out of the `requests` table:
+     Pending      → waiting in line
+     In progress  → now serving (the oldest one gets the big number)
+     Done         → ready to claim
 
-   1. Let visitors READ the queue — Database → SQL Editor:
+   SUPABASE SETUP (run once, SQL Editor):
+     alter table requests enable row level security;
+     create policy "public can read queue" on requests for select using (true);
+     alter publication supabase_realtime add table requests;
 
-        alter table requests enable row level security;
-
-        create policy "public can read queue"
-          on requests for select
-          using (true);
-
-   2. Turn ON realtime for the table — Database → Publications →
-      supabase_realtime → toggle `requests` on.
-      (Without this the page still works: it falls back to polling.)
-
-   That's all. This page never writes to the database, and it only ever
-   displays ref / first name / job type / date. Phone, email, notes and files
-   are never requested.
+   This page never writes. It pulls only ref / first name / job type / dates —
+   phone, email, notes and files are never requested.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
 
-// Only these columns are ever pulled — keeps customer contact details off the board.
-const SELECT = 'id,ref,name,jobtype,rush,status,due,submitted_at';
-const READY_DAYS = 7;     // hide finished jobs older than this
-const MAX_CARDS  = 14;    // per column
-const POLL_MS    = 15000; // fallback / safety-net refresh
+const SELECT     = 'id,ref,name,jobtype,rush,status,submitted_at,requeued_at,skipped_count';
+const READY_DAYS = 7;      // drop finished jobs older than this off the board
+const POLL_MS    = 15000;  // safety net behind realtime
 
-let rows = [], myRef = '', lastStatus = {}, sound = false, realtime = false, failures = 0;
+let rows = [], myRef = '', serving = null, prevServing = null, prevMine = null;
+let sound = false, live = false, fails = 0;
 
 /* ── data ─────────────────────────────────────────────────────────────── */
-async function fetchQueue(){
-  const url = SUPABASE_URL + '/rest/v1/requests'
-            + '?select=' + SELECT
-            + '&status=in.(Pending,"In progress",Done)'
-            + '&order=id.asc';
-  const res = await fetch(url, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
-  });
-  if(!res.ok){
-    const body = await res.text();
-    const err = new Error(body || ('HTTP ' + res.status));
-    err.http = res.status;
-    throw err;
-  }
-  return res.json();
-}
-
-async function load(manual){
-  try {
-    rows = await fetchQueue();
-    failures = 0;
-    hideNotice();
+async function load(){
+  try{
+    const url = SUPABASE_URL + '/rest/v1/requests?select=' + SELECT
+              + '&status=in.(Pending,"In progress",Done)&order=id.asc';
+    const res = await fetch(url, {headers:{
+      apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY
+    }});
+    if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
+    rows = await res.json();
+    fails = 0;
+    document.getElementById('fault').style.display = 'none';
     render();
-    setLive(realtime ? 'on' : 'warn', realtime ? 'Live' : 'Checking every 15s');
-    if(manual) stampNow();
-  } catch(e){
-    failures++;
+    setPill(live ? 'on' : 'warn', live ? 'Live' : 'Every 15s');
+  }catch(e){
+    fails++;
     console.error('Queue load failed:', e);
-    if(failures >= 2 || !rows.length) showNotice(e);
-    setLive('off', 'Offline');
+    if(fails >= 2 || !rows.length) showFault(e);
+    setPill('off','Offline');
   }
 }
 
-/* ── render ───────────────────────────────────────────────────────────── */
-function shortName(n){
-  const parts = String(n || '').trim().split(/\s+/).filter(Boolean);
-  if(!parts.length) return 'Customer';
-  const first = parts[0];
-  return parts.length > 1 ? first + ' ' + parts[1][0].toUpperCase() + '.' : first;
-}
-
-function waited(iso){
-  if(!iso) return '';
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if(isNaN(mins) || mins < 0) return '';
-  if(mins < 60)   return mins + 'm in queue';
-  const h = Math.floor(mins / 60);
-  if(h < 24)      return h + 'h in queue';
-  const d = Math.floor(h / 24);
-  return d === 1 ? 'since yesterday' : d + ' days in queue';
-}
-
+/* ── helpers ──────────────────────────────────────────────────────────── */
 function esc(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-function card(r, pos, showWait){
-  const hit = myRef && r.ref === myRef;
-  return `<div class="job${hit?' hit':''}" data-ref="${esc(r.ref)}">
-    ${pos ? `<div class="job-pos">${pos}</div>` : ''}
-    <div class="job-main">
-      <div class="job-ref">${esc(r.ref || 'REQ-????')}</div>
-      <div class="job-meta">${esc(shortName(r.name))} · ${esc(r.jobtype || 'Print job')}${r.rush?' · <span class="rush">Urgent</span>':''}</div>
-    </div>
-    <div class="job-side">${showWait ? esc(waited(r.submitted_at)) : 'Claim at counter'}</div>
-  </div>`;
+function shortName(n){
+  const p = String(n || '').trim().split(/\s+/).filter(Boolean);
+  if(!p.length) return 'Customer';
+  return p.length > 1 ? p[0] + ' ' + p[1][0].toUpperCase() + '.' : p[0];
+}
+function waited(iso){
+  if(!iso) return '';
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if(isNaN(m) || m < 0) return '';
+  if(m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  return h < 24 ? h + 'h' : Math.floor(h / 24) + 'd';
 }
 
-function fill(id, list, opts){
-  const el = document.getElementById(id);
-  if(!list.length){ el.innerHTML = `<div class="empty">${opts.empty}</div>`; return; }
-  el.innerHTML = list.slice(0, MAX_CARDS)
-      .map((r,i) => card(r, opts.numbered ? i+1 : 0, opts.showWait)).join('')
-    + (list.length > MAX_CARDS
-        ? `<div class="empty">+ ${list.length - MAX_CARDS} more</div>` : '');
-}
-
+/* ── render ───────────────────────────────────────────────────────────── */
 function render(){
   const cutoff = Date.now() - READY_DAYS * 864e5;
-
-  const wait  = rows.filter(r => r.status === 'Pending');
   const prog  = rows.filter(r => r.status === 'In progress');
-  const ready = rows.filter(r => r.status === 'Done'
-                  && (!r.submitted_at || new Date(r.submitted_at).getTime() > cutoff))
-                .reverse();
+
+  // Waiting order: everyone keeps their place by order of arrival, except
+  // numbers that were called and missed — those go to the back, in the order
+  // they were skipped, so a no-show never jumps ahead of people still waiting.
+  const wait = rows.filter(r => r.status === 'Pending').sort((a,b) => {
+    const ra = a.requeued_at ? new Date(a.requeued_at).getTime() : 0;
+    const rb = b.requeued_at ? new Date(b.requeued_at).getTime() : 0;
+    if(ra !== rb) return ra - rb;   // never-skipped (0) first, then by skip time
+    return a.id - b.id;
+  });
+  const ready = rows.filter(r => r.status === 'Done' &&
+                  (!r.submitted_at || new Date(r.submitted_at).getTime() > cutoff)).reverse();
+
+  // The oldest in-progress job is the one on the big display.
+  serving = prog[0] || null;
+
+  const numEl = document.getElementById('serve-num');
+  const whoEl = document.getElementById('serve-who');
+  if(serving){
+    numEl.textContent = serving.ref || 'REQ-????';
+    numEl.className = 'serving-num num';
+    whoEl.textContent = shortName(serving.name) + ' · ' + (serving.jobtype || 'Print job')
+                      + (serving.rush ? ' · Urgent' : '');
+    if(prevServing && prevServing !== serving.ref){
+      numEl.classList.remove('flash');
+      void numEl.offsetWidth;
+      numEl.classList.add('flash');
+      announce(serving.ref);
+    }
+    prevServing = serving.ref;
+  } else {
+    numEl.textContent = '—';
+    numEl.className = 'serving-none';
+    whoEl.textContent = wait.length
+      ? 'Next up: ' + (wait[0].ref || '') : 'No job on the bench right now';
+    prevServing = null;
+  }
+
+  // other jobs running alongside the called one
+  const also = prog.slice(1);
+  document.getElementById('also-wrap').style.display = also.length ? 'flex' : 'none';
+  document.getElementById('also-chips').innerHTML =
+    also.map(r => `<span class="chip num">${esc(r.ref || '')}</span>`).join('');
 
   document.getElementById('c-ready').textContent = ready.length;
-  document.getElementById('c-prog').textContent  = prog.length;
   document.getElementById('c-wait').textContent  = wait.length;
 
-  fill('b-ready', ready, {empty:'Nothing waiting for pickup right now.', showWait:false});
-  fill('b-prog',  prog,  {empty:'The team is between jobs.', showWait:true});
-  fill('b-wait',  wait,  {empty:'Queue is clear — new orders start right away.', numbered:true, showWait:true});
+  fill('b-ready', ready, false, 'Nothing waiting for pickup.');
+  fill('b-wait',  wait,  true,  'Line is clear — new orders start right away.');
 
-  renderMine(wait, prog, ready);
-  watchMyStatus();
-  stampNow();
+  verdict(wait, prog);
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
 }
 
-function renderMine(wait, prog, ready){
-  const box = document.getElementById('mine');
-  if(!myRef){ box.style.display = 'none'; return; }
+function fill(id, list, numbered, emptyMsg){
+  const el = document.getElementById(id);
+  if(!list.length){ el.innerHTML = `<div class="none">${emptyMsg}</div>`; return; }
+  el.innerHTML = list.map((r,i) => {
+    const recalled = r.requeued_at || (r.skipped_count > 0);
+    const tag = recalled ? '<div class="row-tag recall">Called again</div>'
+              : r.rush   ? '<div class="row-tag">Urgent</div>'
+              : `<div class="row-meta" style="flex:none">${esc(waited(r.submitted_at))}</div>`;
+    return `
+    <div class="row${myRef && r.ref === myRef ? ' hit' : ''}${recalled ? ' recalled' : ''}">
+      ${numbered ? `<div class="row-pos num">${i+1}</div>` : ''}
+      <div class="row-ref num">${esc(r.ref || 'REQ-????')}</div>
+      <div class="row-meta">${esc(shortName(r.name))} · ${esc(r.jobtype || 'Print job')}</div>
+      ${tag}
+    </div>`;
+  }).join('');
+}
+
+/* ── "where am I in line?" ────────────────────────────────────────────── */
+function verdict(wait, prog){
+  const box = document.getElementById('verdict');
+  if(!myRef){ box.style.display = 'none'; prevMine = null; return; }
+  box.style.display = 'block';
 
   const r = rows.find(x => x.ref === myRef);
-  box.style.display = 'block';
-  document.getElementById('mine-ref').textContent = myRef;
-  const body = document.getElementById('mine-body');
-
   if(!r){
-    body.innerHTML = 'Not on the board. Either it hasn\'t been logged yet, or it was already claimed. '
-      + 'Check the full details on the <a href="order-form.html" style="color:inherit;text-decoration:underline">Track my order</a> page.';
+    box.innerHTML = `<b>${esc(myRef)}</b> isn't on the board — it may not be logged yet, or it was already claimed.`;
+    prevMine = null;
     return;
   }
   if(r.status === 'Done'){
-    body.innerHTML = '<strong>Ready to claim.</strong> Bring your reference number to the counter.';
+    box.innerHTML = `<b>${esc(myRef)}</b> — <b style="color:var(--ready)">ready to claim.</b> Bring your number to the counter.`;
   } else if(r.status === 'In progress'){
-    body.innerHTML = '<strong>Being worked on now.</strong> We\'ll move it to “Ready to claim” when it\'s done.';
+    box.innerHTML = (serving && serving.ref === myRef)
+      ? `<b>${esc(myRef)}</b> — <b style="color:var(--serving)">it's your turn.</b> Please come to the counter.`
+      : `<b>${esc(myRef)}</b> — being worked on now.`;
   } else {
     const pos = wait.findIndex(x => x.ref === myRef) + 1;
-    body.innerHTML = `<strong>Number ${pos} in the queue</strong>`
-      + (pos > 1 ? ` — ${pos-1} job${pos-1>1?'s':''} ahead of yours.` : ' — yours is up next.')
-      + (prog.length ? ` ${prog.length} job${prog.length>1?'s':''} in progress.` : '');
+    const recalled = r.requeued_at || (r.skipped_count > 0);
+    box.innerHTML = `<b>${esc(myRef)}</b> — you are <span class="big num">${pos}</span> in line`
+      + (pos > 1 ? `, <b>${pos-1}</b> ahead of you.` : ' — you\'re next.')
+      + (prog.length ? ` ${prog.length} job${prog.length>1?'s':''} on the bench.` : '')
+      + (recalled ? `<br><b style="color:var(--alert)">Your number was called and missed.</b> `
+                  + 'You\'ve been moved to the end of the line — please stay near the counter for the next call.' : '');
   }
-  const hit = document.querySelector('.job.hit');
-  if(hit && !document.body.classList.contains('tv')) hit.scrollIntoView({block:'center', behavior:'smooth'});
-}
-
-function stampNow(){
-  document.getElementById('stamp').textContent =
-    new Date().toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-}
-
-/* ── my order: chime + notification on “Ready” ───────────────────────── */
-function watchMyStatus(){
-  rows.forEach(r => {
-    const prev = lastStatus[r.ref];
-    if(prev && prev !== r.status && r.ref === myRef && r.status === 'Done'){
-      chime();
-      if('Notification' in window && Notification.permission === 'granted'){
-        new Notification('Your order is ready', {body: r.ref + ' — claim it at the counter.'});
-      }
+  if(prevMine && prevMine !== r.status && (r.status === 'In progress' || r.status === 'Done')){
+    chime();
+    if('Notification' in window && Notification.permission === 'granted'){
+      new Notification(r.status === 'Done' ? 'Your order is ready' : 'Your turn',
+        {body: myRef + (r.status === 'Done' ? ' — claim it at the counter.' : ' is being worked on now.')});
     }
-    lastStatus[r.ref] = r.status;
-  });
+  }
+  prevMine = r.status;
 }
 
+/* ── sound: chime, then call the number out loud ──────────────────────── */
 function chime(){
   if(!sound) return;
   try{
     const ac = new (window.AudioContext || window.webkitAudioContext)();
-    [880, 1320].forEach((f, i) => {
+    [660, 990, 1320].forEach((f,i) => {
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = 'sine'; o.frequency.value = f;
       o.connect(g); g.connect(ac.destination);
-      const t = ac.currentTime + i * 0.18;
+      const t = ac.currentTime + i * 0.16;
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-      o.start(t); o.stop(t + 0.4);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.start(t); o.stop(t + 0.36);
     });
+  }catch(e){}
+}
+
+function announce(ref){
+  if(!sound) return;
+  chime();
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const digits = String(ref).replace(/^REQ-?0*/,'').split('').join(' ');
+    const u = new SpeechSynthesisUtterance('Now serving, number ' + digits);
+    u.rate = 0.9; u.volume = 0.9;
+    setTimeout(() => { try{ speechSynthesis.speak(u); }catch(e){} }, 700);
   }catch(e){}
 }
 
@@ -396,86 +420,114 @@ function toggleSound(){
 
 /* ── reference lookup ─────────────────────────────────────────────────── */
 function normRef(v){
-  const s = String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+  const s = String(v || '').trim().toUpperCase().replace(/\s+/g,'');
   if(!s) return '';
-  const digits = s.replace(/^REQ-?/, '');
-  return /^\d+$/.test(digits) ? 'REQ-' + digits.padStart(4, '0') : s;
+  const d = s.replace(/^REQ-?/,'');
+  return /^\d+$/.test(d) ? 'REQ-' + d.padStart(4,'0') : s;
 }
-
 function findRef(){
   myRef = normRef(document.getElementById('ref-in').value);
   document.getElementById('ref-in').value = myRef;
   document.getElementById('btn-clear').style.display = myRef ? 'inline-block' : 'none';
   try{ myRef ? localStorage.setItem('arroyo_ref', myRef) : localStorage.removeItem('arroyo_ref'); }catch(e){}
+  prevMine = null;
   render();
 }
-
 function clearRef(){
-  myRef = '';
+  myRef = ''; prevMine = null;
   document.getElementById('ref-in').value = '';
   document.getElementById('btn-clear').style.display = 'none';
   try{ localStorage.removeItem('arroyo_ref'); }catch(e){}
   render();
 }
 
-/* ── board mode ───────────────────────────────────────────────────────── */
-function toggleTv(){
-  const on = document.body.classList.toggle('tv');
-  document.getElementById('btn-tv').classList.toggle('on', on);
-  if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
-  else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+/* ── fullscreen / kiosk ───────────────────────────────────────────────── */
+let wakeLock = null, idleTimer = null;
+
+async function toggleFull(){
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen({navigationUI:'hide'});
+    } else {
+      await document.exitFullscreen();
+    }
+  }catch(e){
+    // Fullscreen refused (some in-app browsers) — still switch to the board layout.
+    document.body.classList.toggle('kiosk');
+    syncFullBtn();
+  }
 }
 
-/* ── connection status + errors ───────────────────────────────────────── */
-function setLive(state, text){
-  const el = document.getElementById('live');
-  el.className = 'live ' + state;
-  document.getElementById('live-text').textContent = text;
+function syncFullBtn(){
+  const on = !!document.fullscreenElement || document.body.classList.contains('kiosk');
+  const b = document.getElementById('btn-full');
+  b.classList.toggle('on', on);
+  b.innerHTML = `<i class="ti ti-${on ? 'minimize' : 'maximize'}"></i>`;
 }
 
-function showNotice(e){
+document.addEventListener('fullscreenchange', async () => {
+  const on = !!document.fullscreenElement;
+  document.body.classList.toggle('kiosk', on);
+  syncFullBtn();
+  // keep the shop display awake while it's up on the wall
+  try{
+    if(on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if(wakeLock){ wakeLock.release(); wakeLock = null; }
+  }catch(e){}
+});
+
+// hide the mouse pointer on the wall display after a few idle seconds
+function nudge(){
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('idle'), 4000);
+}
+['mousemove','touchstart','keydown'].forEach(ev => document.addEventListener(ev, nudge, {passive:true}));
+
+document.addEventListener('keydown', e => {
+  if(e.target && e.target.tagName === 'INPUT') return;
+  if(e.key === 'f' || e.key === 'F') toggleFull();
+  if(e.key === 'r' || e.key === 'R') load();
+});
+
+/* ── status + errors ──────────────────────────────────────────────────── */
+function setPill(state, text){
+  document.getElementById('pill').className = 'pill ' + state;
+  document.getElementById('pill-text').textContent = text;
+}
+
+function showFault(e){
   const msg = String(e && e.message || '');
-  const t = document.getElementById('notice-title');
-  const b = document.getElementById('notice-body');
+  const el = document.getElementById('fault');
   if(/permission|policy|row-level|RLS|42501/i.test(msg)){
-    t.textContent = 'The queue is locked to the public';
-    b.innerHTML = 'Supabase is blocking reads on the <code>requests</code> table. In the SQL editor run: '
+    el.innerHTML = '<b>The queue is locked to the public.</b> In the Supabase SQL editor run: '
       + '<code>create policy "public can read queue" on requests for select using (true);</code>';
   } else if(/Failed to fetch|NetworkError|Load failed/i.test(msg)){
-    t.textContent = 'Can\'t reach the queue';
-    b.innerHTML = 'The connection to Supabase didn\'t go through. Check your internet, and make sure this page '
-      + 'is opened over <code>https://</code> (or a local server) rather than straight from a file — browsers block '
-      + 'cross-origin requests from <code>file://</code> pages.';
+    el.innerHTML = '<b>Can\'t reach the queue.</b> Check the internet, and open this page over '
+      + '<code>https://</code> rather than straight from a file — browsers block requests from <code>file://</code> pages.';
   } else {
-    t.textContent = 'Queue didn\'t load';
-    b.textContent = msg || 'Unknown error. Try Refresh.';
+    el.innerHTML = '<b>Queue didn\'t load.</b> ' + esc(msg);
   }
-  document.getElementById('notice').style.display = 'block';
+  el.style.display = 'block';
 }
 
-function hideNotice(){ document.getElementById('notice').style.display = 'none'; }
-
-/* ── realtime: push updates the second a status changes ──────────────── */
+/* ── realtime ─────────────────────────────────────────────────────────── */
 function startRealtime(){
   const s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   s.onload = () => {
     try{
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        realtime: { params: { eventsPerSecond: 5 } }
-      });
-      client.channel('arroyo-queue')
+      const c = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,
+        {realtime:{params:{eventsPerSecond:5}}});
+      c.channel('arroyo-callboard')
         .on('postgres_changes', {event:'*', schema:'public', table:'requests'}, () => load())
-        .subscribe(status => {
-          if(status === 'SUBSCRIBED'){ realtime = true; setLive('on','Live'); }
-          else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
-            realtime = false;
-            setLive('warn','Checking every 15s');
-          }
+        .subscribe(st => {
+          if(st === 'SUBSCRIBED'){ live = true; setPill('on','Live'); }
+          else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].indexOf(st) > -1){ live = false; setPill('warn','Every 15s'); }
         });
     }catch(e){ console.warn('Realtime unavailable, polling instead:', e); }
   };
-  s.onerror = () => { console.warn('Realtime script blocked, polling instead.'); setLive('warn','Checking every 15s'); };
+  s.onerror = () => setPill('warn','Every 15s');
   document.head.appendChild(s);
 }
 
@@ -483,18 +535,25 @@ function startRealtime(){
 (function init(){
   try{
     const saved = localStorage.getItem('arroyo_ref');
-    if(saved){ myRef = saved; document.getElementById('ref-in').value = saved; document.getElementById('btn-clear').style.display = 'inline-block'; }
+    if(saved){ myRef = saved; document.getElementById('ref-in').value = saved;
+               document.getElementById('btn-clear').style.display = 'inline-block'; }
   }catch(e){}
 
-  // ?ref=REQ-0012 in the link wins, so you can text a customer a direct link
-  const q = new URLSearchParams(location.search).get('ref');
-  if(q){ myRef = normRef(q); document.getElementById('ref-in').value = myRef; document.getElementById('btn-clear').style.display = 'inline-block'; }
+  const q = new URLSearchParams(location.search);
+  if(q.get('ref')){
+    myRef = normRef(q.get('ref'));
+    document.getElementById('ref-in').value = myRef;
+    document.getElementById('btn-clear').style.display = 'inline-block';
+  }
+  // ?board=1 opens straight into the wall layout
+  if(q.get('board') === '1'){ document.body.classList.add('kiosk'); syncFullBtn(); }
 
   load();
   startRealtime();
   setInterval(load, POLL_MS);
-  setInterval(() => { if(rows.length) render(); }, 60000); // refresh "in queue" times
+  setInterval(() => { if(rows.length) render(); }, 30000);
   document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+  nudge();
 })();
 </script>
 </body>
