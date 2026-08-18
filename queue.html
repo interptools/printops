@@ -367,11 +367,46 @@ async function showTypicalWait(){
     : Math.round(_waitMins/60) + ' hr');
 }
 
-/* ── sound: chime, then call the number out loud ──────────────────────── */
+/* ── sound: chime, then call the number out loud ──────────────────────────
+   Three things browsers insist on, all handled here:
+     1. Audio and speech stay blocked until the user taps something — the bell
+        button is that tap, so both engines are primed inside toggleSound().
+     2. getVoices() is empty on first call; voices arrive on voiceschanged.
+     3. An utterance held only in a local variable can be garbage-collected
+        mid-sentence (Chrome/Safari), so the last one is kept in _lastUtterance.
+                                                                            */
+let _ac = null, _voice = null, _lastUtterance = null;
+
+function audio(){
+  if(!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if(_ac.state === 'suspended') _ac.resume();
+  return _ac;   // one context reused — browsers cap you at about six
+}
+
+/* English only. u.lang is a hint that Android TTS ignores, so hand it a real
+   voice object and avoid en-PH, which reads staff names with a Taglish accent. */
+function pickVoice(){
+  if(_voice) return _voice;
+  if(!('speechSynthesis' in window)) return null;
+  const vs = speechSynthesis.getVoices();
+  if(!vs.length) return null;                       // not loaded yet, retry later
+  const en = vs.filter(v => /^en(-|_|$)/i.test(v.lang));
+  if(!en.length) return null;                       // device has no English voice
+  _voice = en.find(v => /^en[-_](US|GB)/i.test(v.lang) && !/eloquence|novelty/i.test(v.name))
+        || en.find(v => /^en[-_](US|GB)/i.test(v.lang))
+        || en[0];
+  return _voice;
+}
+
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = () => { _voice = null; pickVoice(); };
+  pickVoice();
+}
+
 function chime(){
   if(!sound) return;
   try{
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const ac = audio();
     [660, 990, 1320].forEach((f,i) => {
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = 'sine'; o.frequency.value = f;
@@ -385,19 +420,38 @@ function chime(){
   }catch(e){}
 }
 
+function speak(line){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.resume();                       // Chrome can sit paused
+    const u = new SpeechSynthesisUtterance(line);
+    const v = pickVoice();
+    if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+    u.rate = 0.85; u.volume = 1;
+    _lastUtterance = u;
+    speechSynthesis.speak(u);
+  }catch(e){ console.warn('speak failed:', e); }
+}
+
+/* Last number in the ref, leading zeros dropped, spoken digit by digit — so
+   no prefix and no "dash" is ever read out. REQ-001042 → "1 0 4 2"          */
+function speakableRef(ref){
+  const groups = String(ref || '').match(/\d+/g);
+  if(!groups) return '';
+  const n = groups[groups.length - 1].replace(/^0+/, '') || '0';
+  return n.split('').join(' ');
+}
+
 function announce(ref, by){
   if(!sound) return;
   chime();
-  try{
-    if(!('speechSynthesis' in window)) return;
-    const digits = String(ref).replace(/^REQ-?0*/,'').split('').join(' ');
-    const line = 'Number ' + digits + (by ? ', counter ' + by : '');
-    const u = new SpeechSynthesisUtterance(line);
-    u.rate = 0.9; u.volume = 0.9;
-    // speechSynthesis queues on its own, so two counters calling at once
-    // are read one after the other rather than on top of each other
-    setTimeout(() => { try{ speechSynthesis.speak(u); }catch(e){} }, 700);
-  }catch(e){}
+  const digits = speakableRef(ref);
+  if(!digits) return;
+  const line = 'Number ' + digits + (by ? ', counter ' + by : '')
+             + '. Number ' + digits + '.';          // twice — shops are loud
+  // speechSynthesis queues on its own, so two counters calling at once are
+  // read one after the other rather than on top of each other
+  setTimeout(() => speak(line), 700);
 }
 
 function toggleSound(){
@@ -406,7 +460,11 @@ function toggleSound(){
   b.classList.toggle('on', sound);
   b.innerHTML = `<i class="ti ti-bell${sound?'':'-off'}"></i>`;
   if(sound){
+    audio();                 // unlock the AudioContext inside the tap
+    speak('Sound on');       // unlock speech inside the tap — iOS needs this
     chime();
+  } else {
+    try{ speechSynthesis.cancel(); }catch(e){}
   }
 }
 
