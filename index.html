@@ -3167,6 +3167,67 @@ async function pullFromSupabase() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ── DOUBLE-SUBMIT GUARD ──────────────────────────────────────────────────
+// A save takes a moment to reach Supabase. Without this, a second click during
+// that gap sends a second insert, and you end up with duplicate invoices,
+// orders or customers. Each guarded function refuses to run while its own
+// previous call is still in flight, and the button that fired it is disabled
+// and relabelled so it's obvious something is happening.
+// ═══════════════════════════════════════════════════════════════════════════
+const _inFlight = new Set();
+
+function guardSave(name, busyLabel) {
+  const original = window[name];
+  if (typeof original !== 'function') return;
+  window[name] = async function(...args) {
+    if (_inFlight.has(name)) return;          // already saving — ignore the click
+    _inFlight.add(name);
+
+    // Find the button that triggered this, so it can show progress
+    const ev = window.event;
+    const btn = (ev && ev.currentTarget && ev.currentTarget.tagName === 'BUTTON')
+                ? ev.currentTarget : null;
+    let restore = null;
+    if (btn) {
+      restore = btn.innerHTML;
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'wait';
+      if (busyLabel) btn.innerHTML = busyLabel;
+    }
+    try {
+      return await original.apply(this, args);
+    } finally {
+      _inFlight.delete(name);
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        if (restore !== null) btn.innerHTML = restore;
+      }
+    }
+  };
+}
+
+// Everything that writes a new row. Add to this list if you add more forms.
+[
+  ['saveInvoice',         'Saving invoice…'],
+  ['saveQuickInvoice',    'Creating…'],
+  ['saveOrder',           'Saving order…'],
+  ['saveCustomer',        'Saving customer…'],
+  ['saveService',         'Saving…'],
+  ['saveStockItem',       'Saving item…'],
+  ['savePreset',          'Saving preset…'],
+  ['saveEmployee',        'Saving…'],
+  ['saveShopInfo',        'Saving…'],
+  ['convertReqToOrder',   null],
+  ['quickInvoiceFromReq', null],
+  ['closeOutDay',         'Archiving…'],
+  ['markPaid',            null],
+  ['logMaterialCost',     'Logging…'],
+].forEach(function(pair){ guardSave(pair[0], pair[1]); });
+
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function bgClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
