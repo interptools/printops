@@ -95,7 +95,6 @@
   .list-body::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:3px}
 
   .row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:9px;background:var(--panel);border:1px solid transparent}
-  .row.hit{border-color:var(--serving);background:rgba(255,194,51,.1)}
   .row-pos{font-size:12px;font-weight:700;color:var(--ink-faint);width:20px;text-align:center;flex:none}
   .row-ref{font-size:clamp(16px,1.7vw,21px);font-weight:700;flex:none}
   .row-meta{font-size:12px;color:var(--ink-faint);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -110,26 +109,12 @@
   .skel{height:38px;border-radius:9px;background:var(--panel);animation:sk 1.4s ease-in-out infinite;flex:none}
   @keyframes sk{0%,100%{opacity:.45}50%{opacity:.85}}
 
-  /* ── your-turn strip (hidden on the wall display) ────────────────────── */
-  .mine{flex:none;border-top:1px solid var(--line);background:var(--panel);padding:14px 22px;
-        display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-  .mine input{flex:1;min-width:190px;padding:11px 13px;border-radius:9px;border:1px solid var(--line-strong);
-              background:var(--board);color:var(--ink);font-size:15px;font-family:inherit;outline:none}
-  .mine input::placeholder{color:var(--ink-faint)}
-  .mine button{padding:11px 18px;border-radius:9px;border:none;background:var(--serving);color:#241c00;
-               font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
-  .mine button.ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-dim);font-weight:500}
-  .verdict{flex:1 1 100%;font-size:15px;line-height:1.55;color:var(--ink-dim);display:none}
-  .verdict b{color:var(--ink);font-weight:700}
-  .verdict .big{font-size:26px;font-weight:700;color:var(--serving);vertical-align:-2px}
-
   .fault{display:none;flex:none;background:rgba(255,107,107,.1);border-top:1px solid rgba(255,107,107,.35);
          padding:13px 22px;font-size:13px;line-height:1.6;color:#ffb3b3}
   .fault b{color:#fff}
   .fault code{background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px;font-size:12px}
 
   /* ── fullscreen / kiosk ──────────────────────────────────────────────── */
-  body.kiosk .mine{display:none}
   body.kiosk .bar{padding:16px 32px}
   body.kiosk .brand{font-size:19px}
   body.kiosk .clock{font-size:19px}
@@ -184,19 +169,15 @@
   </div>
 </div>
 
-<div class="mine">
-  <input id="ref-in" placeholder="Your reference number, e.g. REQ-0012" autocomplete="off"
-         onkeydown="if(event.key==='Enter')findRef()">
-  <button onclick="findRef()"><i class="ti ti-search"></i> Where am I?</button>
-  <button class="ghost" id="btn-clear" onclick="clearRef()" style="display:none">Clear</button>
-  <div class="verdict" id="verdict"></div>
-</div>
-
 <div class="fault" id="fault"></div>
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   Arroyo Print Shop — public call board (standalone page)
+   Arroyo Print Shop — in-shop call board (display only)
+
+   Meant for the screen on the shop wall. There is no customer input on this
+   page: it shows the number being served, what's ready for pickup, and who's
+   still in line. Customers read it; they don't use it.
 
    Reads three statuses out of the `requests` table:
      Pending      → waiting in line
@@ -219,7 +200,7 @@ const SELECT     = 'id,ref,name,jobtype,rush,status,submitted_at,requeued_at,ski
 const READY_DAYS = 7;      // drop finished jobs older than this off the board
 const POLL_MS    = 15000;  // safety net behind realtime
 
-let rows = [], myRef = '', serving = null, prevServing = null, prevMine = null;
+let rows = [], serving = null, prevServing = null;
 let sound = false, live = false, fails = 0;
 
 /* ── data ─────────────────────────────────────────────────────────────── */
@@ -317,7 +298,6 @@ function render(){
   fill('b-ready', ready, false, 'Nothing waiting for pickup.');
   fill('b-wait',  wait,  true,  'Line is clear — new orders start right away.');
 
-  verdict(wait, prog);
   document.getElementById('clock').textContent =
     new Date().toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
 }
@@ -331,50 +311,13 @@ function fill(id, list, numbered, emptyMsg){
               : r.rush   ? '<div class="row-tag">Urgent</div>'
               : `<div class="row-meta" style="flex:none">${esc(waited(r.submitted_at))}</div>`;
     return `
-    <div class="row${myRef && r.ref === myRef ? ' hit' : ''}${recalled ? ' recalled' : ''}">
+    <div class="row${recalled ? ' recalled' : ''}">
       ${numbered ? `<div class="row-pos num">${i+1}</div>` : ''}
       <div class="row-ref num">${esc(r.ref || 'REQ-????')}</div>
       <div class="row-meta">${esc(shortName(r.name))} · ${esc(r.jobtype || 'Print job')}</div>
       ${tag}
     </div>`;
   }).join('');
-}
-
-/* ── "where am I in line?" ────────────────────────────────────────────── */
-function verdict(wait, prog){
-  const box = document.getElementById('verdict');
-  if(!myRef){ box.style.display = 'none'; prevMine = null; return; }
-  box.style.display = 'block';
-
-  const r = rows.find(x => x.ref === myRef);
-  if(!r){
-    box.innerHTML = `<b>${esc(myRef)}</b> isn't on the board — it may not be logged yet, or it was already claimed.`;
-    prevMine = null;
-    return;
-  }
-  if(r.status === 'Done'){
-    box.innerHTML = `<b>${esc(myRef)}</b> — <b style="color:var(--ready)">ready to claim.</b> Bring your number to the counter.`;
-  } else if(r.status === 'In progress'){
-    box.innerHTML = (serving && serving.ref === myRef)
-      ? `<b>${esc(myRef)}</b> — <b style="color:var(--serving)">it's your turn.</b> Please come to the counter.`
-      : `<b>${esc(myRef)}</b> — being worked on now.`;
-  } else {
-    const pos = wait.findIndex(x => x.ref === myRef) + 1;
-    const recalled = r.requeued_at || (r.skipped_count > 0);
-    box.innerHTML = `<b>${esc(myRef)}</b> — you are <span class="big num">${pos}</span> in line`
-      + (pos > 1 ? `, <b>${pos-1}</b> ahead of you.` : ' — you\'re next.')
-      + (prog.length ? ` ${prog.length} job${prog.length>1?'s':''} on the bench.` : '')
-      + (recalled ? `<br><b style="color:var(--alert)">Your number was called and missed.</b> `
-                  + 'You\'ve been moved to the end of the line — please stay near the counter for the next call.' : '');
-  }
-  if(prevMine && prevMine !== r.status && (r.status === 'In progress' || r.status === 'Done')){
-    chime();
-    if('Notification' in window && Notification.permission === 'granted'){
-      new Notification(r.status === 'Done' ? 'Your order is ready' : 'Your turn',
-        {body: myRef + (r.status === 'Done' ? ' — claim it at the counter.' : ' is being worked on now.')});
-    }
-  }
-  prevMine = r.status;
 }
 
 /* ── sound: chime, then call the number out loud ──────────────────────── */
@@ -414,31 +357,7 @@ function toggleSound(){
   b.innerHTML = `<i class="ti ti-bell${sound?'':'-off'}"></i>`;
   if(sound){
     chime();
-    if('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   }
-}
-
-/* ── reference lookup ─────────────────────────────────────────────────── */
-function normRef(v){
-  const s = String(v || '').trim().toUpperCase().replace(/\s+/g,'');
-  if(!s) return '';
-  const d = s.replace(/^REQ-?/,'');
-  return /^\d+$/.test(d) ? 'REQ-' + d.padStart(4,'0') : s;
-}
-function findRef(){
-  myRef = normRef(document.getElementById('ref-in').value);
-  document.getElementById('ref-in').value = myRef;
-  document.getElementById('btn-clear').style.display = myRef ? 'inline-block' : 'none';
-  try{ myRef ? localStorage.setItem('arroyo_ref', myRef) : localStorage.removeItem('arroyo_ref'); }catch(e){}
-  prevMine = null;
-  render();
-}
-function clearRef(){
-  myRef = ''; prevMine = null;
-  document.getElementById('ref-in').value = '';
-  document.getElementById('btn-clear').style.display = 'none';
-  try{ localStorage.removeItem('arroyo_ref'); }catch(e){}
-  render();
 }
 
 /* ── fullscreen / kiosk ───────────────────────────────────────────────── */
@@ -533,20 +452,10 @@ function startRealtime(){
 
 /* ── boot ─────────────────────────────────────────────────────────────── */
 (function init(){
-  try{
-    const saved = localStorage.getItem('arroyo_ref');
-    if(saved){ myRef = saved; document.getElementById('ref-in').value = saved;
-               document.getElementById('btn-clear').style.display = 'inline-block'; }
-  }catch(e){}
-
-  const q = new URLSearchParams(location.search);
-  if(q.get('ref')){
-    myRef = normRef(q.get('ref'));
-    document.getElementById('ref-in').value = myRef;
-    document.getElementById('btn-clear').style.display = 'inline-block';
-  }
   // ?board=1 opens straight into the wall layout
-  if(q.get('board') === '1'){ document.body.classList.add('kiosk'); syncFullBtn(); }
+  if(new URLSearchParams(location.search).get('board') === '1'){
+    document.body.classList.add('kiosk'); syncFullBtn();
+  }
 
   load();
   startRealtime();

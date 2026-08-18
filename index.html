@@ -2155,6 +2155,7 @@ async function renderRequests() {
         ${r.jobtype==='Rush ID Photo'
           ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
           : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
+        ${r.status==='In progress' ? `<button class="btn btn-sm" onclick="event.stopPropagation();skipRequest(${r.id},'${(r.ref||'').replace(/'/g,'')}')" title="No-show — send back to the end of the line" style="color:var(--warning);border-color:var(--warning)"><i class="ti ti-player-skip-forward"></i></button>` : ''}
         <button class="btn btn-sm" onclick="event.stopPropagation();quickInvoiceFromReq(${r.id})" title="Create invoice from this request" style="color:var(--warning);border-color:var(--warning)"><i class="ti ti-receipt"></i></button>
         <button class="btn btn-sm" onclick="event.stopPropagation();printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteReq(${r.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -2434,6 +2435,36 @@ async function updateReqStatus(id, status) {
     console.error(e);
   }
 }
+async function skipRequest(id, ref) {
+  try {
+    await showConfirm({
+      title: 'Skip ' + (ref || 'this number') + '?',
+      msg: 'It goes back to the end of the waiting line and can be called again.',
+      okLabel: 'Skip and requeue'
+    });
+  } catch { return; }
+  try {
+    // Read the current skip count so the board can show a repeat no-show
+    let count = 0;
+    try {
+      const rows = await sbFetch('requests?id=eq.' + id + '&select=skipped_count');
+      count = (rows && rows[0] && Number(rows[0].skipped_count)) || 0;
+    } catch(e) { /* column may be missing on older rows — treat as 0 */ }
+
+    await sbFetch('requests?id=eq.' + id, {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: JSON.stringify({
+        status: 'Pending',
+        requeued_at: new Date().toISOString(),
+        skipped_count: count + 1
+      })
+    });
+    renderRequests(); updateReqBadge();
+    logActivity('Number skipped', (ref || '#' + id) + ' returned to the waiting line (skip ' + (count + 1) + ')');
+    toast('Skipped — moved to the end of the line.');
+  } catch(e) { toast('⚠️ Could not skip.'); console.error(e); }
+}
+
 async function deleteReq(id) {
   try {
     await showConfirm({ title:'Delete request?', msg:'This customer request will be permanently removed.', okLabel:'Delete request' });
