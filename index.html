@@ -461,6 +461,9 @@ tbody tr:hover td{background:var(--surface-1)}
         <div class="page-title">Customer Requests</div>
         <div style="display:flex;gap:8px;align-items:center">
           <span id="req-live-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse-dot 1.5s infinite"></span>
+          <span id="req-typical-wait" style="display:none;font-size:12px;color:var(--text-secondary)"></span>
+          <button class="btn" onclick="closeOutDay()" title="Archive claimed jobs so they leave the shop display"><i class="ti ti-archive"></i> Close out day</button>
+          <a href="queue.html" target="_blank" class="btn"><i class="ti ti-device-tv"></i> Call board</a>
           <a href="order-form.html" target="_blank" class="btn"><i class="ti ti-external-link"></i> Open customer form</a>
         </div>
       </div>
@@ -472,6 +475,7 @@ tbody tr:hover td{background:var(--surface-1)}
         <select id="req-filter-status" onchange="renderRequests()">
           <option value="">All statuses</option>
           <option>Pending</option><option>In progress</option><option>Done</option><option>Cancelled</option>
+          <option value="__archived">Archived (closed out)</option>
         </select>
         <select id="req-filter-job" onchange="renderRequests()">
           <option value="">All job types</option>
@@ -2095,8 +2099,23 @@ async function renderRequests() {
     (r.jobtype || '').toLowerCase().includes(search) ||
     (r.phone || '').includes(search)
   );
-  if (filterStatus) reqs = reqs.filter(r => r.status === filterStatus);
+  // Archived jobs stay out of the way unless you go looking for them
+  if (filterStatus === '__archived') {
+    reqs = reqs.filter(r => r.archived === true);
+  } else {
+    reqs = reqs.filter(r => r.archived !== true);
+    if (filterStatus) reqs = reqs.filter(r => r.status === filterStatus);
+  }
   if (filterJob) reqs = reqs.filter(r => r.jobtype === filterJob);
+
+  // Median time from arrival to being called — quietly ignored if there's no history yet
+  typicalWaitMins().then(m => {
+    const el = document.getElementById('req-typical-wait');
+    if (!el) return;
+    if (m == null) { el.style.display = 'none'; return; }
+    el.style.display = 'inline';
+    el.innerHTML = '<i class="ti ti-clock"></i> Typical wait: <strong>' + m + ' min</strong>';
+  });
 
   if (!reqs.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
@@ -2427,7 +2446,26 @@ async function reqToIdPhoto(id) {
 
 async function updateReqStatus(id, status) {
   try {
-    await updateReqStatusDB(id, status);
+    // Stamp the clock so the board can work out honest wait times, and record
+    // who took the job so the display can name the counter.
+    const patch = { status };
+    const now = new Date().toISOString();
+    if (status === 'In progress') {
+      patch.started_at = now;
+      patch.served_by  = (typeof getCurrentUserName === 'function') ? getCurrentUserName() : 'Owner';
+    } else if (status === 'Done') {
+      patch.finished_at = now;
+      // If it was never formally started, treat the finish time as the start so
+      // the averages don't get skewed by a zero-length job.
+      try {
+        const rows = await sbFetch('requests?id=eq.' + id + '&select=started_at');
+        if (rows && rows[0] && !rows[0].started_at) patch.started_at = now;
+      } catch(e) {}
+    }
+    await sbFetch('requests?id=eq.' + id, {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: JSON.stringify(patch)
+    });
     updateReqBadge();
     toast('Status updated.');
   } catch(e) {
@@ -2435,6 +2473,51 @@ async function updateReqStatus(id, status) {
     console.error(e);
   }
 }
+
+// ── Close out the day: clears claimed jobs off the public board ───────────
+async function closeOutDay() {
+  let done = [];
+  try {
+    done = await sbFetch('requests?status=eq.Done&archived=is.false&select=id,ref') || [];
+  } catch(e) { toast('⚠️ Could not read finished jobs.'); return; }
+
+  if (!done.length) { toast('Nothing to close out — no claimed jobs on the board.'); return; }
+
+  try {
+    await showConfirm({
+      title: 'Close out ' + done.length + ' job' + (done.length > 1 ? 's' : '') + '?',
+      msg: 'They come off the shop display and stay in your records. Use the Archived filter to see them again.',
+      okLabel: 'Close out day'
+    });
+  } catch { return; }
+
+  try {
+    await sbFetch('requests?status=eq.Done&archived=is.false', {
+      method: 'PATCH', prefer: 'return=minimal',
+      body: JSON.stringify({ archived: true })
+    });
+    renderRequests(); updateReqBadge();
+    logActivity('Day closed out', done.length + ' claimed job' + (done.length > 1 ? 's' : '') + ' archived');
+    toast(done.length + ' job' + (done.length > 1 ? 's' : '') + ' archived — board is clear.');
+  } catch(e) { toast('⚠️ Could not archive.'); console.error(e); }
+}
+
+// Average time from arrival to being called, over recent finished jobs.
+// Returns null until there's enough history to be meaningful.
+async function typicalWaitMins() {
+  try {
+    const rows = await sbFetch(
+      'requests?select=submitted_at,started_at&started_at=not.is.null' +
+      '&submitted_at=not.is.null&order=started_at.desc&limit=25') || [];
+    const mins = rows.map(r =>
+      (new Date(r.started_at) - new Date(r.submitted_at)) / 60000
+    ).filter(m => m > 0 && m < 60 * 24);   // ignore overnight jobs — they distort the average
+    if (mins.length < 3) return null;
+    mins.sort((a,b) => a - b);
+    return Math.round(mins[Math.floor(mins.length / 2)]);   // median beats mean here
+  } catch(e) { return null; }
+}
+// ── No-show: send the called job back to the end of the line ──────────────
 async function skipRequest(id, ref) {
   try {
     await showConfirm({
@@ -2444,19 +2527,20 @@ async function skipRequest(id, ref) {
     });
   } catch { return; }
   try {
-    // Read the current skip count so the board can show a repeat no-show
     let count = 0;
     try {
       const rows = await sbFetch('requests?id=eq.' + id + '&select=skipped_count');
       count = (rows && rows[0] && Number(rows[0].skipped_count)) || 0;
-    } catch(e) { /* column may be missing on older rows — treat as 0 */ }
+    } catch(e) {}
 
     await sbFetch('requests?id=eq.' + id, {
       method: 'PATCH', prefer: 'return=minimal',
       body: JSON.stringify({
         status: 'Pending',
         requeued_at: new Date().toISOString(),
-        skipped_count: count + 1
+        skipped_count: count + 1,
+        started_at: null,   // they weren't actually served, so keep it out of the averages
+        served_by: null
       })
     });
     renderRequests(); updateReqBadge();

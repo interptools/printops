@@ -105,6 +105,9 @@
   .list-body.wait  .row-pos{color:var(--waiting)}
   .list.ready .list-count{color:var(--ready)}
   .list.wait  .list-count{color:var(--waiting)}
+  .counter{font-size:clamp(12px,1.4vw,16px);color:var(--ink-faint);margin-top:6px;
+           letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+  .typical{display:none;margin-left:8px;color:var(--ink-faint);letter-spacing:.06em}
   .none{font-size:13px;color:var(--ink-faint);padding:1rem 0;text-align:center;line-height:1.6}
   .skel{height:38px;border-radius:9px;background:var(--panel);animation:sk 1.4s ease-in-out infinite;flex:none}
   @keyframes sk{0%,100%{opacity:.45}50%{opacity:.85}}
@@ -161,7 +164,8 @@
     </div>
     <div class="list wait" style="border-top:1px solid var(--line)">
       <div class="list-head">
-        <span class="eyebrow" style="color:var(--waiting)">Waiting in line</span>
+        <span class="eyebrow" style="color:var(--waiting)">Waiting in line
+          <span id="typical-wait" class="typical"></span></span>
         <span class="list-count" id="c-wait">–</span>
       </div>
       <div class="list-body wait" id="b-wait"><div class="skel"></div><div class="skel"></div></div>
@@ -196,7 +200,7 @@
 const SUPABASE_URL      = 'https://lozgxpijgtxowffvwedr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvemd4cGlqZ3R4b3dmZnZ3ZWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4Njg4NjQsImV4cCI6MjEwMDQ0NDg2NH0.xqBK7rM5yXfrFa8NAT6KXfms43uphGW8fxSdSAqtLTQ';
 
-const SELECT     = 'id,ref,name,jobtype,rush,status,submitted_at,requeued_at,skipped_count';
+const SELECT     = 'id,ref,name,jobtype,rush,status,submitted_at,requeued_at,skipped_count,started_at,served_by';
 const READY_DAYS = 7;      // drop finished jobs older than this off the board
 const POLL_MS    = 15000;  // safety net behind realtime
 
@@ -207,7 +211,7 @@ let sound = false, live = false, fails = 0;
 async function load(){
   try{
     const url = SUPABASE_URL + '/rest/v1/requests?select=' + SELECT
-              + '&status=in.(Pending,"In progress",Done)&order=id.asc';
+              + '&status=in.(Pending,"In progress",Done)&archived=is.false&order=id.asc';
     const res = await fetch(url, {headers:{
       apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY
     }});
@@ -269,8 +273,9 @@ function render(){
   if(serving){
     numEl.textContent = serving.ref || 'REQ-????';
     numEl.className = 'serving-num num';
-    whoEl.textContent = shortName(serving.name) + ' · ' + (serving.jobtype || 'Print job')
-                      + (serving.rush ? ' · Urgent' : '');
+    whoEl.innerHTML = esc(shortName(serving.name)) + ' · ' + esc(serving.jobtype || 'Print job')
+                    + (serving.rush ? ' · <span style="color:var(--serving)">Urgent</span>' : '')
+                    + (serving.served_by ? `<div class="counter">Counter · ${esc(serving.served_by)}</div>` : '');
     if(prevServing && prevServing !== serving.ref){
       numEl.classList.remove('flash');
       void numEl.offsetWidth;
@@ -281,7 +286,7 @@ function render(){
   } else {
     numEl.textContent = '—';
     numEl.className = 'serving-none';
-    whoEl.textContent = wait.length
+    whoEl.innerHTML = wait.length
       ? 'Next up: ' + (wait[0].ref || '') : 'No job on the bench right now';
     prevServing = null;
   }
@@ -297,6 +302,8 @@ function render(){
 
   fill('b-ready', ready, false, 'Nothing waiting for pickup.');
   fill('b-wait',  wait,  true,  'Line is clear — new orders start right away.');
+
+  showTypicalWait();
 
   document.getElementById('clock').textContent =
     new Date().toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
@@ -318,6 +325,42 @@ function fill(id, list, numbered, emptyMsg){
       ${tag}
     </div>`;
   }).join('');
+}
+
+/* ── typical wait ─────────────────────────────────────────────────────────
+   Median minutes from a job arriving to it being called, over the last 25
+   finished jobs. Median rather than average, so one abandoned job left open
+   overnight doesn't tell everyone the wait is four hours. Stays hidden until
+   there are at least three real data points.                              */
+let _waitMins = null, _waitFetched = 0;
+
+async function showTypicalWait(){
+  const el = document.getElementById('typical-wait');
+  if(!el) return;
+
+  // recalc at most once every 5 minutes — it barely moves
+  if(Date.now() - _waitFetched > 3e5){
+    _waitFetched = Date.now();
+    try{
+      const res = await fetch(SUPABASE_URL + '/rest/v1/requests'
+        + '?select=submitted_at,started_at&started_at=not.is.null'
+        + '&submitted_at=not.is.null&order=started_at.desc&limit=25',
+        {headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + SUPABASE_ANON_KEY}});
+      if(res.ok){
+        const mins = (await res.json())
+          .map(r => (new Date(r.started_at) - new Date(r.submitted_at)) / 60000)
+          .filter(m => m > 0 && m < 60 * 24)
+          .sort((a,b) => a - b);
+        _waitMins = mins.length >= 3 ? Math.round(mins[Math.floor(mins.length/2)]) : null;
+      }
+    }catch(e){ /* leave the previous figure in place */ }
+  }
+
+  if(_waitMins == null){ el.style.display = 'none'; return; }
+  el.style.display = 'inline';
+  el.textContent = '· typically ' + (_waitMins < 60
+    ? _waitMins + ' min'
+    : Math.round(_waitMins/60) + ' hr');
 }
 
 /* ── sound: chime, then call the number out loud ──────────────────────── */
