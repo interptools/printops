@@ -200,16 +200,16 @@
       <!-- Contact info -->
       <div class="form-group">
         <label>Your name *</label>
-        <input id="f-name" type="text" placeholder="Full name or business name">
+        <input id="f-name" autocomplete="name" type="text" placeholder="Full name or business name">
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Contact number *</label>
-          <input id="f-phone" type="tel" placeholder="09XX XXX XXXX">
+          <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="09XX XXX XXXX">
         </div>
         <div class="form-group">
           <label>Email (optional)</label>
-          <input id="f-email" type="email" placeholder="you@email.com">
+          <input id="f-email" autocomplete="email" inputmode="email" type="email" placeholder="you@email.com">
         </div>
       </div>
 
@@ -232,17 +232,31 @@
       <div id="section-print" style="display:none">
         <div class="info-banner">
           <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
-          <span>Upload the file you want to print (PDF, JPG, PNG, DOCX). We'll print it as-is unless you add instructions below.</span>
+          <span>Fill in the details below, then send us your file (PDF, JPG, PNG, DOCX) — we'll print it as-is unless you add instructions.</span>
+        </div>
+
+        <div class="form-group">
+          <label>How will you send the file? *</label>
+          <div class="chip-row" id="send-method-chips">
+            <button type="button" class="chip" onclick="setChip('send-method-chips','f-send-method',this,'Messenger')">Messenger</button>
+            <button type="button" class="chip" onclick="setChip('send-method-chips','f-send-method',this,'Email')">Email</button>
+            <button type="button" class="chip" onclick="setChip('send-method-chips','f-send-method',this,'USB at the shop')">USB at shop</button>
+            <button type="button" class="chip" onclick="setChip('send-method-chips','f-send-method',this,'Already sent')">Already sent</button>
+          </div>
+          <input type="hidden" id="f-send-method" value="">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+            Send to <strong>09063964052</strong> and mention your reference number after you submit.
+          </div>
         </div>
 
         <div class="form-group">
           <label>Paper size *</label>
           <div class="chip-row" id="print-size-chips">
-            <button class="chip" onclick="setChip('print-size-chips','f-print-size',this,'A4')">A4</button>
-            <button class="chip" onclick="setChip('print-size-chips','f-print-size',this,'A3')">A3</button>
-            <button class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Short (8.5×11")')">Short (8.5×11")</button>
-            <button class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Long (8.5×13")')">Long (8.5×13")</button>
-            <button class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Legal')">Legal</button>
+            <button type="button" class="chip" onclick="setChip('print-size-chips','f-print-size',this,'A4')">A4</button>
+            <button type="button" class="chip" onclick="setChip('print-size-chips','f-print-size',this,'A3')">A3</button>
+            <button type="button" class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Short (8.5×11")')">Short (8.5×11")</button>
+            <button type="button" class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Long (8.5×13")')">Long (8.5×13")</button>
+            <button type="button" class="chip" onclick="setChip('print-size-chips','f-print-size',this,'Legal')">Legal</button>
           </div>
           <input id="f-print-size" type="text" placeholder="Or type custom size..." style="margin-top:8px" oninput="clearChips('print-size-chips')">
         </div>
@@ -251,20 +265,20 @@
           <div class="form-group">
             <label>Color mode</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('color-mode',this,'Black & White')">B&W</button>
-              <button class="toggle-chip" onclick="setToggle('color-mode',this,'Full Color')">Full Color</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('color-mode',this,'Black & White')">B&W</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('color-mode',this,'Full Color')">Full Color</button>
             </div>
             <input type="hidden" id="color-mode" value="Black & White">
           </div>
           <div class="form-group">
             <label>Copies *</label>
             <div class="chip-row" id="print-qty-chips">
-              <button class="chip" onclick="setChip('print-qty-chips','f-qty',this,'1')">1</button>
-              <button class="chip" onclick="setChip('print-qty-chips','f-qty',this,'2')">2</button>
-              <button class="chip" onclick="setChip('print-qty-chips','f-qty',this,'5')">5</button>
-              <button class="chip" onclick="setChip('print-qty-chips','f-qty',this,'10')">10</button>
+              <button type="button" class="chip" onclick="setChip('print-qty-chips','f-qty',this,'1')">1</button>
+              <button type="button" class="chip" onclick="setChip('print-qty-chips','f-qty',this,'2')">2</button>
+              <button type="button" class="chip" onclick="setChip('print-qty-chips','f-qty',this,'5')">5</button>
+              <button type="button" class="chip" onclick="setChip('print-qty-chips','f-qty',this,'10')">10</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="1" style="margin-top:8px" oninput="clearChips('print-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" style="margin-top:8px" oninput="clearChips('print-qty-chips')">
           </div>
         </div>
 
@@ -316,37 +330,37 @@
           <div class="form-group">
             <label>Size</label>
             <div class="chip-row" id="bc-size-chips">
-              <button class="chip sel" onclick="setChip('bc-size-chips','f-size',this,'3.5×2 in')">3.5×2 in</button>
-              <button class="chip" onclick="setChip('bc-size-chips','f-size',this,'2×3.5 in')">2×3.5 in</button>
-              <button class="chip" onclick="setChip('bc-size-chips','f-size',this,'A8')">A8</button>
+              <button type="button" class="chip sel" onclick="setChip('bc-size-chips','f-size',this,'3.5×2 in')">3.5×2 in</button>
+              <button type="button" class="chip" onclick="setChip('bc-size-chips','f-size',this,'2×3.5 in')">2×3.5 in</button>
+              <button type="button" class="chip" onclick="setChip('bc-size-chips','f-size',this,'A8')">A8</button>
             </div>
             <input id="f-size" type="text" placeholder="Custom size..." style="margin-top:8px" oninput="clearChips('bc-size-chips')">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="bc-qty-chips">
-              <button class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'50')">50</button>
-              <button class="chip sel" onclick="setChip('bc-qty-chips','f-qty',this,'100')">100</button>
-              <button class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'500')">500</button>
-              <button class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'1000')">1000</button>
+              <button type="button" class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip sel" onclick="setChip('bc-qty-chips','f-qty',this,'100')">100</button>
+              <button type="button" class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'500')">500</button>
+              <button type="button" class="chip" onclick="setChip('bc-qty-chips','f-qty',this,'1000')">1000</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="100" style="margin-top:8px" oninput="clearChips('bc-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="100" style="margin-top:8px" oninput="clearChips('bc-qty-chips')">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Finish</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('bc-finish',this,'Glossy')">Glossy</button>
-              <button class="toggle-chip" onclick="setToggle('bc-finish',this,'Matte')">Matte</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('bc-finish',this,'Glossy')">Glossy</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('bc-finish',this,'Matte')">Matte</button>
             </div>
             <input type="hidden" id="bc-finish" value="Glossy">
           </div>
           <div class="form-group">
             <label>Color mode</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('bc-color',this,'Full Color')">Full Color</button>
-              <button class="toggle-chip" onclick="setToggle('bc-color',this,'Black & White')">B&W</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('bc-color',this,'Full Color')">Full Color</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('bc-color',this,'Black & White')">B&W</button>
             </div>
             <input type="hidden" id="bc-color" value="Full Color">
           </div>
@@ -359,39 +373,39 @@
           <div class="form-group">
             <label>Size</label>
             <div class="chip-row" id="fl-size-chips">
-              <button class="chip sel" onclick="setChip('fl-size-chips','f-size',this,'A4')">A4</button>
-              <button class="chip" onclick="setChip('fl-size-chips','f-size',this,'A5 (Half A4)')">A5</button>
-              <button class="chip" onclick="setChip('fl-size-chips','f-size',this,'1/4 A4')">1/4 A4</button>
-              <button class="chip" onclick="setChip('fl-size-chips','f-size',this,'Short (8.5×11")')">Short</button>
+              <button type="button" class="chip sel" onclick="setChip('fl-size-chips','f-size',this,'A4')">A4</button>
+              <button type="button" class="chip" onclick="setChip('fl-size-chips','f-size',this,'A5 (Half A4)')">A5</button>
+              <button type="button" class="chip" onclick="setChip('fl-size-chips','f-size',this,'1/4 A4')">1/4 A4</button>
+              <button type="button" class="chip" onclick="setChip('fl-size-chips','f-size',this,'Short (8.5×11")')">Short</button>
             </div>
             <input id="f-size" type="text" placeholder="Custom size..." style="margin-top:8px" oninput="clearChips('fl-size-chips')">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="fl-qty-chips">
-              <button class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'50')">50</button>
-              <button class="chip sel" onclick="setChip('fl-qty-chips','f-qty',this,'100')">100</button>
-              <button class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'500')">500</button>
-              <button class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'1000')">1000</button>
+              <button type="button" class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip sel" onclick="setChip('fl-qty-chips','f-qty',this,'100')">100</button>
+              <button type="button" class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'500')">500</button>
+              <button type="button" class="chip" onclick="setChip('fl-qty-chips','f-qty',this,'1000')">1000</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="100" style="margin-top:8px" oninput="clearChips('fl-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="100" style="margin-top:8px" oninput="clearChips('fl-qty-chips')">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Paper / finish</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('fl-finish',this,'Glossy')">Glossy</button>
-              <button class="toggle-chip" onclick="setToggle('fl-finish',this,'Matte')">Matte</button>
-              <button class="toggle-chip" onclick="setToggle('fl-finish',this,'Bond paper')">Bond</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('fl-finish',this,'Glossy')">Glossy</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('fl-finish',this,'Matte')">Matte</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('fl-finish',this,'Bond paper')">Bond</button>
             </div>
             <input type="hidden" id="fl-finish" value="Glossy">
           </div>
           <div class="form-group">
             <label>Color mode</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('fl-color',this,'Full Color')">Full Color</button>
-              <button class="toggle-chip" onclick="setToggle('fl-color',this,'Black & White')">B&W</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('fl-color',this,'Full Color')">Full Color</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('fl-color',this,'Black & White')">B&W</button>
             </div>
             <input type="hidden" id="fl-color" value="Full Color">
           </div>
@@ -403,26 +417,26 @@
         <div class="form-group">
           <label>Size *</label>
           <div class="chip-row" id="tp-size-chips">
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'2×3 ft')">2×3 ft</button>
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'3×4 ft')">3×4 ft</button>
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'4×6 ft')">4×6 ft</button>
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'4×8 ft')">4×8 ft</button>
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'6×8 ft')">6×8 ft</button>
-            <button class="chip" onclick="setChip('tp-size-chips','f-size',this,'8×10 ft')">8×10 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'2×3 ft')">2×3 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'3×4 ft')">3×4 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'4×6 ft')">4×6 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'4×8 ft')">4×8 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'6×8 ft')">6×8 ft</button>
+            <button type="button" class="chip" onclick="setChip('tp-size-chips','f-size',this,'8×10 ft')">8×10 ft</button>
           </div>
           <input id="f-size" type="text" placeholder="Custom (e.g. 5×7 ft)..." style="margin-top:8px" oninput="clearChips('tp-size-chips')">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Quantity</label>
-            <input id="f-qty" type="number" min="1" value="1" placeholder="1">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" placeholder="1">
           </div>
           <div class="form-group">
             <label>Material</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('tp-mat',this,'Tarpaulin')">Tarpaulin</button>
-              <button class="toggle-chip" onclick="setToggle('tp-mat',this,'Sintra board')">Sintra</button>
-              <button class="toggle-chip" onclick="setToggle('tp-mat',this,'Vinyl')">Vinyl</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('tp-mat',this,'Tarpaulin')">Tarpaulin</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('tp-mat',this,'Sintra board')">Sintra</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('tp-mat',this,'Vinyl')">Vinyl</button>
             </div>
             <input type="hidden" id="tp-mat" value="Tarpaulin">
           </div>
@@ -434,27 +448,27 @@
         <div class="form-group">
           <label>Sizes needed</label>
           <div class="chip-row" id="ts-size-chips" style="flex-wrap:wrap">
-            <button class="chip" onclick="toggleMultiChip(this,'XS')">XS</button>
-            <button class="chip" onclick="toggleMultiChip(this,'S')">S</button>
-            <button class="chip" onclick="toggleMultiChip(this,'M')">M</button>
-            <button class="chip" onclick="toggleMultiChip(this,'L')">L</button>
-            <button class="chip" onclick="toggleMultiChip(this,'XL')">XL</button>
-            <button class="chip" onclick="toggleMultiChip(this,'2XL')">2XL</button>
-            <button class="chip" onclick="toggleMultiChip(this,'3XL')">3XL</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'XS')">XS</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'S')">S</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'M')">M</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'L')">L</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'XL')">XL</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'2XL')">2XL</button>
+            <button type="button" class="chip" onclick="toggleMultiChip(this,'3XL')">3XL</button>
           </div>
           <div class="form-hint">Select all sizes. Specify qty per size in the notes below.</div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Total quantity</label>
-            <input id="f-qty" type="number" min="1" value="1" placeholder="1">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" placeholder="1">
           </div>
           <div class="form-group">
             <label>Print type</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('ts-type',this,'Heat transfer')">Heat transfer</button>
-              <button class="toggle-chip" onclick="setToggle('ts-type',this,'Screen print')">Screen print</button>
-              <button class="toggle-chip" onclick="setToggle('ts-type',this,'Sublimation')">Sublimation</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('ts-type',this,'Heat transfer')">Heat transfer</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('ts-type',this,'Screen print')">Screen print</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('ts-type',this,'Sublimation')">Sublimation</button>
             </div>
             <input type="hidden" id="ts-type" value="Heat transfer">
           </div>
@@ -467,10 +481,10 @@
           <div class="form-group">
             <label>Shape</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('st-shape',this,'Rectangle')">Rectangle</button>
-              <button class="toggle-chip" onclick="setToggle('st-shape',this,'Round/Circle')">Round</button>
-              <button class="toggle-chip" onclick="setToggle('st-shape',this,'Square')">Square</button>
-              <button class="toggle-chip" onclick="setToggle('st-shape',this,'Die-cut')">Die-cut</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('st-shape',this,'Rectangle')">Rectangle</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('st-shape',this,'Round/Circle')">Round</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('st-shape',this,'Square')">Square</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('st-shape',this,'Die-cut')">Die-cut</button>
             </div>
             <input type="hidden" id="st-shape" value="Rectangle">
           </div>
@@ -483,19 +497,19 @@
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="st-qty-chips">
-              <button class="chip" onclick="setChip('st-qty-chips','f-qty',this,'10')">10</button>
-              <button class="chip sel" onclick="setChip('st-qty-chips','f-qty',this,'50')">50</button>
-              <button class="chip" onclick="setChip('st-qty-chips','f-qty',this,'100')">100</button>
-              <button class="chip" onclick="setChip('st-qty-chips','f-qty',this,'500')">500</button>
+              <button type="button" class="chip" onclick="setChip('st-qty-chips','f-qty',this,'10')">10</button>
+              <button type="button" class="chip sel" onclick="setChip('st-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip" onclick="setChip('st-qty-chips','f-qty',this,'100')">100</button>
+              <button type="button" class="chip" onclick="setChip('st-qty-chips','f-qty',this,'500')">500</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="50" style="margin-top:8px" oninput="clearChips('st-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="50" style="margin-top:8px" oninput="clearChips('st-qty-chips')">
           </div>
           <div class="form-group">
             <label>Material</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('st-mat',this,'Vinyl sticker')">Vinyl</button>
-              <button class="toggle-chip" onclick="setToggle('st-mat',this,'Transparent sticker')">Clear</button>
-              <button class="toggle-chip" onclick="setToggle('st-mat',this,'Paper sticker')">Paper</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('st-mat',this,'Vinyl sticker')">Vinyl</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('st-mat',this,'Transparent sticker')">Clear</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('st-mat',this,'Paper sticker')">Paper</button>
             </div>
             <input type="hidden" id="st-mat" value="Vinyl sticker">
           </div>
@@ -508,29 +522,29 @@
           <div class="form-group">
             <label>Size</label>
             <div class="chip-row" id="po-size-chips">
-              <button class="chip sel" onclick="setChip('po-size-chips','f-size',this,'A3')">A3</button>
-              <button class="chip" onclick="setChip('po-size-chips','f-size',this,'A2')">A2</button>
-              <button class="chip" onclick="setChip('po-size-chips','f-size',this,'A1')">A1</button>
-              <button class="chip" onclick="setChip('po-size-chips','f-size',this,'11×17 in')">11×17 in</button>
+              <button type="button" class="chip sel" onclick="setChip('po-size-chips','f-size',this,'A3')">A3</button>
+              <button type="button" class="chip" onclick="setChip('po-size-chips','f-size',this,'A2')">A2</button>
+              <button type="button" class="chip" onclick="setChip('po-size-chips','f-size',this,'A1')">A1</button>
+              <button type="button" class="chip" onclick="setChip('po-size-chips','f-size',this,'11×17 in')">11×17 in</button>
             </div>
             <input id="f-size" type="text" placeholder="Custom size..." style="margin-top:8px" oninput="clearChips('po-size-chips')">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="po-qty-chips">
-              <button class="chip sel" onclick="setChip('po-qty-chips','f-qty',this,'1')">1</button>
-              <button class="chip" onclick="setChip('po-qty-chips','f-qty',this,'5')">5</button>
-              <button class="chip" onclick="setChip('po-qty-chips','f-qty',this,'10')">10</button>
-              <button class="chip" onclick="setChip('po-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip sel" onclick="setChip('po-qty-chips','f-qty',this,'1')">1</button>
+              <button type="button" class="chip" onclick="setChip('po-qty-chips','f-qty',this,'5')">5</button>
+              <button type="button" class="chip" onclick="setChip('po-qty-chips','f-qty',this,'10')">10</button>
+              <button type="button" class="chip" onclick="setChip('po-qty-chips','f-qty',this,'50')">50</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="1" style="margin-top:8px" oninput="clearChips('po-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" style="margin-top:8px" oninput="clearChips('po-qty-chips')">
           </div>
         </div>
         <div class="form-group">
           <label>Finish</label>
           <div class="toggle-row">
-            <button class="toggle-chip sel" onclick="setToggle('po-finish',this,'Glossy')">Glossy</button>
-            <button class="toggle-chip" onclick="setToggle('po-finish',this,'Matte')">Matte</button>
+            <button type="button" class="toggle-chip sel" onclick="setToggle('po-finish',this,'Glossy')">Glossy</button>
+            <button type="button" class="toggle-chip" onclick="setToggle('po-finish',this,'Matte')">Matte</button>
           </div>
           <input type="hidden" id="po-finish" value="Glossy">
         </div>
@@ -542,27 +556,27 @@
           <div class="form-group">
             <label>Size / fold</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('br-fold',this,'Tri-fold A4')">Tri-fold A4</button>
-              <button class="toggle-chip" onclick="setToggle('br-fold',this,'Bi-fold A4')">Bi-fold A4</button>
-              <button class="toggle-chip" onclick="setToggle('br-fold',this,'A5 bi-fold')">A5 bi-fold</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('br-fold',this,'Tri-fold A4')">Tri-fold A4</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('br-fold',this,'Bi-fold A4')">Bi-fold A4</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('br-fold',this,'A5 bi-fold')">A5 bi-fold</button>
             </div>
             <input type="hidden" id="br-fold" value="Tri-fold A4">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="br-qty-chips">
-              <button class="chip sel" onclick="setChip('br-qty-chips','f-qty',this,'50')">50</button>
-              <button class="chip" onclick="setChip('br-qty-chips','f-qty',this,'100')">100</button>
-              <button class="chip" onclick="setChip('br-qty-chips','f-qty',this,'500')">500</button>
+              <button type="button" class="chip sel" onclick="setChip('br-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip" onclick="setChip('br-qty-chips','f-qty',this,'100')">100</button>
+              <button type="button" class="chip" onclick="setChip('br-qty-chips','f-qty',this,'500')">500</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="50" style="margin-top:8px" oninput="clearChips('br-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="50" style="margin-top:8px" oninput="clearChips('br-qty-chips')">
           </div>
         </div>
         <div class="form-group">
           <label>Finish</label>
           <div class="toggle-row">
-            <button class="toggle-chip sel" onclick="setToggle('br-finish',this,'Glossy')">Glossy</button>
-            <button class="toggle-chip" onclick="setToggle('br-finish',this,'Matte')">Matte</button>
+            <button type="button" class="toggle-chip sel" onclick="setToggle('br-finish',this,'Glossy')">Glossy</button>
+            <button type="button" class="toggle-chip" onclick="setToggle('br-finish',this,'Matte')">Matte</button>
           </div>
           <input type="hidden" id="br-finish" value="Glossy">
         </div>
@@ -574,21 +588,21 @@
           <div class="form-group">
             <label>Type</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('id-type',this,'PVC ID card')">PVC ID</button>
-              <button class="toggle-chip" onclick="setToggle('id-type',this,'Paper ID with laminate')">Paper + Laminate</button>
-              <button class="toggle-chip" onclick="setToggle('id-type',this,'ID with lanyard')">With lanyard</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('id-type',this,'PVC ID card')">PVC ID</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('id-type',this,'Paper ID with laminate')">Paper + Laminate</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('id-type',this,'ID with lanyard')">With lanyard</button>
             </div>
             <input type="hidden" id="id-type" value="PVC ID card">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="id-qty-chips">
-              <button class="chip sel" onclick="setChip('id-qty-chips','f-qty',this,'1')">1</button>
-              <button class="chip" onclick="setChip('id-qty-chips','f-qty',this,'5')">5</button>
-              <button class="chip" onclick="setChip('id-qty-chips','f-qty',this,'10')">10</button>
-              <button class="chip" onclick="setChip('id-qty-chips','f-qty',this,'50')">50</button>
+              <button type="button" class="chip sel" onclick="setChip('id-qty-chips','f-qty',this,'1')">1</button>
+              <button type="button" class="chip" onclick="setChip('id-qty-chips','f-qty',this,'5')">5</button>
+              <button type="button" class="chip" onclick="setChip('id-qty-chips','f-qty',this,'10')">10</button>
+              <button type="button" class="chip" onclick="setChip('id-qty-chips','f-qty',this,'50')">50</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="1" style="margin-top:8px" oninput="clearChips('id-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" style="margin-top:8px" oninput="clearChips('id-qty-chips')">
           </div>
         </div>
       </div>
@@ -599,29 +613,29 @@
           <div class="form-group">
             <label>Item type</label>
             <div class="toggle-row">
-              <button class="toggle-chip sel" onclick="setToggle('mug-type',this,'Ceramic mug (11oz)')">Mug 11oz</button>
-              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Ceramic mug (15oz)')">Mug 15oz</button>
-              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Tumbler')">Tumbler</button>
-              <button class="toggle-chip" onclick="setToggle('mug-type',this,'Magic mug (color-changing)')">Magic mug</button>
+              <button type="button" class="toggle-chip sel" onclick="setToggle('mug-type',this,'Ceramic mug (11oz)')">Mug 11oz</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('mug-type',this,'Ceramic mug (15oz)')">Mug 15oz</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('mug-type',this,'Tumbler')">Tumbler</button>
+              <button type="button" class="toggle-chip" onclick="setToggle('mug-type',this,'Magic mug (color-changing)')">Magic mug</button>
             </div>
             <input type="hidden" id="mug-type" value="Ceramic mug (11oz)">
           </div>
           <div class="form-group">
             <label>Quantity</label>
             <div class="chip-row" id="mug-qty-chips">
-              <button class="chip sel" onclick="setChip('mug-qty-chips','f-qty',this,'1')">1</button>
-              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'3')">3</button>
-              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'5')">5</button>
-              <button class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'10')">10</button>
+              <button type="button" class="chip sel" onclick="setChip('mug-qty-chips','f-qty',this,'1')">1</button>
+              <button type="button" class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'3')">3</button>
+              <button type="button" class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'5')">5</button>
+              <button type="button" class="chip" onclick="setChip('mug-qty-chips','f-qty',this,'10')">10</button>
             </div>
-            <input id="f-qty" type="number" min="1" value="1" style="margin-top:8px" oninput="clearChips('mug-qty-chips')">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" style="margin-top:8px" oninput="clearChips('mug-qty-chips')">
           </div>
         </div>
         <div class="form-group">
           <label>Print side</label>
           <div class="toggle-row">
-            <button class="toggle-chip sel" onclick="setToggle('mug-side',this,'One side')">One side</button>
-            <button class="toggle-chip" onclick="setToggle('mug-side',this,'Full wrap')">Full wrap</button>
+            <button type="button" class="toggle-chip sel" onclick="setToggle('mug-side',this,'One side')">One side</button>
+            <button type="button" class="toggle-chip" onclick="setToggle('mug-side',this,'Full wrap')">Full wrap</button>
           </div>
           <input type="hidden" id="mug-side" value="One side">
         </div>
@@ -636,7 +650,7 @@
           </div>
           <div class="form-group">
             <label>Quantity *</label>
-            <input id="f-qty" type="number" min="1" value="1" placeholder="1">
+            <input id="f-qty" type="number" inputmode="numeric" min="1" value="1" placeholder="1">
           </div>
         </div>
       </div>
@@ -668,7 +682,7 @@
         </div>
         <div class="form-group">
           <label>Notes / instructions</label>
-          <textarea id="f-notes" placeholder="Color preferences, special instructions, quantity per size, etc."></textarea>
+          <textarea id="f-notes" maxlength="600" placeholder="Color preferences, special instructions, quantity per size, etc."></textarea>
         </div>
 
         <button class="btn btn-primary" onclick="submitOrder()" id="submit-btn" style="font-size:15px;padding:14px;">
@@ -757,6 +771,10 @@
   <!-- TRACK ORDER -->
   <div id="tab-track" style="display:none">
     <div class="card">
+      <div id="my-refs" style="display:none;margin-bottom:1rem">
+        <div style="font-size:12px;color:var(--text-secondary);font-weight:500;margin-bottom:7px">Your recent orders on this device</div>
+        <div id="my-refs-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
       <div class="form-group">
         <label>Reference number</label>
         <input id="t-ref" type="text" placeholder="e.g. REQ-0001" style="letter-spacing:1px">
@@ -786,7 +804,7 @@
         </div>
         <div class="form-group">
           <label>Notes / instructions</label>
-          <textarea id="amend-notes" placeholder="Update your instructions here..." style="min-height:80px"></textarea>
+          <textarea id="amend-notes" maxlength="600" placeholder="Update your instructions here..." style="min-height:80px"></textarea>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-primary" onclick="submitAmendment()" style="flex:1">
@@ -804,7 +822,7 @@
   <div class="footer">Arroyo Suite &mdash; All data is private and managed by the shop owner.</div>
 </div>
 
-<div class="cf-toast" id="cf-toast"></div>
+<div class="cf-toast" id="cf-toast" role="alert" aria-live="assertive"></div>
 
 <script>
 // ── Toast notification ────────────────────────────────────────────────────
@@ -1063,6 +1081,8 @@ function collectExtras(jt){
   const extras = {};
   if(jt==='Print (file upload)'){
     extras.colorMode = document.getElementById('color-mode').value;
+    const sm = document.getElementById('f-send-method');
+    if (sm && sm.value) extras.sendMethod = sm.value;
   } else if(jt==='Business cards'){
     extras.finish = document.getElementById('bc-finish').value;
     extras.colorMode = document.getElementById('bc-color').value;
@@ -1099,6 +1119,18 @@ async function submitOrder(){
 
   if(!name){ cfToast('⚠️ Please enter your name.'); return; }
   if(!phone){ cfToast('⚠️ Please enter your contact number.'); return; }
+  // A wrong number means the shop cannot call about the job, and there is no
+  // second way to reach them. Loose check: 10-13 digits, PH mobiles start 09.
+  const digits = phone.replace(/\D/g,'');
+  if(digits.length < 10 || digits.length > 13){
+    cfToast('⚠️ That contact number looks incomplete. Please check it.');
+    document.getElementById('f-phone').focus(); return;
+  }
+  const em = document.getElementById('f-email').value.trim();
+  if(em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){
+    cfToast('⚠️ That email address looks incorrect. Please check it, or leave it blank.');
+    document.getElementById('f-email').focus(); return;
+  }
   if(!jobtype){ cfToast('⚠️ Please select a job type.'); return; }
 
   let size='', qty=1, pkgKey='', pkgLabel='';
@@ -1115,12 +1147,22 @@ async function submitOrder(){
   } else if(jobtype==='Print (file upload)'){
     size = document.getElementById('f-print-size').value.trim() || 'Not specified';
     qty = document.getElementById('f-qty').value || 1;
+    // Without this the shop gets a print job and no idea where the file is
+    if(!document.getElementById('f-send-method').value){
+      cfToast('⚠️ Please choose how you will send us the file.');
+      document.getElementById('section-print').scrollIntoView({behavior:'smooth',block:'nearest'});
+      return;
+    }
   } else {
     const qEl = document.getElementById('f-qty');
     const sEl = document.getElementById('f-size');
     qty = qEl ? qEl.value : 1;
     size = sEl ? sEl.value : '';
     if(!qty || qty < 1){ cfToast('⚠️ Please enter a valid quantity.'); return; }
+    if(Number(qty) > 10000){
+      cfToast('⚠️ That quantity is very large — please call the shop to arrange a bulk order.');
+      return;
+    }
   }
 
   const extras = collectExtras(jobtype);
@@ -1162,14 +1204,31 @@ async function submitOrder(){
     const newId = inserted && inserted[0] ? inserted[0].id : Date.now();
     const ref = 'REQ-' + String(newId).padStart(4,'0');
 
-    // Write the ref back to the row
-    await sbFetch('requests?id=eq.' + newId, {
-      method: 'PATCH',
-      prefer: 'return=minimal',
-      body: JSON.stringify({ ref })
-    });
+    // Write the ref back to the row.
+    // This is deliberately NOT allowed to fail the whole submission: the order
+    // is already saved by the line above. If the connection drops in between,
+    // the old code threw, showed an error, and the customer submitted again —
+    // leaving the shop with two identical orders. The ref is derivable from the
+    // id, so the worst case here is a blank ref column, which the dashboard
+    // fills in on the fly.
+    try {
+      await sbFetch('requests?id=eq.' + newId, {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: JSON.stringify({ ref })
+      });
+    } catch(refErr) {
+      console.warn('Order saved, but the reference could not be written back:', refErr);
+    }
 
     document.getElementById('ref-number').textContent = ref;
+    // Customers close the tab, then cannot remember the reference. Keep the
+    // last few so the Track tab can offer them back.
+    try {
+      const seen = JSON.parse(localStorage.getItem('arroyo_my_refs') || '[]');
+      seen.unshift({ ref, name, jobtype, at: new Date().toISOString() });
+      localStorage.setItem('arroyo_my_refs', JSON.stringify(seen.slice(0,5)));
+    } catch(e) {}
 
     // ── Build HTML email ──────────────────────────────────────────────────
     const _name    = row.name || '';
@@ -1379,6 +1438,7 @@ function resetForm(){
 
 // ── switchTab ─────────────────────────────────────────────────────────────
 function switchTab(t){
+  if(t === 'track') renderMyRefs();
   const tabs = document.querySelectorAll('.tab');
   tabs[0].classList.toggle('active', t==='order');
   tabs[1].classList.toggle('active', t==='track');
@@ -1569,6 +1629,34 @@ async function submitAmendment() {
 }
 
 // ── trackOrder ────────────────────────────────────────────────────────────
+// Remembering the reference for the customer — they rarely write it down
+function renderMyRefs(){
+  const box = document.getElementById('my-refs');
+  const list = document.getElementById('my-refs-list');
+  if(!box || !list) return;
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem('arroyo_my_refs') || '[]'); } catch(e){}
+  if(!seen.length){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  list.innerHTML = seen.map(r => {
+    const when = r.at ? new Date(r.at).toLocaleDateString('en-PH',{month:'short',day:'numeric'}) : '';
+    return `<button type="button" onclick="useMyRef('${esc(r.ref)}','${esc(String(r.name||'').replace(/'/g,''))}')"
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:var(--radius);
+             border:0.5px solid var(--border-strong);background:var(--surface-1);cursor:pointer;
+             font-family:inherit;text-align:left">
+      <span style="font-weight:600;font-size:13px;letter-spacing:.5px">${esc(r.ref)}</span>
+      <span style="font-size:12px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.jobtype||'')}</span>
+      <span style="font-size:11px;color:var(--text-muted)">${esc(when)}</span>
+    </button>`;
+  }).join('');
+}
+
+function useMyRef(ref, name){
+  document.getElementById('t-ref').value = ref;
+  document.getElementById('t-name').value = name || '';
+  trackOrder();
+}
+
 async function trackOrder(){
   const ref  = document.getElementById('t-ref').value.trim().toUpperCase();
   const name = document.getElementById('t-name').value.trim().toLowerCase();
@@ -1607,6 +1695,7 @@ async function trackOrder(){
     if(extras.shape)     extrasHtml+=`<div class="status-row"><span class="label">Shape</span><span class="value">${esc(extras.shape)}</span></div>`;
     if(extras.idType)    extrasHtml+=`<div class="status-row"><span class="label">ID type</span><span class="value">${esc(extras.idType)}</span></div>`;
     if(extras.sizes)     extrasHtml+=`<div class="status-row"><span class="label">Sizes</span><span class="value">${esc(extras.sizes)}</span></div>`;
+    if(extras.sendMethod)extrasHtml+=`<div class="status-row"><span class="label">File sent via</span><span class="value">${esc(extras.sendMethod)}</span></div>`;
     if(extras.mugType)   extrasHtml+=`<div class="status-row"><span class="label">Mug type</span><span class="value">${esc(extras.mugType)}</span></div>`;
     if(extras.mugSide)   extrasHtml+=`<div class="status-row"><span class="label">Print side</span><span class="value">${esc(extras.mugSide)}</span></div>`;
     result.className='status-card found';

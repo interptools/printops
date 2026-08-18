@@ -2424,14 +2424,14 @@ function renderCustomers() {
     // Three or more orders is a regular worth recognising at the counter
     const regular = c.count >= 3
       ? '<span style="font-size:10px;font-weight:700;color:var(--success);background:var(--success-bg);border-radius:4px;padding:1px 5px;margin-left:5px">REGULAR</span>' : '';
-    let lastTxt = '<span style="color:var(--text-muted)">never</span>';
+    let lastTxt = 'never', lastStale = true;
     if (c.last) {
       const days = Math.floor((now - new Date(c.last).getTime()) / 864e5);
-      const stale = days > 90;
-      lastTxt = `<span style="${stale ? 'color:var(--text-muted)' : ''}">${
-        days === 0 ? 'today' : days === 1 ? 'yesterday' :
-        days < 30 ? days + ' days ago' :
-        days < 365 ? Math.round(days/30) + ' months ago' : Math.round(days/365) + 'y ago'}</span>`;
+      lastStale = days > 90;
+      lastTxt = days === 0 ? 'today' : days === 1 ? 'yesterday' :
+                days < 30  ? days + ' days ago' :
+                days < 365 ? Math.round(days/30) + ' months ago'
+                           : Math.round(days/365) + 'y ago';
     }
     return `<tr class="stack-row">
       <td class="m-head">${esc(c.name)}${regular}</td>
@@ -2439,7 +2439,7 @@ function renderCustomers() {
       <td data-label="Email">${esc(c.email || '—')}</td>
       <td data-label="Orders">${c.count}</td>
       <td data-label="Paid">₱${c.spent.toLocaleString('en-PH')}${c.owed > 0 ? `<div style="font-size:11px;color:var(--warning);font-weight:600">₱${c.owed.toLocaleString('en-PH')} owed</div>` : ''}</td>
-      <td data-label="Last order" style="font-size:12px">${esc(lastTxt)}</td>
+      <td data-label="Last order" style="font-size:12px${lastStale ? ';color:var(--text-muted)' : ''}">${esc(lastTxt)}</td>
       <td class="m-actions"><div class="actions">
         <button class="btn btn-sm" onclick="showHistory(${c.id})"><i class="ti ti-history"></i> History</button>
         <button title="Delete customer" aria-label="Delete customer" class="btn btn-sm btn-danger" onclick="deleteCust(${c.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -2638,6 +2638,7 @@ async function getRequestsFromDB() {
       try { extras = JSON.parse(r.extras || '{}'); } catch(e) {}
       return {
         ...r,
+        ref: r.ref || ('REQ-' + String(r.id).padStart(4,'0')),
         pkgKey: r.pkg_key,
         pkgLabel: r.pkg_label,
         printFile: r.print_file,
