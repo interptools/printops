@@ -65,7 +65,9 @@
     outline:none;transition:border-color 0.12s;-webkit-appearance:none;appearance:none
   }
   .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);background:var(--surface-2)}
-  .form-group textarea{resize:vertical;min-height:90px;line-height:1.5;font-size:15px}
+  /* 16px, not 15px: Safari zooms the whole page when a focused control has
+     text under 16px, and leaves the form scrolled sideways afterwards. */
+  .form-group textarea{resize:vertical;min-height:90px;line-height:1.5;font-size:16px}
   .form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%236b6b67' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:480px){.form-row{grid-template-columns:1fr}}
@@ -154,6 +156,7 @@
   /* Toast notification */
   .cf-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--surface-2);padding:11px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
   .cf-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .cf-toast{white-space:normal}   /* long messages wrap instead of being clipped */
   .cf-toast.error{background:var(--danger)}
   .cf-toast.success{background:var(--success)}
 </style>
@@ -824,6 +827,18 @@
 
 <div class="cf-toast" id="cf-toast" role="alert" aria-live="assertive"></div>
 
+<!-- Shown only when the order reached the database but the confirmation screen
+     failed to render. Deliberately persistent: the customer must be able to
+     read and screenshot it, and must not tap submit again. -->
+<div id="order-saved-notice" role="alert" aria-live="assertive"
+     style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:1000;
+            background:var(--success);color:#fff;padding:16px 18px;border-radius:12px;
+            font-size:15px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,0.25);
+            max-width:520px;margin:0 auto">
+  <div style="font-weight:700;margin-bottom:6px">&#9989; Your order was saved</div>
+  <div id="osn-body"></div>
+</div>
+
 <script>
 // ── Toast notification ────────────────────────────────────────────────────
 function cfToast(msg, type = 'error') {
@@ -1172,6 +1187,13 @@ async function submitOrder(){
   const submitBtn = document.querySelector('button[onclick="submitOrder()"]');
   if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
 
+  // Everything after the insert below is presentation: building the email
+  // HTML, writing the success screen, saving the ref locally. If any of that
+  // throws, the order is ALREADY in the shop's queue — telling the customer
+  // to try again would create a duplicate job. This flag keeps the two cases
+  // apart in the catch block.
+  let orderSaved = false;
+
   try {
 
     // Insert WITHOUT a ref first — let Supabase assign the auto-increment id
@@ -1200,8 +1222,17 @@ async function submitOrder(){
       body: JSON.stringify(row)
     });
 
+    // No confirmed id means the insert did not land. Falling back to
+    // Date.now() used to produce a 13-digit reference like REQ-1787124465228:
+    // unusable at the counter, unmatchable by the dashboard's ref recovery,
+    // and read out digit by digit over the shop speaker by the call board.
+    if (!inserted || !inserted[0] || !inserted[0].id) {
+      throw new Error('The order was not confirmed by the server');
+    }
+    orderSaved = true;   // from here on, a failure must not ask for a retry
+
     // Build REF from the guaranteed-unique id Supabase assigned
-    const newId = inserted && inserted[0] ? inserted[0].id : Date.now();
+    const newId = inserted[0].id;
     const ref = 'REQ-' + String(newId).padStart(4,'0');
 
     // Write the ref back to the row.
@@ -1384,8 +1415,30 @@ async function submitOrder(){
 
   } catch(e) {
     console.error(e);
-    cfToast('⚠️ Could not submit your order. Please check your internet connection and try again.');
-    if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Submit order'; }
+    if (orderSaved) {
+      // The shop has the job. Do NOT re-enable the button: a second tap would
+      // book the same order twice. A toast is no good here — .cf-toast hides
+      // itself after 3.5s and the customer needs to screenshot this.
+      const refEl = document.getElementById('ref-number');
+      const savedRef = (refEl && refEl.textContent && refEl.textContent.trim() !== '\u2014')
+        ? refEl.textContent.trim() : '';
+      const body = document.getElementById('osn-body');
+      if (body) {
+        body.innerHTML = (savedRef
+            ? 'Your reference number is <strong style="letter-spacing:1px">' + esc(savedRef) + '</strong>. '
+            : 'We could not show your reference number. ')
+          + 'The confirmation screen did not finish loading, but the shop already has '
+          + 'your order. <strong>Please do not submit again.</strong> '
+          + (savedRef ? 'Screenshot this and show it at the counter.'
+                      : 'Please call the shop with your name and phone number.');
+      }
+      const notice = document.getElementById('order-saved-notice');
+      if (notice) notice.style.display = 'block';
+      if (submitBtn) submitBtn.textContent = 'Order saved';
+    } else {
+      cfToast('\u26a0\ufe0f Could not submit your order. Please check your internet connection and try again.');
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Submit order'; }
+    }
   }
 }
 

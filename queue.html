@@ -252,6 +252,12 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const SELECT     = 'id,ref,name,jobtype,rush,status,submitted_at,requeued_at,skipped_count,started_at,served_by';
 const READY_DAYS = 7;      // drop finished jobs older than this off the board
 const POLL_MS    = 15000;  // safety net behind realtime
+// How far back the board looks, and the most rows it will ever draw. Raise
+// QUERY_DAYS if you deliberately leave jobs open across a long weekend.
+// Must be >= READY_DAYS or the server would hide rows the board still wants to
+// show in the pickup column. Derived so the two cannot drift apart.
+const QUERY_DAYS  = READY_DAYS + 1;
+const QUERY_LIMIT = 300;
 
 let rows = [], calledRefs = new Set(), _booted = false;
 let sound = false, live = false, fails = 0;
@@ -259,8 +265,17 @@ let sound = false, live = false, fails = 0;
 /* ── data ─────────────────────────────────────────────────────────────── */
 async function load(){
   try{
+    // Pending and In progress are always current, but Done rows pile up until
+    // staff press "Close out day". Bound it server-side so a forgotten close-out
+    // cannot slowly grow the payload or fill the pickup column with stale jobs.
+    // or=(archived.is.false,archived.is.null) also catches rows written before
+    // the archived column existed — is.false alone does not match NULL.
+    const since = new Date(Date.now() - QUERY_DAYS * 864e5).toISOString();
     const url = SUPABASE_URL + '/rest/v1/requests?select=' + SELECT
-              + '&status=in.(Pending,"In progress",Done)&archived=is.false&order=id.asc';
+              + '&status=in.(Pending,"In progress",Done)'
+              + '&or=(archived.is.false,archived.is.null)'
+              + '&submitted_at=gte.' + encodeURIComponent(since)
+              + '&order=id.asc&limit=' + QUERY_LIMIT;
     const res = await fetch(url, {headers:{
       apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY
     }});
@@ -489,9 +504,22 @@ function speakableRef(ref){
   return n.split('').join(' ');
 }
 
+// A reconnect can surface several newly-called numbers at once. Reading out a
+// backlog is worse than silence: customers hear numbers that were collected
+// while the board was down. Chime for each, but only speak a small burst.
+let _burstAt = 0, _burstCount = 0;
+const BURST_WINDOW_MS = 5000, BURST_MAX_SPOKEN = 3;
+
 function announce(ref, by){
   if(!sound) return;
   chime();
+  const now = Date.now();
+  if(now - _burstAt > BURST_WINDOW_MS){ _burstAt = now; _burstCount = 0; }
+  _burstCount++;
+  if(_burstCount > BURST_MAX_SPOKEN){
+    console.warn('Announcement burst capped — chimed but did not speak', ref);
+    return;
+  }
   const digits = speakableRef(ref);
   if(!digits) return;
   const line = 'Number ' + digits + (by ? ', counter ' + by : '')
