@@ -10,6 +10,7 @@
 <title>Arroyo Suite — Business Manager</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -225,6 +226,32 @@ tbody tr:hover td{background:var(--surface-1)}
 .badge-Cancelled{background:var(--danger-bg);color:var(--danger)}
 .badge-Paid{background:var(--success-bg);color:var(--success)}
 .badge-Unpaid{background:var(--warning-bg);color:var(--warning)}
+/* ── Quotation status badges ── */
+.badge-Draft{background:var(--surface-0);color:var(--text-secondary);border:0.5px solid var(--border-strong)}
+.badge-Sent{background:var(--accent-bg);color:var(--accent-text)}
+.badge-Accepted{background:var(--success-bg);color:var(--success)}
+.badge-Declined{background:var(--danger-bg);color:var(--danger)}
+.badge-Expired{background:var(--warning-bg);color:var(--warning)}
+
+/* ── Quotation line-item editor ── */
+.q-item-row{display:grid;grid-template-columns:1fr 62px 100px 32px;gap:6px;align-items:center}
+.q-item-row input{padding:8px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none;width:100%}
+.q-item-row input:focus{border-color:var(--accent)}
+.q-i-del{border:0.5px solid var(--border-strong);background:transparent;color:var(--danger);border-radius:var(--radius);cursor:pointer;height:34px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.q-i-del:active{background:var(--danger-bg)}
+.q-head-row{display:grid;grid-template-columns:1fr 62px 100px 32px;gap:6px;font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;font-weight:600}
+.q-chip{padding:5px 11px;border-radius:20px;border:0.5px solid var(--border-strong);background:var(--surface-2);font-size:11.5px;font-family:inherit;color:var(--text-secondary);cursor:pointer;white-space:nowrap}
+.q-chip:active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-text)}
+@media(max-width:600px){
+  .q-item-row,.q-head-row{grid-template-columns:1fr 52px 84px 30px;gap:4px}
+  .q-item-row input{padding:8px;font-size:12.5px}
+}
+/* Quotation paper preview — kept light in both themes so it matches the PDF */
+.q-paper{background:#fff;color:#1a1a18;padding:22px;border-radius:var(--radius);border:0.5px solid rgba(0,0,0,0.12);font-size:12.5px;line-height:1.55}
+.q-paper table{width:100%;border-collapse:collapse;margin:10px 0}
+.q-paper th{background:#eef0f6;color:#555;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;text-align:left;padding:6px 8px;border:none}
+.q-paper td{padding:7px 8px;border-bottom:1px solid #e6e6e6;font-size:12px;vertical-align:top}
+.q-paper .num{text-align:right;white-space:nowrap}
 .alert-today{background:var(--danger-bg) !important}
 .alert-soon{background:var(--warning-bg) !important}
 
@@ -474,6 +501,7 @@ tbody tr:hover td{background:var(--surface-1)}
     <button class="nav-item" onclick="nav('orders')" id="nav-orders"><i class="ti ti-clipboard-list" aria-hidden="true"></i><span>Orders</span></button>
     <button class="nav-item" onclick="nav('customers')" id="nav-customers"><i class="ti ti-users" aria-hidden="true"></i><span>Customers</span></button>
     <button class="nav-item" onclick="nav('invoices')" id="nav-invoices"><i class="ti ti-receipt" aria-hidden="true"></i><span>Invoices</span></button>
+    <button class="nav-item" onclick="nav('quotations')" id="nav-quotations"><i class="ti ti-file-dollar" aria-hidden="true"></i><span>Quotations</span></button>
     <button class="nav-item" onclick="nav('requests')" id="nav-requests"><i class="ti ti-inbox" aria-hidden="true"></i><span>Requests <span id="req-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('idphotos')" id="nav-idphotos"><i class="ti ti-id" aria-hidden="true"></i><span>ID Photos <span id="photo-badge" style="display:none;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></span></button>
     <button class="nav-item" onclick="nav('services')" id="nav-services"><i class="ti ti-settings-2" aria-hidden="true"></i><span>Services</span></button>
@@ -630,6 +658,41 @@ tbody tr:hover td{background:var(--surface-1)}
           <tbody id="inv-table" class="stack-body"></tbody>
         </table>
         <div class="empty" id="inv-empty" style="display:none">No invoices yet.</div>
+      </div>
+    </div>
+
+    <!-- QUOTATIONS -->
+    <div class="page" id="page-quotations">
+      <div class="page-header">
+        <div class="page-title">Quotations</div>
+        <button class="btn btn-primary" onclick="openQuoteModal()"><i class="ti ti-plus"></i> New quotation</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.6">
+        A price offer you send <strong>before</strong> the job is agreed &mdash; nothing is owed until the customer accepts.
+        Build the line items, then download a ready-to-attach PDF, share it straight to Messenger/Gmail from a phone, or convert it to an order once they say yes.
+      </div>
+      <div id="quote-local-notice" style="display:none;background:var(--warning-bg);border:0.5px solid var(--warning);border-radius:var(--radius);padding:10px 14px;font-size:12.5px;color:var(--warning);margin-bottom:1rem;line-height:1.5">
+        <i class="ti ti-cloud-off"></i> <strong>Saved on this device only.</strong>
+        The <code>quotations</code> table does not exist in Supabase yet, so quotations are not syncing to your other devices.
+        Run the SQL on the <a href="#" onclick="nav('sync');return false" style="color:var(--warning);font-weight:600">Sync setup</a> page to switch to cloud storage.
+      </div>
+      <div id="quote-upload-notice" style="display:none;background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:10px 14px;font-size:12.5px;color:var(--accent-text);margin-bottom:1rem;line-height:1.5">
+        <i class="ti ti-cloud-upload"></i> <span id="quote-upload-count">0 quotations</span> were saved on this device before cloud sync was working, so they are not in Supabase yet.
+        <button class="btn btn-sm" style="margin-left:8px;vertical-align:middle" onclick="uploadLocalQuotes()"><i class="ti ti-upload"></i> Upload them now</button>
+      </div>
+      <div class="search-bar">
+        <input id="quote-search" placeholder="Search by customer, quote #, item..." oninput="renderQuotations()">
+        <select id="quote-filter" onchange="renderQuotations()">
+          <option value="">All statuses</option>
+          <option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option>
+        </select>
+      </div>
+      <div class="card">
+        <table class="stack">
+          <thead><tr><th>Quote #</th><th>Customer</th><th>Items</th><th>Total</th><th>Valid until</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="quote-table" class="stack-body"></tbody>
+        </table>
+        <div class="empty" id="quote-empty" style="display:none">No quotations yet. Click <strong>New quotation</strong>, or press the <i class="ti ti-file-dollar"></i> button on any customer request.</div>
       </div>
     </div>
 
@@ -911,6 +974,7 @@ tbody tr:hover td{background:var(--surface-1)}
             <code>create table customers (id serial primary key, name text, phone text, email text, address text, created_at timestamptz default now());</code><br>
             <code>create table orders (id serial primary key, customer_id int, jobtype text, size text, qty int default 1, amount numeric default 0, payment text, status text default 'Pending', due date, notes text, rush boolean default false, created_at timestamptz default now());</code><br>
             <code>create table invoices (id serial primary key, customer_id int, order_id int, amount numeric default 0, due date, notes text, status text default 'Unpaid', created_at timestamptz default now());</code><br>
+            <code>create table quotations (id serial primary key, customer_id int, request_id int, customer_name text, customer_email text, customer_phone text, items text, discount numeric default 0, valid_until date, notes text, status text default 'Draft', created_at timestamptz default now());</code><br>
             <code>create table settings (key text primary key, value text);</code>
             </div>
           </div>
@@ -1490,6 +1554,89 @@ tbody tr:hover td{background:var(--surface-1)}
   </div>
 </div>
 
+<!-- Quotation Builder Modal -->
+<div class="modal-overlay" id="quote-modal" onclick="bgClose(event,'quote-modal')">
+  <div class="modal" style="width:660px">
+    <div class="modal-title">
+      <span id="quote-modal-title">New quotation</span>
+      <button class="modal-close" onclick="closeModal('quote-modal')"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="form-group">
+      <label>Customer</label>
+      <select id="q-customer" onchange="quoteCustomerChanged()"></select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Pick a saved customer, or leave it on <em>Walk-in / new enquiry</em> and just type their details below.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Name on the quotation *</label><input id="q-name" placeholder="e.g. Maria Santos / ABC Trading"></div>
+      <div class="form-group"><label>Email <span style="color:var(--text-muted);font-weight:400">(for sending)</span></label><input id="q-email" type="email" placeholder="name@email.com"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Phone</label><input id="q-phone" placeholder="09xx xxx xxxx"></div>
+      <div class="form-group"><label>Valid until</label><input id="q-valid" type="date"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Line items *</label>
+      <div class="q-head-row"><span>Description</span><span style="text-align:right">Qty</span><span style="text-align:right">Unit price</span><span></span></div>
+      <div id="q-items" style="display:flex;flex-direction:column;gap:6px"></div>
+      <button type="button" onclick="addQuoteItemRow()"
+        style="margin-top:8px;padding:7px 12px;border-radius:var(--radius);border:1px dashed var(--border-strong);background:transparent;font-size:12px;font-family:inherit;color:var(--text-secondary);cursor:pointer;width:100%;text-align:left">
+        <i class="ti ti-plus"></i> Add line item
+      </button>
+      <div id="q-preset-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group"><label>Discount (&#8369;)</label><input id="q-discount" type="number" min="0" step="0.01" value="0" oninput="refreshQuoteTotals()"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="q-status"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select>
+      </div>
+    </div>
+
+    <div id="q-totals" style="background:var(--surface-1);border-radius:var(--radius);padding:12px 14px;font-size:13px;margin-bottom:1rem"></div>
+
+    <div class="form-group">
+      <label>Terms &amp; notes <span style="color:var(--text-muted);font-weight:400">(printed at the bottom of the PDF)</span></label>
+      <textarea id="q-notes" rows="4" style="width:100%;padding:9px 11px;border:0.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface-2);color:var(--text-primary);outline:none;resize:vertical"></textarea>
+      <button type="button" onclick="resetQuoteTerms()" style="margin-top:6px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--border-strong);background:transparent;font-size:11px;font-family:inherit;color:var(--text-secondary);cursor:pointer">
+        <i class="ti ti-history"></i> Reset to standard terms
+      </button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('quote-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveQuotation()"><i class="ti ti-check"></i> Save &amp; preview</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quotation Preview / Send Modal -->
+<div class="modal-overlay" id="quote-view-modal" onclick="bgClose(event,'quote-view-modal')">
+  <div class="modal" style="width:660px">
+    <div class="modal-title">
+      <span id="quote-view-title">Quotation preview</span>
+      <button class="modal-close" onclick="closeModal('quote-view-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="quote-view-content"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem">
+      <button class="btn btn-primary" style="flex:1;min-width:150px" onclick="downloadQuoteFromView()"><i class="ti ti-download"></i> Download PDF</button>
+      <button class="btn" id="quote-share-btn" style="flex:1;min-width:120px;display:none" onclick="shareQuoteFromView()"><i class="ti ti-share"></i> Share PDF</button>
+      <button class="btn" style="flex:1;min-width:120px" onclick="emailQuoteFromView()"><i class="ti ti-mail"></i> Email it</button>
+      <button class="btn" style="flex:1;min-width:110px" onclick="printQuoteFromView()"><i class="ti ti-printer"></i> Print</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;line-height:1.55">
+      <i class="ti ti-info-circle"></i> <strong>Email it</strong> downloads the PDF and opens your mail app with the message pre-written &mdash; attach the downloaded file before sending (browsers are not allowed to attach files for you).
+      On a phone, <strong>Share PDF</strong> sends the file straight to Gmail, Messenger or Viber in one step.
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('quote-view-modal')">Close</button>
+      <button class="btn" onclick="copyQuoteEmailFromView()"><i class="ti ti-copy"></i> Copy HTML email</button>
+      <button class="btn btn-success" onclick="quoteToOrderFromView()"><i class="ti ti-arrow-right"></i> Accepted &rarr; make order</button>
+    </div>
+  </div>
+</div>
+
 <!-- Print Invoice Modal -->
 <div class="modal-overlay" id="print-modal" onclick="bgClose(event,'print-modal')">
   <div class="modal" style="width:580px">
@@ -1806,6 +1953,7 @@ const PAGE_TITLES = {
   dashboard:'Dashboard', orders:'Orders', customers:'Customers', invoices:'Invoices',
   requests:'Customer Requests', idphotos:'ID Photos', services:'Services',
   inventory:'Inventory', activitylog:'Activity Log', employees:'Employees',
+  quotations:'Quotations',
   calculator:'Price Calculator', pricepresets:'Price Presets', pricelist:'Price List',
   templates:'Templates', freetools:'Free Tools', sync:'Sync Setup'
 };
@@ -1827,7 +1975,7 @@ function nav(p) {
   window.scrollTo({top:0, behavior:'instant'});
   const renders = {
     dashboard: renderDash, orders: renderOrders, customers: renderCustomers,
-    invoices: renderInvoices, requests: renderRequests,
+    invoices: renderInvoices, quotations: renderQuotations, requests: renderRequests,
     idphotos: renderPhotoOrders, services: renderServices,
     calculator: () => calcPrice(), freetools: () => {}, sync: renderSync,
     templates: renderTemplates
@@ -2762,6 +2910,7 @@ async function renderRequests() {
           ? `<button class="btn btn-sm btn-success" onclick="reqToIdPhoto(${r.id})" title="Open in ID Photos to upload photo &amp; print"><i class="ti ti-id"></i> ID Photo</button>`
           : `<button class="btn btn-sm btn-success" onclick="convertReqToOrder(${r.id})" title="Convert to order"><i class="ti ti-arrow-right"></i></button>`}
         ${r.status==='In progress' ? `<button class="btn btn-sm" onclick="event.stopPropagation();skipRequest(${r.id},'${(r.ref||'').replace(/'/g,'')}')" title="No-show — send back to the end of the line" style="color:var(--warning);border-color:var(--warning)"><i class="ti ti-player-skip-forward"></i></button>` : ''}
+        <button class="btn btn-sm" onclick="event.stopPropagation();quoteFromReq(${r.id})" title="Create a quotation (price offer) from this request" style="color:var(--accent);border-color:var(--accent)"><i class="ti ti-file-dollar"></i></button>
         <button class="btn btn-sm" onclick="event.stopPropagation();quickInvoiceFromReq(${r.id})" title="Create invoice from this request" style="color:var(--warning);border-color:var(--warning)"><i class="ti ti-receipt"></i></button>
         <button class="btn btn-sm" onclick="event.stopPropagation();printReqTicket(${r.id})" title="Print order slip"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteReq(${r.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -3643,7 +3792,10 @@ function owSubmitOrder() {
 
 // Export / Import
 function exportData() {
-  const data = { orders, customers, invoices, requests: getRequests(), exportedAt: new Date().toISOString() };
+  const data = Object.assign(
+    { orders, customers, invoices, requests: getRequests(), exportedAt: new Date().toISOString() },
+    (typeof quotationsForBackup === 'function' ? quotationsForBackup() : {})
+  );
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3663,9 +3815,11 @@ function importData(e) {
         await showConfirm({ title:'Import backup?', msg:'Existing records in Supabase are NOT deleted — items are added on top.', okLabel:'Import', okColor:'var(--accent)', icon:'ti-upload', iconBg:'var(--accent-bg)', iconColor:'var(--accent)' });
       } catch { return; }
       if (data.requests) { saveRequests(data.requests); }
+      let qRestored = 0;
+      try { qRestored = await restoreQuotationsFromBackup(data); } catch (qErr) { qRestored = 0; }
       await loadAllData();
       renderDash(); updateReqBadge(); updatePhotoBadge();
-      toast('Backup data loaded.');
+      toast('Backup data loaded.' + (qRestored ? ' Restored ' + qRestored + ' quotation' + (qRestored === 1 ? '' : 's') + '.' : ''));
     } catch { toast('⚠️ Invalid backup file.'); }
   };
   reader.readAsText(file);
@@ -6265,6 +6419,1029 @@ if (typeof deleteEmployee === 'function') {
     return _origDeleteEmployee(id, name);
   };
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── QUOTATIONS ─────────────────────────────────────────────────────────────
+// A quotation is a price offer sent BEFORE the job is agreed, so it is kept
+// deliberately separate from invoices: no money is owed until the customer
+// accepts, and an accepted quote becomes an order in one click.
+//
+// Storage is cloud-first. If the `quotations` table does not exist in Supabase
+// yet, the first read fails and everything falls back to this device rather
+// than showing an error. Device-only records live under their own storage key
+// (never the cloud mirror) so that switching on cloud sync later cannot
+// silently overwrite them — they are offered for upload instead.
+// ═══════════════════════════════════════════════════════════════════════════
+const QUOTE_CACHE_KEY = 'po_quotations';         // read-only mirror of the cloud
+const QUOTE_LOCAL_KEY = 'po_quotations_local';   // records created on this device only
+const QUOTE_STATUSES   = ['Draft', 'Sent', 'Accepted', 'Declined'];
+
+let quotations          = [];
+let _quoteBackend       = null;   // 'cloud' | 'local' — decided on first load
+let _quotesLoaded       = false;
+let _quoteEditId        = null;   // id being edited, or null for a new quote
+let _quoteViewId        = null;   // id shown in the preview modal
+let _quoteLocalSeq      = 0;      // id counter for the device-only fallback
+let _quotePendingUpload = [];     // device-only quotes found after cloud sync works
+let _quotePrefillReqId  = null;   // request this quote was prefilled from
+
+const QUOTE_DEFAULT_TERMS =
+  '\u2022 Prices are valid until the date shown above and may change after that date.\n' +
+  '\u2022 50% downpayment is required to start the job; the balance is due on release.\n' +
+  '\u2022 Turnaround begins once the final artwork is approved.\n' +
+  '\u2022 Rush jobs may carry an additional charge.\n' +
+  '\u2022 This quotation is not an invoice \u2014 nothing is owed until you confirm the order.';
+
+function quoteNo(id) { return 'QT-' + String(id == null ? 0 : id).padStart(4, '0'); }
+
+// Any number arriving from the database, a backup file or a form field.
+// Math.max(0, NaN) is NaN, so the isFinite check has to come first.
+function _qNum(v) {
+  const n = Number(v);
+  return isFinite(n) ? Math.max(0, n) : 0;
+}
+
+// A status straight from the database is never trusted into a class name
+function _qStatus(s) { return QUOTE_STATUSES.indexOf(s) > -1 ? s : 'Draft'; }
+
+// ── Date helpers ──────────────────────────────────────────────────────────
+function _qParseDate(v) {
+  if (!v) return null;
+  const d = new Date(String(v).length <= 10 ? v + 'T00:00:00' : v);
+  return isNaN(d.getTime()) ? null : d;
+}
+function _qDateLong(v) {
+  const d = _qParseDate(v);
+  if (!d) return v ? String(v) : '\u2014';
+  return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+function _qDateShort(v) {
+  const d = _qParseDate(v);
+  if (!d) return v ? String(v) : '\u2014';
+  return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+// HTML-safe variants — an unparseable value falls through as raw text, so it
+// must never reach innerHTML unescaped
+function _qDateLongHtml(v)  { return esc(_qDateLong(v)); }
+function _qDateShortHtml(v) { return esc(_qDateShort(v)); }
+
+function _qIsoToday(offsetDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + (offsetDays || 0));
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _qIsExpired(q) {
+  if (!q.validUntil) return false;
+  if (q.status === 'Accepted' || q.status === 'Declined') return false;
+  const d = _qParseDate(q.validUntil);
+  if (!d) return false;
+  return q.validUntil < _qIsoToday(0);
+}
+
+// ── Row <-> object mapping ────────────────────────────────────────────────
+function _quoteRowToObj(r) {
+  let items = [];
+  try { items = JSON.parse(r.items || '[]'); } catch (e) { items = []; }
+  if (!Array.isArray(items)) items = [];
+  return {
+    id: r.id,
+    customerId: r.customer_id || null,
+    requestId: r.request_id || null,
+    name: r.customer_name || '',
+    email: r.customer_email || '',
+    phone: r.customer_phone || '',
+    items: items.map(it => ({
+      desc: (it && it.desc != null) ? String(it.desc) : '',
+      qty: _qNum(it && it.qty),
+      price: _qNum(it && it.price)
+    })),
+    discount: _qNum(r.discount),
+    validUntil: r.valid_until || '',
+    notes: r.notes || '',
+    status: _qStatus(r.status),
+    createdAt: r.created_at || new Date().toISOString()
+  };
+}
+function _quoteObjToRow(q) {
+  return {
+    customer_id: q.customerId || null,
+    request_id: q.requestId || null,
+    customer_name: q.name || '',
+    customer_email: q.email || '',
+    customer_phone: q.phone || '',
+    items: JSON.stringify((q.items || []).map(it => ({
+      desc: (it && it.desc != null) ? String(it.desc) : '',
+      qty: _qNum(it && it.qty),
+      price: _qNum(it && it.price)
+    }))),
+    discount: _qNum(q.discount),
+    valid_until: q.validUntil || null,
+    notes: q.notes || '',
+    status: _qStatus(q.status),
+    created_at: q.createdAt || new Date().toISOString()
+  };
+}
+
+// ── Load / persist ────────────────────────────────────────────────────────
+function _readQuotesKey(key) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+function _writeQuotesKey(key, arr) {
+  try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) { /* quota — nothing we can do */ }
+}
+function _maxQuoteId(arr) {
+  return arr.reduce((m, q) => Math.max(m, Number(q.id) || 0), 0);
+}
+
+async function ensureQuotationsLoaded(force) {
+  if (_quotesLoaded && !force) return;
+  try {
+    const rows = await sbFetch('quotations?order=id.asc');
+    quotations = (rows || []).map(_quoteRowToObj);
+    _quoteBackend = 'cloud';
+    _writeQuotesKey(QUOTE_CACHE_KEY, quotations);
+    // Anything created while the table was missing is still sitting here
+    _quotePendingUpload = _readQuotesKey(QUOTE_LOCAL_KEY);
+  } catch (e) {
+    _quoteBackend = 'local';
+    quotations = _readQuotesKey(QUOTE_LOCAL_KEY);
+    _quoteLocalSeq = _maxQuoteId(quotations);
+    _quotePendingUpload = [];
+  }
+  _quotesLoaded = true;
+  _refreshQuoteNotices();
+}
+
+function _refreshQuoteNotices() {
+  const local = document.getElementById('quote-local-notice');
+  if (local) local.style.display = _quoteBackend === 'local' ? 'block' : 'none';
+  const up = document.getElementById('quote-upload-notice');
+  if (up) {
+    const n = _quotePendingUpload.length;
+    up.style.display = (_quoteBackend === 'cloud' && n) ? 'block' : 'none';
+    const cnt = document.getElementById('quote-upload-count');
+    if (cnt) cnt.textContent = n === 1 ? '1 quotation' : n + ' quotations';
+  }
+}
+
+// Push device-only quotes into the cloud once the table exists, so nothing
+// created before sync was switched on is lost
+async function uploadLocalQuotes() {
+  if (!_quotePendingUpload.length) return;
+  const pending = _quotePendingUpload.slice();
+  let ok = 0;
+  for (const q of pending) {
+    try {
+      await sbFetch('quotations', {
+        method: 'POST', prefer: 'return=minimal', body: JSON.stringify(_quoteObjToRow(q))
+      });
+      ok++;
+    } catch (e) { /* keep the rest of the list intact and report below */ }
+  }
+  if (ok === pending.length) {
+    try { localStorage.removeItem(QUOTE_LOCAL_KEY); } catch (e) {}
+    _quotePendingUpload = [];
+    toast('Uploaded ' + ok + ' quotation' + (ok === 1 ? '' : 's') + ' to the cloud.');
+  } else {
+    toast('\u26a0\ufe0f Uploaded ' + ok + ' of ' + pending.length + ' \u2014 the rest are still on this device.');
+  }
+  await ensureQuotationsLoaded(true);
+  renderQuotations();
+}
+
+// ── Money ─────────────────────────────────────────────────────────────────
+function quoteTotals(q) {
+  const items = (q && q.items) || [];
+  const subtotal = items.reduce((a, it) => a + _qNum(it && it.qty) * _qNum(it && it.price), 0);
+  const wanted = _qNum(q && q.discount);                       // never negative, never NaN
+  const discount = Math.min(wanted, subtotal);                 // never more than the job
+  return {
+    subtotal: Math.round(subtotal * 100) / 100,
+    discount: Math.round(discount * 100) / 100,
+    total: Math.round((subtotal - discount) * 100) / 100
+  };
+}
+
+// ── List ──────────────────────────────────────────────────────────────────
+async function renderQuotations() {
+  const tbody = document.getElementById('quote-table');
+  const empty = document.getElementById('quote-empty');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.5rem">Loading\u2026</td></tr>';
+  await ensureQuotationsLoaded();
+
+  const search = (document.getElementById('quote-search')?.value || '').toLowerCase();
+  const filter = document.getElementById('quote-filter')?.value || '';
+  let list = [...quotations].reverse();
+  if (search) list = list.filter(q =>
+    (q.name || '').toLowerCase().includes(search) ||
+    (q.phone || '').includes(search) ||
+    quoteNo(q.id).toLowerCase().includes(search) ||
+    (q.items || []).some(it => (it.desc || '').toLowerCase().includes(search))
+  );
+  if (filter) list = list.filter(q => q.status === filter);
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    empty.innerHTML = (search || filter)
+      ? 'No quotations match that search.'
+      : 'No quotations yet. Click <strong>New quotation</strong>, or press the <i class="ti ti-file-dollar"></i> button on any customer request.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = list.map(q => {
+    const t = quoteTotals(q);
+    const items = q.items || [];
+    const first = items.length ? (items[0].desc || '\u2014') : '\u2014';
+    const more = items.length > 1 ? ' <span style="color:var(--text-muted)">+' + (items.length - 1) + ' more</span>' : '';
+    const badge = _qIsExpired(q)
+      ? '<span class="badge badge-Expired" title="Past its validity date">Expired</span>'
+      : '<span class="badge badge-' + _qStatus(q.status) + '">' + esc(_qStatus(q.status)) + '</span>';
+    return '<tr class="stack-row">' +
+      '<td class="m-head">' + quoteNo(q.id) + ' \u00b7 ' + esc(q.name || '\u2014') + '</td>' +
+      '<td class="m-hide">' + esc(q.name || '\u2014') + (q.phone ? '<br><span style="font-size:11px;color:var(--text-muted)">' + esc(q.phone) + '</span>' : '') + '</td>' +
+      '<td data-label="Items" style="font-size:12px;max-width:200px">' + esc(first) + more + '</td>' +
+      '<td data-label="Total"><strong>' + peso(t.total) + '</strong></td>' +
+      '<td data-label="Valid until">' + _qDateShortHtml(q.validUntil) + '</td>' +
+      '<td data-label="Status">' + badge + '</td>' +
+      '<td class="m-actions"><div class="actions">' +
+        '<button class="btn btn-sm btn-primary" onclick="previewQuote(' + q.id + ')" title="Preview, PDF &amp; send"><i class="ti ti-eye"></i></button>' +
+        '<button class="btn btn-sm" onclick="openQuoteModal(' + q.id + ')" title="Edit quotation"><i class="ti ti-edit"></i></button>' +
+        (q.status !== 'Accepted'
+          ? '<button class="btn btn-sm btn-success" onclick="quoteToOrder(' + q.id + ')" title="Customer accepted \u2014 turn into an order"><i class="ti ti-arrow-right"></i></button>'
+          : '') +
+        '<button class="btn btn-sm btn-danger" title="Delete quotation" aria-label="Delete quotation" onclick="deleteQuote(' + q.id + ')"><i class="ti ti-trash" aria-hidden="true"></i></button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Builder modal ─────────────────────────────────────────────────────────
+function addQuoteItemRow(desc, qty, price) {
+  const wrap = document.getElementById('q-items');
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'q-item-row';
+  row.innerHTML =
+    '<input class="q-i-desc" placeholder="e.g. Tarpaulin 3\u00d74 ft, full colour, with eyelets" value="' + esc(desc || '') + '">' +
+    '<input class="q-i-qty" type="number" min="0" step="1" value="' + (Number(qty) || 1) + '" oninput="refreshQuoteTotals()" style="text-align:right">' +
+    '<input class="q-i-price" type="number" min="0" step="0.01" value="' + (Number(price) || 0) + '" oninput="refreshQuoteTotals()" style="text-align:right">' +
+    '<button type="button" class="q-i-del" title="Remove this line" aria-label="Remove this line" onclick="removeQuoteItemRow(this)"><i class="ti ti-x" aria-hidden="true"></i></button>';
+  wrap.appendChild(row);
+  refreshQuoteTotals();
+}
+function removeQuoteItemRow(btn) {
+  const wrap = document.getElementById('q-items');
+  const row = btn.closest('.q-item-row');
+  if (row) row.remove();
+  // Never leave the editor with zero rows — there'd be nothing to type into
+  if (wrap && !wrap.querySelector('.q-item-row')) addQuoteItemRow();
+  refreshQuoteTotals();
+}
+function readQuoteItemsFromForm() {
+  return [...document.querySelectorAll('#q-items .q-item-row')].map(row => ({
+    desc:  row.querySelector('.q-i-desc').value.trim(),
+    qty:   _qNum(row.querySelector('.q-i-qty').value),
+    price: _qNum(row.querySelector('.q-i-price').value)
+  })).filter(it => it.desc || it.price > 0);
+}
+function refreshQuoteTotals() {
+  const box = document.getElementById('q-totals');
+  if (!box) return;
+  const items = readQuoteItemsFromForm();
+  const wanted = _qNum(document.getElementById('q-discount')?.value);
+  const t = quoteTotals({ items: items, discount: wanted });
+  const line = (label, val, strong) =>
+    '<div style="display:flex;justify-content:space-between;padding:' + (strong ? '8px 0 0' : '3px 0') + ';' +
+    (strong ? 'border-top:0.5px solid var(--border);margin-top:5px;font-size:15px;font-weight:700' : 'color:var(--text-secondary)') + '">' +
+    '<span>' + label + '</span><span>' + val + '</span></div>';
+  const capped = wanted > t.subtotal
+    ? '<div style="font-size:11px;color:var(--warning);margin-top:6px"><i class="ti ti-alert-triangle"></i> Discount is larger than the subtotal \u2014 capped at ' + peso(t.discount) + '.</div>'
+    : '';
+  box.innerHTML =
+    line('Subtotal', peso(t.subtotal)) +
+    (t.discount > 0 ? line('Discount', '\u2212 ' + peso(t.discount)) : '') +
+    line('Total', peso(t.total), true) + capped;
+}
+function resetQuoteTerms() {
+  const el = document.getElementById('q-notes');
+  if (el) el.value = QUOTE_DEFAULT_TERMS;
+}
+function quoteCustomerChanged() {
+  const id = Number(document.getElementById('q-customer').value);
+  if (!id) return;                       // walk-in — leave typed details alone
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('q-name').value  = c.name || '';
+  document.getElementById('q-email').value = c.email || '';
+  document.getElementById('q-phone').value = c.phone || '';
+}
+function fillQuotePresetStrip() {
+  const strip = document.getElementById('q-preset-strip');
+  if (!strip) return;
+  const presets = (typeof getPresets === 'function' ? getPresets() : []) || [];
+  if (!presets.length) {
+    strip.innerHTML = '<span style="font-size:11.5px;color:var(--text-muted)">Tip: save your common prices under <strong>Price Presets</strong> and they show up here as one-tap line items.</span>';
+    return;
+  }
+  strip.innerHTML = '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:2px">Quick add:</span>' +
+    presets.map(p => '<button type="button" class="q-chip" onclick="addQuoteItemFromPreset(' + p.id + ')">' +
+      esc(p.label) + ' \u00b7 ' + peso(p.price) + '</button>').join('');
+}
+function addQuoteItemFromPreset(presetId) {
+  const p = ((typeof getPresets === 'function' ? getPresets() : []) || []).find(x => x.id === presetId);
+  if (!p) return;
+  // If a row is still blank, fill it instead of stacking an empty line
+  const rows = [...document.querySelectorAll('#q-items .q-item-row')];
+  const blank = rows.find(r => !r.querySelector('.q-i-desc').value.trim() && Number(r.querySelector('.q-i-price').value) === 0);
+  if (blank) {
+    blank.querySelector('.q-i-desc').value = p.label;
+    blank.querySelector('.q-i-price').value = Number(p.price) || 0;
+    refreshQuoteTotals();
+  } else {
+    addQuoteItemRow(p.label, 1, p.price);
+  }
+}
+
+async function openQuoteModal(id, prefill) {
+  await ensureQuotationsLoaded();
+  _quoteEditId = id || null;
+  const q = id ? quotations.find(x => x.id === id) : null;
+  if (id && !q) { toast('Quotation not found \u2014 it may have been deleted on another device.'); return; }
+  const p = prefill || {};
+
+  document.getElementById('quote-modal-title').textContent = q ? ('Edit quotation \u00b7 ' + quoteNo(q.id)) : 'New quotation';
+
+  // Walk-in first, so enquiries from strangers are the easy path
+  const sel = document.getElementById('q-customer');
+  const chosen = q ? q.customerId : (p.customerId || '');
+  sel.innerHTML = '<option value="">\u2014 Walk-in / new enquiry \u2014</option>' +
+    customers.map(c => '<option value="' + c.id + '"' + (String(c.id) === String(chosen) ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+
+  document.getElementById('q-name').value     = q ? q.name  : (p.name  || '');
+  document.getElementById('q-email').value    = q ? q.email : (p.email || '');
+  document.getElementById('q-phone').value    = q ? q.phone : (p.phone || '');
+  document.getElementById('q-valid').value    = q ? (q.validUntil || '') : (p.validUntil || _qIsoToday(14));
+  document.getElementById('q-discount').value = q ? q.discount : 0;
+  document.getElementById('q-status').value   = q ? _qStatus(q.status) : 'Draft';
+  document.getElementById('q-notes').value    = q ? (q.notes || '') : QUOTE_DEFAULT_TERMS;
+
+  const wrap = document.getElementById('q-items');
+  wrap.innerHTML = '';
+  const items = q ? q.items : (p.items || []);
+  if (items && items.length) items.forEach(it => addQuoteItemRow(it.desc, it.qty, it.price));
+  else addQuoteItemRow();
+
+  _quotePrefillReqId = q ? q.requestId : (p.requestId || null);
+
+  fillQuotePresetStrip();
+  refreshQuoteTotals();
+  document.getElementById('quote-modal').classList.add('open');
+}
+
+let _quoteSaving = false;
+async function saveQuotation() {
+  if (_quoteSaving) return;               // double-tap on a slow connection
+  const name  = document.getElementById('q-name').value.trim();
+  const items = readQuoteItemsFromForm();
+  if (!name)         { toast('\u26a0\ufe0f Enter a name for the quotation.'); return; }
+  if (!items.length) { toast('\u26a0\ufe0f Add at least one line item.'); return; }
+  if (items.every(it => quoteTotals({ items: [it], discount: 0 }).total === 0)) {
+    toast('\u26a0\ufe0f Every line is \u20b10 \u2014 set a price, or a quantity above zero.');
+    return;
+  }
+
+  const editId   = _quoteEditId;
+  const existing = editId ? quotations.find(x => x.id === editId) : null;
+  const q = {
+    id: editId || null,
+    customerId: Number(document.getElementById('q-customer').value) || null,
+    requestId: _quotePrefillReqId || null,
+    name: name,
+    email: document.getElementById('q-email').value.trim(),
+    phone: document.getElementById('q-phone').value.trim(),
+    items: items,
+    discount: _qNum(document.getElementById('q-discount').value),
+    validUntil: document.getElementById('q-valid').value || '',
+    notes: document.getElementById('q-notes').value,
+    status: _qStatus(document.getElementById('q-status').value),
+    createdAt: existing ? existing.createdAt : new Date().toISOString()
+  };
+
+  _quoteSaving = true;
+  let savedId = null;
+  try {
+    if (_quoteBackend === 'cloud') {
+      const before = _maxQuoteId(quotations);
+      if (editId) {
+        await sbFetch('quotations?id=eq.' + editId, {
+          method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(_quoteObjToRow(q))
+        });
+        savedId = editId;
+        await ensureQuotationsLoaded(true);
+      } else {
+        let rows = null;
+        try {
+          rows = await sbFetch('quotations', {
+            method: 'POST', prefer: 'return=representation', body: JSON.stringify(_quoteObjToRow(q))
+          });
+        } catch (postErr) { throw postErr; }
+        await ensureQuotationsLoaded(true);
+        // A policy that blocks SELECT still inserts, so fall back to the new max id
+        savedId = (rows && rows[0] && rows[0].id) || (_maxQuoteId(quotations) > before ? _maxQuoteId(quotations) : null);
+      }
+    } else {
+      if (editId) {
+        const i = quotations.findIndex(x => x.id === editId);
+        if (i > -1) quotations[i] = q; else quotations.push(q);
+        savedId = editId;
+      } else {
+        _quoteLocalSeq = Math.max(_quoteLocalSeq, _maxQuoteId(quotations));
+        q.id = ++_quoteLocalSeq;
+        quotations.push(q);
+        savedId = q.id;
+      }
+      _writeQuotesKey(QUOTE_LOCAL_KEY, quotations);
+    }
+  } catch (e) {
+    _quoteSaving = false;
+    toast('\u26a0\ufe0f Could not save the quotation: ' + e.message);
+    return;
+  }
+  _quoteSaving = false;
+
+  closeModal('quote-modal');
+  _quoteEditId = null;
+  renderQuotations();
+  if (savedId) {
+    toast((editId ? 'Quotation ' : 'Quotation ') + quoteNo(savedId) + (editId ? ' updated.' : ' saved.'));
+  } else {
+    toast('Quotation saved.');
+  }
+  if (typeof logActivity === 'function') {
+    logActivity(editId ? 'Quotation edited' : 'Quotation created',
+      (savedId ? quoteNo(savedId) + ' \u2014 ' : '') + name + ' \u2014 ' + peso(quoteTotals(q).total));
+  }
+  if (savedId) previewQuote(savedId);
+}
+
+async function deleteQuote(id) {
+  await ensureQuotationsLoaded();
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  try {
+    await showConfirm({
+      title: 'Delete ' + quoteNo(id) + '?',
+      msg: 'The quotation for ' + (q.name || 'this customer') + ' will be permanently removed.',
+      okLabel: 'Delete quotation'
+    });
+  } catch (e) { return; }
+  if (_quoteBackend === 'cloud') {
+    try { await sbFetch('quotations?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' }); }
+    catch (e) { toast('\u26a0\ufe0f Could not delete: ' + e.message); return; }
+    await ensureQuotationsLoaded(true);
+  } else {
+    quotations = quotations.filter(x => x.id !== id);
+    _writeQuotesKey(QUOTE_LOCAL_KEY, quotations);
+  }
+  if (_quoteViewId === id) { _quoteViewId = null; closeModal('quote-view-modal'); }
+  renderQuotations();
+  toast('Quotation deleted.');
+  if (typeof logActivity === 'function') logActivity('Quotation deleted', quoteNo(id) + ' \u2014 ' + (q.name || ''));
+}
+
+// Status changes revert if the write fails, so a badge never claims something
+// that did not reach storage
+async function setQuoteStatus(id, status, quiet) {
+  const q = quotations.find(x => x.id === id);
+  const next = _qStatus(status);
+  if (!q || q.status === next) return false;
+  const prev = q.status;
+  q.status = next;
+  if (_quoteBackend === 'cloud') {
+    try {
+      await sbFetch('quotations?id=eq.' + id, {
+        method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ status: next })
+      });
+    } catch (e) {
+      q.status = prev;
+      if (!quiet) toast('\u26a0\ufe0f Status not saved: ' + e.message);
+      renderQuotations();
+      return false;
+    }
+    _writeQuotesKey(QUOTE_CACHE_KEY, quotations);
+  } else {
+    _writeQuotesKey(QUOTE_LOCAL_KEY, quotations);
+  }
+  renderQuotations();
+  if (!quiet) toast('Marked as ' + next + '.');
+  return true;
+}
+
+// ── On-screen preview (mirrors the PDF layout) ─────────────────────────────
+function buildQuotePreviewHtml(q) {
+  const t = quoteTotals(q);
+  const rows = (q.items || []).map(it =>
+    '<tr><td>' + esc(it.desc || '\u2014') + '</td>' +
+    '<td class="num">' + _qNum(it.qty) + '</td>' +
+    '<td class="num">' + peso(_qNum(it.price)) + '</td>' +
+    '<td class="num">' + peso(_qNum(it.qty) * _qNum(it.price)) + '</td></tr>'
+  ).join('');
+  return '<div class="q-paper">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid #ddd;padding-bottom:12px">' +
+      '<div>' +
+        '<div style="font-size:17px;font-weight:700;letter-spacing:-0.3px">' + esc(SHOP_EMAIL_FOOTER.name) + '</div>' +
+        '<div style="font-size:10.5px;color:#777;margin-top:3px;line-height:1.5">' + esc(SHOP_EMAIL_FOOTER.address) + '<br>Tel: ' + esc(SHOP_EMAIL_FOOTER.phone) + '</div>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+        '<div style="font-size:15px;font-weight:700;color:' + esc(SHOP_EMAIL_FOOTER.color) + ';letter-spacing:1px">QUOTATION</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px;line-height:1.6">' + quoteNo(q.id) + '<br>Date: ' + _qDateLongHtml(q.createdAt) + '<br>Valid until: <strong>' + _qDateLongHtml(q.validUntil) + '</strong></div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="margin:14px 0 4px"><div style="font-size:9.5px;color:#999;letter-spacing:0.5px">PREPARED FOR</div>' +
+      '<div style="font-size:13.5px;font-weight:700;margin-top:3px">' + esc(q.name || '\u2014') + '</div>' +
+      '<div style="font-size:11px;color:#777">' + [q.phone, q.email].filter(Boolean).map(esc).join(' \u00b7 ') + '</div></div>' +
+    '<table><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div style="display:flex;justify-content:flex-end"><div style="min-width:220px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px;color:#666;padding:2px 0"><span>Subtotal</span><span>' + peso(t.subtotal) + '</span></div>' +
+      (t.discount > 0 ? '<div style="display:flex;justify-content:space-between;font-size:12px;color:#666;padding:2px 0"><span>Discount</span><span>\u2212 ' + peso(t.discount) + '</span></div>' : '') +
+      '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid #ccc;margin-top:6px;padding-top:7px"><span>TOTAL</span><span>' + peso(t.total) + '</span></div>' +
+    '</div></div>' +
+    (q.notes ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:10px"><div style="font-size:9.5px;color:#999;letter-spacing:0.5px;margin-bottom:4px">TERMS &amp; NOTES</div>' +
+      '<div style="font-size:11px;color:#555;line-height:1.6;white-space:pre-wrap">' + esc(q.notes) + '</div></div>' : '') +
+    '<div style="margin-top:14px;font-size:9.5px;color:#999;border-top:1px solid #eee;padding-top:8px">This is a quotation, not an invoice. Prices are valid until ' + _qDateLongHtml(q.validUntil) + '.</div>' +
+  '</div>';
+}
+
+async function previewQuote(id) {
+  await ensureQuotationsLoaded();
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  _quoteViewId = id;
+  document.getElementById('quote-view-title').textContent = quoteNo(id) + ' \u00b7 ' + (q.name || '');
+  document.getElementById('quote-view-content').innerHTML = buildQuotePreviewHtml(q);
+  // Only offer "Share PDF" where the browser can actually share a file
+  const shareBtn = document.getElementById('quote-share-btn');
+  if (shareBtn) {
+    let canShare = false;
+    try {
+      canShare = !!(navigator.share && navigator.canShare &&
+        navigator.canShare({ files: [new File([new Blob(['x'], { type: 'application/pdf' })], 'x.pdf', { type: 'application/pdf' })] }));
+    } catch (e) { canShare = false; }
+    shareBtn.style.display = canShare ? '' : 'none';
+  }
+  document.getElementById('quote-view-modal').classList.add('open');
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────
+// jsPDF's built-in fonts use WinAnsi (cp1252) encoding, so anything outside it
+// — the peso sign, curly quotes, kana, emoji — has to be folded down first or
+// the PDF renders mojibake.
+function _qpdfText(s) {
+  return String(s == null ? '' : s)
+    .replace(/\u20b1/g, 'PHP ')
+    .replace(/[\u2018\u2019\u201a\u201b]/g, "'")
+    .replace(/[\u201c\u201d\u201e]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/[\u2212\u2012\u2015]/g, '-')
+    // emoji, pictographs, variation selectors and other symbols: drop
+    .replace(/[\u200b-\u200f\ufe00-\ufe0f\u2190-\u21ff\u2300-\u27bf\u2b00-\u2bff]/g, '')
+    .replace(/[\u{1f000}-\u{1ffff}]/gu, '')
+    // anything still outside cp1252 becomes a visible placeholder rather than junk
+    .replace(/[^\t\n\r\x20-\x7e\u00a0-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2020\u2021\u2022\u2030\u20ac\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u0192\u02c6\u02dc]/g, '?');
+}
+function _qpdfMoney(n) {
+  return 'PHP ' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function quotePdfFilename(q) {
+  const who = String(q.name || 'Customer').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return 'Quotation-' + quoteNo(q.id) + (who ? '-' + who : '') + '.pdf';
+}
+
+function buildQuotePdf(q) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error('The PDF library did not load. Check your connection and reload the page.');
+  }
+  const jsPDF = window.jspdf.jsPDF;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const L = 15, R = 195;
+  const X_QTY = 128, X_UNIT = 162, X_AMT = R - 2;
+  const DESC_W = 100;            // 15+2 .. ~117, clear of the QTY column
+  const BODY_SIZE = 9.5;
+  const ROW_LIMIT = 258;         // last y a row may start at
+  const t = quoteTotals(q);
+  const validStr = _qpdfText(_qDateLong(q.validUntil));
+
+  // Header
+  let y = 20;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(20, 20, 20);
+  doc.text(_qpdfText(SHOP_EMAIL_FOOTER.name), L, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
+  doc.text(_qpdfText(SHOP_EMAIL_FOOTER.address), L, y + 5.2);
+  doc.text('Tel: ' + _qpdfText(SHOP_EMAIL_FOOTER.phone), L, y + 9.4);
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(26, 110, 245);
+  doc.text('QUOTATION', R, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90);
+  doc.text(quoteNo(q.id), R, y + 5.2, { align: 'right' });
+  doc.text('Date: ' + _qpdfText(_qDateLong(q.createdAt)), R, y + 9.4, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.text('Valid until: ' + validStr, R, y + 13.6, { align: 'right' });
+
+  y += 19;
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(L, y, R, y);
+
+  // Prepared for
+  y += 8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150);
+  doc.text('PREPARED FOR', L, y);
+  y += 5;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(25, 25, 25);
+  doc.text(doc.splitTextToSize(_qpdfText(q.name || '\u2014'), 110)[0], L, y);
+  const contact = _qpdfText([q.phone, q.email].filter(Boolean).join('  \u00b7  '));
+  if (contact) {
+    y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 110, 110);
+    doc.text(doc.splitTextToSize(contact, 130)[0], L, y);
+  }
+
+  // Items table
+  y += 9;
+  function tableHead(yy) {
+    doc.setFillColor(238, 240, 246);
+    doc.rect(L, yy, R - L, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+    doc.text('DESCRIPTION', L + 2, yy + 5.3);
+    doc.text('QTY', X_QTY, yy + 5.3, { align: 'right' });
+    doc.text('UNIT PRICE', X_UNIT, yy + 5.3, { align: 'right' });
+    doc.text('AMOUNT', X_AMT, yy + 5.3, { align: 'right' });
+    return yy + 8;
+  }
+  // Row text is measured and drawn at the SAME font, otherwise long
+  // descriptions wrap to the wrong width and run into the QTY column
+  function bodyFont() {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(BODY_SIZE);
+    doc.setTextColor(35, 35, 35);
+  }
+  y = tableHead(y);
+  bodyFont();
+
+  const items = (q.items || []).length ? q.items : [{ desc: '\u2014', qty: 0, price: 0 }];
+  items.forEach(it => {
+    bodyFont();
+    const lines = doc.splitTextToSize(_qpdfText(it.desc || '\u2014'), DESC_W);
+    const h = Math.max(8, lines.length * 4.3 + 3.7);
+    if (y + h > ROW_LIMIT) {
+      doc.addPage();
+      y = tableHead(20);
+      bodyFont();
+    }
+    const qty = _qNum(it.qty);
+    const price = _qNum(it.price);
+    doc.text(lines, L + 2, y + 5.4);
+    doc.text(String(qty), X_QTY, y + 5.4, { align: 'right' });
+    doc.text(_qpdfMoney(price), X_UNIT, y + 5.4, { align: 'right' });
+    doc.text(_qpdfMoney(qty * price), X_AMT, y + 5.4, { align: 'right' });
+    y += h;
+    doc.setDrawColor(228, 228, 228); doc.setLineWidth(0.2); doc.line(L, y, R, y);
+  });
+
+  // Totals — kept whole, never split across a page boundary
+  const totalsHeight = t.discount > 0 ? 24 : 18;
+  if (y + totalsHeight > 268) { doc.addPage(); y = 20; }
+  y += 7;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(100, 100, 100);
+  doc.text('Subtotal', X_UNIT, y, { align: 'right' });
+  doc.text(_qpdfMoney(t.subtotal), X_AMT, y, { align: 'right' });
+  if (t.discount > 0) {
+    y += 5.5;
+    doc.text('Discount', X_UNIT, y, { align: 'right' });
+    doc.text('- ' + _qpdfMoney(t.discount), X_AMT, y, { align: 'right' });
+  }
+  y += 3.5;
+  doc.setDrawColor(170, 170, 170); doc.setLineWidth(0.3); doc.line(X_QTY - 8, y, R, y);
+  y += 7;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(20, 20, 20);
+  doc.text('TOTAL', X_UNIT, y, { align: 'right' });
+  doc.text(_qpdfMoney(t.total), X_AMT, y, { align: 'right' });
+
+  // Terms
+  if (q.notes && String(q.notes).trim()) {
+    y += 13;
+    if (y > 248) { doc.addPage(); y = 22; }
+    doc.setDrawColor(232, 232, 232); doc.setLineWidth(0.2); doc.line(L, y - 5, R, y - 5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150);
+    doc.text('TERMS & NOTES', L, y);
+    y += 4.6;
+    doc.setFontSize(8.8); doc.setTextColor(90, 90, 90);
+    const nl = doc.splitTextToSize(_qpdfText(q.notes), R - L);
+    nl.forEach(ln => {
+      if (y > 272) { doc.addPage(); y = 22; doc.setFontSize(8.8); doc.setTextColor(90, 90, 90); }
+      doc.text(ln, L, y);
+      y += 4.2;
+    });
+  }
+
+  // Footer on every page
+  const preparedBy = _qpdfText((typeof getCurrentUserName === 'function' ? getCurrentUserName() : '') || '');
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.2); doc.line(L, 281, R, 281);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(150, 150, 150);
+    doc.text('This is a quotation, not an invoice. Prices are valid until ' + validStr + '.', L, 285.5);
+    if (preparedBy) doc.text('Prepared by: ' + preparedBy, L, 289.3);
+    doc.text('Page ' + p + ' of ' + pages, R, 285.5, { align: 'right' });
+  }
+  return doc;
+}
+
+function downloadQuotePdf(id) {
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  try {
+    buildQuotePdf(q).save(quotePdfFilename(q));
+    toast('Saved ' + quotePdfFilename(q));
+    if (q.status === 'Draft') setQuoteStatus(id, 'Sent', true);
+  } catch (e) { toast('\u26a0\ufe0f ' + e.message); }
+}
+
+async function shareQuotePdf(id) {
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  let doc;
+  try { doc = buildQuotePdf(q); } catch (e) { toast('\u26a0\ufe0f ' + e.message); return; }
+  try {
+    const file = new File([doc.output('blob')], quotePdfFilename(q), { type: 'application/pdf' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Quotation ' + quoteNo(q.id), text: quoteShareText(q) });
+      if (q.status === 'Draft') setQuoteStatus(id, 'Sent', true);
+    } else {
+      doc.save(quotePdfFilename(q));
+      toast('Sharing is not available in this browser \u2014 the PDF was downloaded instead.');
+    }
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) return;  // share sheet dismissed
+    toast('\u26a0\ufe0f Could not share: ' + e.message);
+  }
+}
+
+function quoteEmailSubject(q) {
+  return 'Quotation ' + quoteNo(q.id) + ' \u2014 ' + SHOP_EMAIL_FOOTER.name;
+}
+// Full itemised message — used for the HTML email and the share sheet
+function quoteMessageBody(q) {
+  const t = quoteTotals(q);
+  const lines = (q.items || []).map(it => {
+    const qty = _qNum(it.qty);
+    const price = _qNum(it.price);
+    return '\u2022 ' + (it.desc || '\u2014') + ' \u2014 ' + qty + ' \u00d7 ' + peso(price) + ' = ' + peso(qty * price);
+  }).join('\n');
+  return 'Hi ' + (q.name || 'there') + ',\n\n' +
+    'Thank you for your enquiry. Here is our quotation (' + quoteNo(q.id) + '), also attached as a PDF:\n\n' +
+    lines + '\n' +
+    (t.discount > 0 ? '\nDiscount: \u2212 ' + peso(t.discount) : '') +
+    '\nTOTAL: ' + peso(t.total) + '\n' +
+    'Valid until: ' + _qDateLong(q.validUntil) + '\n\n' +
+    'Just reply to confirm and we will schedule the job. Happy to adjust the quantities or specs if you need a different option.\n\n' +
+    'Thank you,\n' + SHOP_EMAIL_FOOTER.name + '\n' + SHOP_EMAIL_FOOTER.phone + '\n' + SHOP_EMAIL_FOOTER.address;
+}
+function quoteShareText(q) {
+  const t = quoteTotals(q);
+  return 'Quotation ' + quoteNo(q.id) + ' \u2014 ' + SHOP_EMAIL_FOOTER.name +
+    '\nTotal: ' + peso(t.total) + '\nValid until: ' + _qDateLong(q.validUntil);
+}
+// mailto: URLs are length-limited in practice (Outlook truncates well under
+// 2 KB), so a long itemised list collapses to a summary; the PDF has the detail
+const QUOTE_MAILTO_LIMIT = 1400;
+function quoteMailtoBody(q) {
+  const full = quoteMessageBody(q);
+  if (full.length <= QUOTE_MAILTO_LIMIT) return full;
+  const t = quoteTotals(q);
+  const n = (q.items || []).length;
+  return 'Hi ' + (q.name || 'there') + ',\n\n' +
+    'Thank you for your enquiry. Please find our quotation (' + quoteNo(q.id) + ') attached as a PDF.\n\n' +
+    n + ' item' + (n === 1 ? '' : 's') + '\n' +
+    (t.discount > 0 ? 'Discount: \u2212 ' + peso(t.discount) + '\n' : '') +
+    'TOTAL: ' + peso(t.total) + '\n' +
+    'Valid until: ' + _qDateLong(q.validUntil) + '\n\n' +
+    'The full breakdown is in the attached PDF. Just reply to confirm and we will schedule the job.\n\n' +
+    'Thank you,\n' + SHOP_EMAIL_FOOTER.name + '\n' + SHOP_EMAIL_FOOTER.phone;
+}
+
+function emailQuote(id) {
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  const fname = quotePdfFilename(q);
+  try { buildQuotePdf(q).save(fname); }
+  catch (e) { toast('\u26a0\ufe0f ' + e.message); return; }
+  const url = 'mailto:' + encodeURIComponent(q.email || '') +
+    '?subject=' + encodeURIComponent(quoteEmailSubject(q)) +
+    '&body=' + encodeURIComponent(quoteMailtoBody(q));
+  setTimeout(() => { window.location.href = url; }, 700);
+  toast(q.email
+    ? 'PDF saved as "' + fname + '" \u2014 attach it to the email that just opened.'
+    : 'PDF saved as "' + fname + '" \u2014 no email on file, so add the address in your mail app.');
+  if (q.status === 'Draft') setQuoteStatus(id, 'Sent', true);
+}
+
+function copyQuoteEmailHtml(id) {
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  const html = buildHtmlEmail(quoteEmailSubject(q), quoteMessageBody(q), 'invoice');
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = html; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(html).catch(fallback);
+  } else { fallback(); }
+  toast('HTML email copied \u2014 paste into Gmail (\u22ee \u2192 Paste as HTML), then attach the PDF.');
+}
+
+function printQuote(id) {
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  const w = window.open('', '_blank', 'width=820,height=1000');
+  if (!w) { toast('\u26a0\ufe0f Pop-up blocked \u2014 allow pop-ups to print, or use Download PDF.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + esc(quoteNo(q.id)) + '</title>' +
+    '<style>body{margin:0;padding:26px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#fff;color:#1a1a18}' +
+    '.q-paper{padding:0;border:none;font-size:12.5px;line-height:1.55}' +
+    '.q-paper table{width:100%;border-collapse:collapse;margin:10px 0}' +
+    '.q-paper th{background:#eef0f6;color:#555;font-size:10px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:6px 8px}' +
+    '.q-paper td{padding:7px 8px;border-bottom:1px solid #e6e6e6;font-size:12px;vertical-align:top}' +
+    '.q-paper .num{text-align:right;white-space:nowrap}' +
+    '@page{margin:14mm}</style></head><body>' + buildQuotePreviewHtml(q) + '</body></html>');
+  w.document.close();
+  setTimeout(() => { try { w.print(); } catch (e) {} }, 400);
+  if (q.status === 'Draft') setQuoteStatus(id, 'Sent', true);
+}
+
+// Thin wrappers so the preview modal's buttons never depend on a variable
+// being visible from an inline onclick attribute.
+function downloadQuoteFromView()  { if (_quoteViewId) downloadQuotePdf(_quoteViewId); }
+function shareQuoteFromView()     { if (_quoteViewId) shareQuotePdf(_quoteViewId); }
+function emailQuoteFromView()     { if (_quoteViewId) emailQuote(_quoteViewId); }
+function printQuoteFromView()     { if (_quoteViewId) printQuote(_quoteViewId); }
+function copyQuoteEmailFromView() { if (_quoteViewId) copyQuoteEmailHtml(_quoteViewId); }
+function quoteToOrderFromView()   { if (_quoteViewId) quoteToOrder(_quoteViewId); }
+
+// ── Accepted quotation → order ────────────────────────────────────────────
+let _quoteConverting = false;
+async function quoteToOrder(id) {
+  if (_quoteConverting) return;
+  await ensureQuotationsLoaded();
+  const q = quotations.find(x => x.id === id);
+  if (!q) { toast('Quotation not found.'); return; }
+  const t = quoteTotals(q);
+  try {
+    await showConfirm({
+      title: 'Customer accepted?',
+      msg: 'This creates an order for ' + peso(t.total) + ' and marks ' + quoteNo(id) + ' as Accepted.',
+      okLabel: 'Create order'
+    });
+  } catch (e) { return; }
+
+  _quoteConverting = true;
+  try {
+    // An order needs a customer record; walk-in enquiries get one created now
+    let custId = q.customerId;
+    if (!custId) {
+      const match = customers.find(c =>
+        (q.phone && c.phone && c.phone === q.phone) ||
+        (q.email && c.email && c.email.toLowerCase() === q.email.toLowerCase())
+      );
+      if (match) {
+        custId = match.id;
+      } else {
+        const rows = await sbFetch('customers', {
+          method: 'POST', prefer: 'return=representation',
+          body: JSON.stringify({ name: q.name || 'Walk-in', phone: q.phone || '', email: q.email || '', address: '', created_at: new Date().toISOString() })
+        });
+        custId = rows && rows[0] ? rows[0].id : null;
+        if (!custId) throw new Error('the customer record could not be confirmed');
+      }
+    }
+
+    const first = (q.items && q.items[0]) ? q.items[0] : { desc: 'Quoted job', qty: 1 };
+    const summary = (q.items || []).map(it =>
+      '\u2022 ' + (it.desc || '\u2014') + ' \u00d7 ' + _qNum(it.qty) + ' @ ' + peso(_qNum(it.price))).join('\n');
+    await sbFetch('orders', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        customer_id: custId,
+        jobtype: String(first.desc || 'Quoted job').slice(0, 60),
+        size: '',
+        qty: Math.max(1, _qNum(first.qty) || 1),
+        amount: t.total,
+        payment: '',
+        status: 'Pending',
+        due: q.validUntil || null,
+        notes: 'From quotation ' + quoteNo(q.id) + '\n' + summary + (t.discount > 0 ? '\nDiscount applied: ' + peso(t.discount) : ''),
+        rush: false,
+        created_at: new Date().toISOString()
+      })
+    });
+
+    await loadAllData();
+    await setQuoteStatus(id, 'Accepted', true);
+    closeModal('quote-view-modal');
+    toast('Order created from ' + quoteNo(id) + '.');
+    if (typeof logActivity === 'function') {
+      logActivity('Quotation accepted', quoteNo(id) + ' \u2192 order for ' + (q.name || '') + ' \u2014 ' + peso(t.total));
+    }
+    nav('orders');
+  } catch (e) {
+    toast('\u26a0\ufe0f Could not create the order: ' + e.message + (_quoteBackend === 'local' ? ' (quotations are offline on this device)' : ''));
+  } finally {
+    _quoteConverting = false;
+  }
+}
+
+// ── Quotation straight from a customer request ─────────────────────────────
+async function quoteFromReq(id) {
+  let all = [];
+  try { all = await getRequestsFromDB(); }
+  catch (e) { toast('\u26a0\ufe0f Could not load the request: ' + e.message); return; }
+  const r = all.find(x => x.id === id);
+  if (!r) { toast('Request not found.'); return; }
+
+  // Turn the request's spec into a readable one-line description
+  const bits = [];
+  if (r.pkgLabel) bits.push(r.pkgLabel);
+  if (r.size) bits.push(r.size);
+  if (r.extras && typeof r.extras === 'object') {
+    ['colorMode', 'finish', 'material', 'fold', 'printType', 'shape', 'idType'].forEach(k => {
+      if (r.extras[k]) bits.push(r.extras[k]);
+    });
+    if (r.extras.sizes) bits.push('Sizes: ' + r.extras.sizes);
+  }
+  const desc = (r.jobtype || 'Printing job') + (bits.length ? ' \u2014 ' + bits.join(', ') : '');
+
+  // Reuse a saved preset price when the job type matches, otherwise leave it 0
+  const presets = (typeof getPresets === 'function' ? getPresets() : []) || [];
+  const match = presets.find(p => p.jobtype && r.jobtype && p.jobtype.toLowerCase() === r.jobtype.toLowerCase());
+  const existing = customers.find(c =>
+    (r.phone && c.phone && c.phone === r.phone) ||
+    (r.email && c.email && c.email.toLowerCase() === r.email.toLowerCase())
+  );
+
+  await openQuoteModal(null, {
+    customerId: existing ? existing.id : '',
+    name: r.name || '',
+    email: r.email || '',
+    phone: r.phone || '',
+    requestId: r.id,
+    validUntil: _qIsoToday(14),
+    items: [{ desc: desc, qty: Math.max(1, _qNum(r.qty) || 1), price: match ? _qNum(match.price) : 0 }]
+  });
+  toast(match
+    ? 'Prefilled from ' + (r.ref || 'the request') + ' using your saved price \u2014 adjust as needed.'
+    : 'Prefilled from ' + (r.ref || 'the request') + ' \u2014 set the price and send.');
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────
+// Quotations join the export payload, and device-only ones are restorable.
+function quotationsForBackup() {
+  return {
+    quotations: quotations,
+    quotationsLocalOnly: _quoteBackend === 'local' ? quotations : _quotePendingUpload
+  };
+}
+async function restoreQuotationsFromBackup(data) {
+  const incoming = (data && (data.quotations || data.quotationsLocalOnly)) || [];
+  if (!Array.isArray(incoming) || !incoming.length) return 0;
+  await ensureQuotationsLoaded();
+  const seen = new Set(quotations.map(q => quoteNo(q.id) + '|' + (q.name || '') + '|' + quoteTotals(q).total));
+  const fresh = incoming.filter(q => !seen.has(quoteNo(q.id) + '|' + (q.name || '') + '|' + quoteTotals(q).total));
+  if (!fresh.length) return 0;
+  if (_quoteBackend === 'cloud') {
+    let ok = 0;
+    for (const q of fresh) {
+      try { await sbFetch('quotations', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(_quoteObjToRow(q)) }); ok++; }
+      catch (e) {}
+    }
+    await ensureQuotationsLoaded(true);
+    return ok;
+  }
+  let seq = _maxQuoteId(quotations);
+  fresh.forEach(q => { quotations.push(Object.assign({}, q, { id: ++seq })); });
+  _quoteLocalSeq = seq;
+  _writeQuotesKey(QUOTE_LOCAL_KEY, quotations);
+  return fresh.length;
+}
+
+window.addEventListener('load', () => { setTimeout(() => { ensureQuotationsLoaded(); }, 2500); });
+
 
 // Log startup + load Supabase-backed data
 window.addEventListener('load', () => {
